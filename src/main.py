@@ -1,131 +1,101 @@
 """
-EnergyOS - Hauptprogramm für die Gebäude-Energiesystem-Simulation
+EnergyOS - Main program for building energy system simulation
 """
 
-from simulation.heat_pump import HeatPump, HeatPumpSpecifications
-from simulation.pv_system import PVSystem, PVModuleSpecifications, PVArrayConfiguration
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 from datetime import datetime
 
-def run_simple_simulation():
-    """Führt eine einfache Simulation einer Wärmepumpe und PV-Anlage über einen Tag durch."""
-    
-    # Wärmepumpen-Setup
-    cop_rating_points = {
-        (-7, 35): 2.70,
-        (-7, 45): 2.20,
-        (2, 35): 3.40,
-        (2, 45): 2.70,
-        (7, 35): 4.00,
-        (7, 45): 3.20,
-        (10, 35): 4.40,
-        (10, 45): 3.50,
-    }
-    
-    heat_pump_specs = HeatPumpSpecifications(
-        nominal_heating_power=10.0,  # 10 kW
-        cop_rating_points=cop_rating_points,
-        min_outside_temp=-20.0,
-        max_flow_temp=60.0,
-        min_part_load_ratio=0.3,
-        defrost_temp_threshold=7.0,
-        thermal_mass=20.0,
-    )
-    
-    heat_pump = HeatPump(heat_pump_specs)
-    
-    # PV-System-Setup
-    pv_specs = PVModuleSpecifications(
-        peak_power=400.0,  # Wp pro Modul
-        area=1.75,  # m² pro Modul
-        efficiency_stc=20.0,  # 20% Wirkungsgrad
-        temp_coefficient=-0.35,  # -0.35%/K
-    )
-    
-    pv_config = PVArrayConfiguration(
-        modules_count=25,  # 25 Module für ca. 10 kWp
-        tilt=30,  # 30° Neigung
-        azimuth=180,  # Süd-Ausrichtung
-    )
-    
-    pv_system = PVSystem(
-        module_specs=pv_specs,
-        config=pv_config,
-        location=(52.52, 13.4),  # Berlin
-        altitude=34.0  # Höhe über NN in Berlin
-    )
-    
-    # Wärmepumpen-Spezifikationen (Beispiel einer 10kW Luft-Wasser-Wärmepumpe)
-    cop_rating_points = {
-        (-7, 35): 2.70,
-        (-7, 45): 2.20,
-        (2, 35): 3.40,
-        (2, 45): 2.70,
-        (7, 35): 4.00,
-        (7, 45): 3.20,
-        (10, 35): 4.40,
-        (10, 45): 3.50,
-    }
-    
+from simulation.heat_pump import HeatPump, HeatPumpSpecifications
+from simulation.pv_system import PVSystem, PVModuleSpecifications, PVArrayConfiguration
+
+def init_heat_pump() -> HeatPump:
+    """Initialize heat pump with default parameters."""
     specs = HeatPumpSpecifications(
         nominal_heating_power=10.0,  # 10 kW
-        cop_rating_points=cop_rating_points,
+        cop_rating_points={
+            (-7, 35): 2.70, (-7, 45): 2.20,
+            (2, 35): 3.40, (2, 45): 2.70,
+            (7, 35): 4.00, (7, 45): 3.20,
+            (10, 35): 4.40, (10, 45): 3.50,
+        },
         min_outside_temp=-20.0,
         max_flow_temp=60.0,
         min_part_load_ratio=0.3,
         defrost_temp_threshold=7.0,
         thermal_mass=20.0,
     )
-    
-    heat_pump = HeatPump(specs)
-    
-    # PV-System-Setup
-    pv_specs = PVModuleSpecifications(
-        peak_power=400.0,  # Wp pro Modul
-        area=1.75,  # m² pro Modul
-        efficiency_stc=20.0,  # 20% Wirkungsgrad
+    return HeatPump(specs)
+
+def init_pv_system() -> PVSystem:
+    """Initialize PV system with default parameters."""
+    module_specs = PVModuleSpecifications(
+        peak_power=400.0,  # Wp per module
+        area=1.75,  # m² per module
+        efficiency_stc=20.0,  # 20% efficiency
         temp_coefficient=-0.35,  # -0.35%/K
-        noct=45.0,  # Nominal Operating Cell Temperature
+        noct=45.0  # °C
     )
     
-    pv_config = PVArrayConfiguration(
-        modules_count=25,  # 25 Module für ca. 10 kWp
-        tilt=30,  # 30° Neigung
-        azimuth=180,  # Süd-Ausrichtung
-        albedo=0.2  # Standard-Bodenreflexion
+    array_config = PVArrayConfiguration(
+        modules_count=25,  # 25 modules for ~10 kWp
+        tilt=30,  # 30° tilt
+        azimuth=180,  # South orientation
+        albedo=0.2  # Default ground reflection
     )
     
-    pv_system = PVSystem(
-        module_specs=pv_specs,
-        config=pv_config,
+    return PVSystem(
+        module_specs=module_specs,
+        config=array_config,
         location=(52.52, 13.4),  # Berlin
-        altitude=34.0  # Höhe über NN in Berlin
+        altitude=34.0  # Height above sea level in Berlin
     )
+
+def simulate_day():
+    """Run a daily simulation of the energy system."""
     
-    # Simulation durchführen
+    # Initialize systems
+    heat_pump = init_heat_pump()
+    pv_system = init_pv_system()
+    
+    # Simulation setup
     hours = np.arange(24)
     outside_temps = 5 + 5 * np.sin(2 * np.pi * (hours - 14) / 24)  # Min: 0°C, Max: 10°C
     heat_demand = 6 + 4 * np.cos(2 * np.pi * (hours - 2) / 24)  # kW
     
-    # Arrays für die Ergebnisse
+    # Result arrays
     heat_output = np.zeros(24)
     power_input = np.zeros(24)
-    pv_output = np.zeros(24)
+    pv_dc_output = np.zeros(24)
+    pv_ac_output = np.zeros(24)
     cop_values = np.zeros(24)
     flow_temps = np.zeros(24)
     
-    # Beispiel-Strahlungsverlauf (vereinfacht)
-    max_irradiance = 800  # W/m²
-    irradiance = np.zeros(24)
-    for i in range(24):
-        if 6 <= i <= 18:  # Tageslicht zwischen 6 und 18 Uhr
-            irradiance[i] = max_irradiance * np.sin(np.pi * (i - 6) / 12)
+    # Simplified radiation profile
+    max_ghi = 800  # W/m²
+    max_dni = 600  # W/m²
+    max_dhi = 200  # W/m²
     
-    # Führe die Simulation für jeden Zeitschritt durch
+    # Initialize weather data arrays
+    ghi = np.zeros(24)
+    dni = np.zeros(24)
+    dhi = np.zeros(24)
+    
+    # Create simplified daily radiation profile
+    for i in range(24):
+        if 6 <= i <= 18:  # Daylight between 6 and 18
+            sun_height = np.sin(np.pi * (i - 6) / 12)
+            ghi[i] = max_ghi * sun_height
+            dni[i] = max_dni * sun_height
+            dhi[i] = max_dhi * sun_height
+    
+    # Wind speed (simplified constant)
+    wind_speed = 2.0  # m/s
+    
+    # Run simulation for each timestep
     for i, hour in enumerate(hours):
-        # Wärmepumpen-Simulation
+        # Heat pump simulation
         flow_temps[i] = heat_pump.calculate_flow_temperature(outside_temps[i])
         cop_values[i] = heat_pump.calculate_cop(outside_temps[i], flow_temps[i])
         heat_output[i], power_input[i] = heat_pump.get_power_output(
@@ -135,77 +105,66 @@ def run_simple_simulation():
             time_step=1.0
         )
         
-        # PV-Simulation für das aktuelle Datum (13. Juni 2025)
+        # PV simulation for current date (June 13, 2025)
         current_datetime = datetime(2025, 6, 13, hour)
-        pv_output[i] = pv_system.calculate_power_output(
+        weather_data = {
+            'ghi': ghi[i],
+            'dni': dni[i],
+            'dhi': dhi[i],
+            'temp_air': outside_temps[i],
+            'wind_speed': wind_speed
+        }
+        
+        dc_power, ac_power = pv_system.calculate_power_output(
             current_datetime,
-            irradiance[i],
-            outside_temps[i]
+            weather_data
         )
+        pv_dc_output[i] = float(dc_power.iloc[0])
+        pv_ac_output[i] = float(ac_power.iloc[0])
     
-    # Plotte die Ergebnisse
+    # Plot results
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
-    fig.suptitle('Gebäude-Energiesystem-Simulation über 24 Stunden')
+    fig.suptitle('Building Energy System Simulation over 24 Hours')
     
-    # Plot 1: Temperaturen
-    ax1.plot(hours, outside_temps, 'b-', label='Außentemperatur')
-    ax1.plot(hours, flow_temps, 'r-', label='Vorlauftemperatur')
-    ax1.set_xlabel('Stunde')
-    ax1.set_ylabel('Temperatur (°C)')
+    # Plot 1: Temperatures
+    ax1.plot(hours, outside_temps, 'b-', label='Outside Temperature')
+    ax1.plot(hours, flow_temps, 'r-', label='Flow Temperature')
+    ax1.set_xlabel('Hour')
+    ax1.set_ylabel('Temperature (°C)')
     ax1.legend()
     ax1.grid(True)
     
-    # Plot 2: COP und PV-Leistung
-    ax2.plot(hours, cop_values, 'g-', label='COP')
-    ax2_twin = ax2.twinx()
-    ax2_twin.plot(hours, pv_output, 'y-', label='PV-Leistung')
-    ax2.set_xlabel('Stunde')
-    ax2.set_ylabel('COP')
-    ax2_twin.set_ylabel('PV-Leistung (kW)')
-    lines1, labels1 = ax2.get_legend_handles_labels()
-    lines2, labels2 = ax2_twin.get_legend_handles_labels()
-    ax2.legend(lines1 + lines2, labels1 + labels2)
+    # Plot 2: COP and PV Power
+    ax2.plot(hours, cop_values, 'g-', label='Heat Pump COP')
+    ax2.plot(hours, pv_ac_output, 'y-', label='PV Power (AC)')
+    ax2.set_xlabel('Hour')
+    ax2.set_ylabel('COP / Power (kW)')
+    ax2.legend()
     ax2.grid(True)
     
-    # Plot 3: Wärmeleistung
-    ax3.plot(hours, heat_demand, 'b-', label='Bedarf')
-    ax3.plot(hours, heat_output, 'r-', label='Erzeugung')
-    ax3.set_xlabel('Stunde')
-    ax3.set_ylabel('Wärmeleistung (kW)')
+    # Plot 3: Heat Pump Power
+    ax3.plot(hours, heat_output, 'r-', label='Heat Output')
+    ax3.plot(hours, power_input, 'b-', label='Power Input')
+    ax3.plot(hours, heat_demand, 'k--', label='Heat Demand')
+    ax3.set_xlabel('Hour')
+    ax3.set_ylabel('Power (kW)')
     ax3.legend()
     ax3.grid(True)
     
-    # Plot 4: Energiebilanz
-    ax4.plot(hours, power_input, 'r-', label='WP Verbrauch')
-    ax4.plot(hours, pv_output, 'g-', label='PV Erzeugung')
-    ax4.plot(hours, pv_output - power_input, 'b-', label='Netto')
-    ax4.set_xlabel('Stunde')
-    ax4.set_ylabel('Elektrische Leistung (kW)')
+    # Plot 4: Radiation
+    ax4.plot(hours, ghi, 'y-', label='Global Horizontal')
+    ax4.plot(hours, dni, 'r-', label='Direct Normal')
+    ax4.plot(hours, dhi, 'b-', label='Diffuse Horizontal')
+    ax4.set_xlabel('Hour')
+    ax4.set_ylabel('Irradiance (W/m²)')
     ax4.legend()
     ax4.grid(True)
     
-    # Erstelle Ausgabeverzeichnis falls nicht vorhanden
-    output_dir = Path('output')
+    # Save plot
+    output_dir = Path(__file__).parent.parent / 'output'
     output_dir.mkdir(exist_ok=True)
-    
-    # Speichere die Grafik
-    plt.savefig(output_dir / 'energy_system_simulation.png', dpi=300, bbox_inches='tight')
+    plt.savefig(output_dir / 'energy_system_simulation.png')
     plt.close()
-    
-    # Berechne und gebe Kennzahlen aus
-    total_heat = heat_output.sum()
-    total_power_consumed = power_input.sum()
-    total_pv_generated = pv_output.sum()
-    net_power = total_pv_generated - total_power_consumed
-    average_cop = total_heat / total_power_consumed if total_power_consumed > 0 else 0
-    
-    print("\nSimulationsergebnisse:")
-    print(f"Gesamtwärmeerzeugung: {total_heat:.1f} kWh")
-    print(f"Wärmepumpen-Stromverbrauch: {total_power_consumed:.1f} kWh")
-    print(f"PV-Stromerzeugung: {total_pv_generated:.1f} kWh")
-    print(f"Netto-Strombilanz: {net_power:.1f} kWh")
-    print(f"Durchschnittlicher COP: {average_cop:.2f}")
-    print(f"Autarkiegrad: {min(100 * total_pv_generated / total_power_consumed, 100):.1f}%")
-    
-if __name__ == "__main__":
-    run_simple_simulation()
+
+if __name__ == '__main__':
+    simulate_day()
