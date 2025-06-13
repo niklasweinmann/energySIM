@@ -1,4 +1,5 @@
-# EnergyOS
+# EnergySIM 
+## Residential Energy System Simulation & Optimization
 
 Ein intelligentes System zur Modellierung und Simulation von Gebäude-Energiesystemen mit Machine Learning Unterstützung.
 
@@ -34,7 +35,7 @@ energyOS/
 
 ## Installation
 
-### Option 1: Mit Conda (empfohlen)
+### Mit Conda:
 
 1. Conda-Umgebung erstellen:
 ```bash
@@ -45,19 +46,6 @@ conda activate energyos
 2. Erforderliche Pakete installieren:
 ```bash
 conda install numpy pandas tensorflow scikit-learn dash plotly pytest black isort
-```
-
-### Option 2: Mit venv
-
-1. Python 3.9+ wird benötigt
-2. Virtual Environment erstellen:
-```bash
-python -m venv venv
-source venv/bin/activate
-```
-3. Abhängigkeiten installieren:
-```bash
-pip install -r requirements.txt
 ```
 
 ## Entwicklung
