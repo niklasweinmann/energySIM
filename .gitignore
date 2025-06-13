@@ -55,3 +55,6 @@ data/components/*
 # Local development
 local_settings.py
 db.sqlite3
+
+# Apple
+.DS_Store
