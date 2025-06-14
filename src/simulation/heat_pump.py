@@ -32,10 +32,56 @@ class HeatPump:
         self.defrost_energy: float = 0.0
         self.runtime: float = 0.0
         
+    def _find_surrounding_points(self, outside_temp: float, flow_temp: float) -> tuple[tuple[float, float], float]:
+        """
+        Findet die umgebenden Temperaturpunkte für die Interpolation.
+        
+        Args:
+            outside_temp: Außentemperatur in °C
+            flow_temp: Vorlauftemperatur in °C
+            
+        Returns:
+            Liste von Tupeln ((außentemp, vorlauftemp), cop)
+        """
+        outside_temps = sorted(set(t[0] for t in self.specs.cop_rating_points.keys()))
+        flow_temps = sorted(set(t[1] for t in self.specs.cop_rating_points.keys()))
+        
+        # Finde die umgebenden Temperaturen
+        lower_outside = max((t for t in outside_temps if t <= outside_temp), default=min(outside_temps))
+        upper_outside = min((t for t in outside_temps if t >= outside_temp), default=max(outside_temps))
+        lower_flow = max((t for t in flow_temps if t <= flow_temp), default=min(flow_temps))
+        upper_flow = min((t for t in flow_temps if t >= flow_temp), default=max(flow_temps))
+        
+        points = []
+        for out_temp in [lower_outside, upper_outside]:
+            for flow_t in [lower_flow, upper_flow]:
+                points.append(((out_temp, flow_t), self.specs.cop_rating_points[(out_temp, flow_t)]))
+                
+        return points
+    
+    def _interpolate_1d(self, x: float, x1: float, x2: float, y1: float, y2: float) -> float:
+        """
+        Führt eine lineare Interpolation zwischen zwei Punkten durch.
+        
+        Args:
+            x: Der x-Wert, für den interpoliert werden soll
+            x1: Der erste x-Wert
+            x2: Der zweite x-Wert
+            y1: Der erste y-Wert
+            y2: Der zweite y-Wert
+            
+        Returns:
+            Der interpolierte y-Wert
+        """
+        if x1 == x2:
+            return y1
+        ratio = (x - x1) / (x2 - x1)
+        return y1 + ratio * (y2 - y1)
+    
     def calculate_cop(self, outside_temp: float, flow_temp: float) -> float:
         """
         Berechnet den COP basierend auf Außen- und Vorlauftemperatur.
-        Berücksichtigt Teillastverhalten und Abtauzyklen.
+        Die COP-Werte aus der VDI 4645 beinhalten bereits die Abtaueffekte.
         
         Args:
             outside_temp: Außentemperatur in °C
@@ -47,30 +93,58 @@ class HeatPump:
         # Prüfe Betriebsgrenzen
         if outside_temp < self.specs.min_outside_temp or flow_temp > self.specs.max_flow_temp:
             return 0.0
-            
-        # Interpolation zwischen den Rating-Punkten
-        cops = []
-        weights = []
         
-        for (rated_outside, rated_flow), rated_cop in self.specs.cop_rating_points.items():
-            distance = np.sqrt((outside_temp - rated_outside)**2 + 
-                            (flow_temp - rated_flow)**2)
-            if distance == 0:
-                return rated_cop
-            
-            weight = 1 / distance
-            weights.append(weight)
-            cops.append(rated_cop)
-            
-        base_cop = np.average(cops, weights=weights)
+        # Exakter Match
+        if (outside_temp, flow_temp) in self.specs.cop_rating_points:
+            return self.specs.cop_rating_points[(outside_temp, flow_temp)]
         
-        # Korrektur für Abtauung
-        if outside_temp < self.specs.defrost_temp_threshold:
-            defrost_factor = 1.0 - 0.1 * (self.specs.defrost_temp_threshold - outside_temp)
-            base_cop *= max(0.5, defrost_factor)
-            
-        self.current_cop = base_cop
-        return self.current_cop
+        # Finde die verfügbaren Temperaturen
+        outside_temps = sorted(set(t[0] for t in self.specs.cop_rating_points.keys()))
+        flow_temps = sorted(set(t[1] for t in self.specs.cop_rating_points.keys()))
+        
+        # Finde die umgebenden Außentemperaturen
+        lower_outside = max((t for t in outside_temps if t <= outside_temp), default=min(outside_temps))
+        upper_outside = min((t for t in outside_temps if t >= outside_temp), default=max(outside_temps))
+        
+        # Interpoliere zuerst für die untere Außentemperatur
+        lower_outside_cops = []
+        for flow_t in flow_temps:
+            if flow_t in [t[1] for t in self.specs.cop_rating_points.keys() if t[0] == lower_outside]:
+                lower_outside_cops.append((flow_t, self.specs.cop_rating_points[(lower_outside, flow_t)]))
+        
+        lower_cop = self._interpolate_1d(
+            flow_temp,
+            lower_outside_cops[0][0],
+            lower_outside_cops[-1][0],
+            lower_outside_cops[0][1],
+            lower_outside_cops[-1][1]
+        )
+        
+        # Dann für die obere Außentemperatur
+        upper_outside_cops = []
+        for flow_t in flow_temps:
+            if flow_t in [t[1] for t in self.specs.cop_rating_points.keys() if t[0] == upper_outside]:
+                upper_outside_cops.append((flow_t, self.specs.cop_rating_points[(upper_outside, flow_t)]))
+        
+        upper_cop = self._interpolate_1d(
+            flow_temp,
+            upper_outside_cops[0][0],
+            upper_outside_cops[-1][0],
+            upper_outside_cops[0][1],
+            upper_outside_cops[-1][1]
+        )
+        
+        # Schließlich zwischen den Außentemperaturen
+        cop = self._interpolate_1d(
+            outside_temp,
+            lower_outside,
+            upper_outside,
+            lower_cop,
+            upper_cop
+        )
+        
+        self.current_cop = cop
+        return cop
     
     def get_power_output(self, 
                         outside_temp: float,

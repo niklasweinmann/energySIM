@@ -63,9 +63,10 @@ def test_solar_thermal_system():
     total_demand = 0
     total_solar = 0
     
-    for idx, row in weather_data.iterrows():
+    for _, row in weather_data.iterrows():
         # Standardlast für Warmwasser nach VDI 6002
-        hour = idx.hour
+        timestamp = pd.to_datetime(row['timestamp'])
+        hour = timestamp.hour
         if 6 <= hour <= 9:  # Morgenpeak
             dhw_demand = 3.0  # kW
         elif 18 <= hour <= 22:  # Abendpeak

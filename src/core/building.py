@@ -50,177 +50,228 @@ class Building:
     
     def __init__(self, properties: BuildingProperties):
         self.properties = properties
-        self._calculate_building_parameters()
-    
-    def _calculate_building_parameters(self):
-        """Berechnet die grundlegenden Gebäudeparameter."""
-        # U-Werte berechnen
-        self.u_values = {
-            'walls': [self._calculate_u_value(w.layers) for w in self.properties.walls],
-            'roof': self._calculate_u_value(self.properties.roof.layers),
-            'floor': self._calculate_u_value(self.properties.floor.layers)
-        }
+        self.room_temperature = 20.0  # Starttemperatur
+        self.previous_temperature = 20.0
+        self.heat_demand_history = []
         
-        # Transmissionswärmeverluste
-        self.H_T = self._calculate_transmission_losses()
+        # Berechne U-Werte für alle Bauteile
+        self.u_values = {}
+        self._calculate_u_values()
         
-        # Lüftungswärmeverluste
-        self.H_V = self._calculate_ventilation_losses()
+        # Wärmebrücken nach DIN 4108 Beiblatt 2
+        self.thermal_bridges = 0.05  # W/(m²·K)
         
-        # Solare Gewinne
-        self.effective_collection_area = self._calculate_effective_collection_area()
+        # Berechne thermische Eigenschaften
+        self.total_loss_coefficient = self._calculate_total_loss_coefficient()
+        self.ventilation_loss_coefficient = self._calculate_ventilation_loss()
+        self.effective_thermal_mass = properties.thermal_mass * self.get_total_area()
         
-    def _calculate_u_value(self, layers: List[tuple[float, float]]) -> float:
-        """
-        Berechnet den U-Wert eines Bauteils nach DIN EN ISO 6946.
-        
-        Args:
-            layers: Liste von (Dicke, Lambda)-Tupeln
-            
-        Returns:
-            U-Wert in W/(m²·K)
-        """
-        R_si = 0.13  # Wärmeübergangswiderstand innen
-        R_se = 0.04  # Wärmeübergangswiderstand außen
-        
-        # Wärmedurchlasswiderstände der Schichten
-        R_layers = sum(d/l for d, l in layers)
-        
-        return 1 / (R_si + R_layers + R_se)
-    
-    def _calculate_transmission_losses(self) -> float:
-        """
-        Berechnet den spezifischen Transmissionswärmeverlust nach DIN EN ISO 13790.
-        
-        Returns:
-            Spezifischer Transmissionswärmeverlust in W/K
-        """
-        H_T = 0.0
-        
+    def _calculate_u_values(self):
+        """Berechne U-Werte für alle Bauteile nach DIN 4108."""
         # Wände
-        for wall, u_value in zip(self.properties.walls, self.u_values['walls']):
-            H_T += wall.area * u_value
+        for i, wall in enumerate(self.properties.walls):
+            r_si = 0.13  # m²·K/W (Wärmeübergangswiderstand innen)
+            r_se = 0.04  # m²·K/W (Wärmeübergangswiderstand außen)
+            r_total = r_si + r_se
+            
+            # Addiere Wärmedurchgangswiderstände der Schichten
+            for d, lambda_value in wall.layers:
+                r_total += d / lambda_value
+                
+            self.u_values[f'wall_{i}'] = 1.0 / r_total
         
-        # Fenster
-        for window in self.properties.windows:
-            H_T += window.area * window.u_value
+        # Fenster (direkt aus U-Wert)
+        for i, window in enumerate(self.properties.windows):
+            self.u_values[f'window_{i}'] = window.u_value
         
         # Dach
-        H_T += self.properties.roof.area * self.u_values['roof']
+        r_si = 0.10  # m²·K/W (Wärmeübergangswiderstand innen, nach oben)
+        r_se = 0.04  # m²·K/W (Wärmeübergangswiderstand außen)
+        r_total = r_si + r_se
+        
+        for d, lambda_value in self.properties.roof.layers:
+            r_total += d / lambda_value
+        
+        self.u_values['roof'] = 1.0 / r_total
         
         # Boden
-        if self.properties.floor.ground_coupling:
-            # Berücksichtigung des Erdreichs nach DIN EN ISO 13370
-            H_T += self.properties.floor.area * self.u_values['floor'] * 0.6
-        else:
-            H_T += self.properties.floor.area * self.u_values['floor']
+        r_si = 0.17  # m²·K/W (Wärmeübergangswiderstand innen, nach unten)
+        r_se = 0.04  # m²·K/W (Wärmeübergangswiderstand außen/Erdreich)
+        r_total = r_si + r_se
         
-        return H_T
-    
-    def _calculate_ventilation_losses(self) -> float:
-        """
-        Berechnet den spezifischen Lüftungswärmeverlust nach DIN EN ISO 13790.
-        
-        Returns:
-            Spezifischer Lüftungswärmeverlust in W/K
-        """
-        rho = 1.2  # Luftdichte in kg/m³
-        c_p = 1005  # Spezifische Wärmekapazität der Luft in J/(kg·K)
-        
-        # Luftwechselrate in m³/h
-        V_dot = self.properties.volume * self.properties.infiltration_rate
-        
-        return (rho * c_p * V_dot) / 3600  # Umrechnung in W/K
-    
-    def _calculate_effective_collection_area(self) -> Dict[str, float]:
-        """
-        Berechnet die effektive Sonnenkollektorfläche nach DIN EN ISO 13790.
-        
-        Returns:
-            Dictionary mit effektiven Kollektorflächen pro Orientierung
-        """
-        A_sol = {}
-        
-        # Fenster
-        for window in self.properties.windows:
-            A_sol_window = (
-                window.area *
-                window.g_value *
-                window.frame_factor *
-                window.shading_factor
-            )
+        for d, lambda_value in self.properties.floor.layers:
+            r_total += d / lambda_value
             
-            if window.orientation in A_sol:
-                A_sol[window.orientation] += A_sol_window
-            else:
-                A_sol[window.orientation] = A_sol_window
-                
-        return A_sol
+        if self.properties.floor.ground_coupling:
+            r_total += 0.5  # Zusätzlicher Widerstand für Erdreich
+            
+        self.u_values['floor'] = 1.0 / r_total
     
-    def calculate_heating_demand(self, 
-                               outdoor_temp: float,
-                               solar_radiation: Dict[str, float],
-                               indoor_temp: float = 20.0,
-                               time_step: float = 1.0  # Stunde
-                               ) -> float:
+    def _calculate_total_loss_coefficient(self) -> float:
+        """Berechne den Gesamt-Wärmeverlustkoeffizienten in W/K."""
+        total_loss = 0.0
+        
+        # Transmissionsverluste durch Wände
+        for i, wall in enumerate(self.properties.walls):
+            total_loss += wall.area * self.u_values[f'wall_{i}']
+        
+        # Transmissionsverluste durch Fenster
+        for i, window in enumerate(self.properties.windows):
+            total_loss += window.area * self.u_values[f'window_{i}']
+        
+        # Transmissionsverluste durch Dach
+        total_loss += self.properties.roof.area * self.u_values['roof']
+        
+        # Transmissionsverluste durch Boden
+        total_loss += self.properties.floor.area * self.u_values['floor']
+        
+        # Wärmebrücken nach DIN 4108 Beiblatt 2
+        total_loss += self.get_total_area() * self.thermal_bridges
+        
+        return total_loss
+    
+    def _calculate_ventilation_loss(self) -> float:
+        """Berechne den Lüftungswärmeverlustkoeffizienten in W/K."""
+        rho_air = 1.2  # kg/m³
+        c_p_air = 1005  # J/(kg·K)
+        return self.properties.infiltration_rate * self.properties.volume * rho_air * c_p_air / 3600
+    
+    def get_total_area(self) -> float:
+        """Berechne die Gesamtfläche der thermischen Hülle in m²."""
+        total_area = (
+            sum(wall.area for wall in self.properties.walls) +
+            sum(window.area for window in self.properties.windows) +
+            self.properties.roof.area +
+            self.properties.floor.area
+        )
+        return total_area
+    
+    def calculate_heat_load(self, 
+                          outside_temp: float,
+                          solar_radiation: Dict[str, float],
+                          inside_temp: float = 20.0
+                          ) -> Tuple[float, float, float]:
         """
-        Berechnet den Heizwärmebedarf nach DIN EN ISO 13790.
+        Berechnet die Heizlast des Gebäudes.
         
         Args:
-            outdoor_temp: Außentemperatur in °C
-            solar_radiation: Solare Einstrahlung in W/m² pro Orientierung
-            indoor_temp: Innentemperatur in °C
+            outside_temp: Außentemperatur in °C
+            solar_radiation: Solare Einstrahlung in W/m² nach Orientierung
+            inside_temp: Innentemperatur in °C (Standard: 20°C)
+            
+        Returns:
+            Tuple aus:
+            - Transmissionswärmeverluste in W
+            - Lüftungswärmeverluste in W
+            - Solare Gewinne in W
+        """
+        # Transmissionsverluste (positiv wenn Wärme nach außen fließt)
+        delta_t = inside_temp - outside_temp
+        trans_loss = abs(self._calculate_total_loss_coefficient() * delta_t)
+        
+        # Lüftungsverluste (positiv wenn Wärme nach außen fließt)
+        vent_loss = abs(self._calculate_ventilation_loss() * delta_t)
+        
+        # Solare Gewinne
+        solar_gain = 0.0
+        for window in self.properties.windows:
+            if window.orientation in solar_radiation:
+                solar_gain += (window.area * window.g_value * 
+                             window.frame_factor * window.shading_factor * 
+                             solar_radiation[window.orientation])
+        
+        return trans_loss, vent_loss, solar_gain
+    
+    def simulate_temperature(self,
+                           outside_temp: float,
+                           solar_radiation: Dict[str, float],
+                           time_of_day: int,
+                           time_step: float = 1.0) -> Tuple[float, float]:
+        """
+        Simuliere Raumtemperaturänderung über einen Zeitschritt.
+        
+        Args:
+            outside_temp: Außentemperatur in °C
+            solar_radiation: Solare Strahlung nach Orientierung in W/m²
+            time_of_day: Stunde des Tages (0-23)
             time_step: Zeitschritt in Stunden
             
         Returns:
-            Heizwärmebedarf in kWh
+            Tuple von (Raumtemperatur in °C, Heizlast in kW)
         """
-        # Transmissions- und Lüftungsverluste
-        Q_ht = (self.H_T + self.H_V) * (indoor_temp - outdoor_temp) * time_step
+        # Wärmegewinne durch Fenster
+        solar_gains = 0.0
+        for window in self.properties.windows:
+            if window.orientation in solar_radiation:
+                solar_gains += (
+                    window.area * 
+                    window.g_value * 
+                    window.frame_factor * 
+                    window.shading_factor * 
+                    solar_radiation[window.orientation]
+                )
         
-        # Solare Gewinne
-        Q_sol = 0.0
-        for orientation, area in self.effective_collection_area.items():
-            if orientation in solar_radiation:
-                Q_sol += area * solar_radiation[orientation] * time_step
-        
-        # Interne Gewinne (vereinfacht)
-        Q_int = 5 * self.properties.volume / 100 * time_step  # 5 W/m² nach DIN V 18599
-        
-        # Ausnutzungsgrad der Wärmegewinne
-        gains = Q_sol + Q_int
-        eta = self._calculate_utilization_factor(Q_ht, gains)
-        
-        # Heizwärmebedarf
-        Q_h = max(0, Q_ht - eta * gains) / 1000  # Umrechnung in kWh
-        
-        return Q_h
-    
-    def _calculate_utilization_factor(self, losses: float, gains: float) -> float:
-        """
-        Berechnet den Ausnutzungsgrad für Wärmegewinne nach DIN EN ISO 13790.
-        
-        Args:
-            losses: Wärmeverluste in Wh
-            gains: Wärmegewinne in Wh
+        # Interne Wärmegewinne (vereinfacht)
+        if 7 <= time_of_day <= 22:  # Tagsüber
+            internal_gains = 5.0 * self.get_total_area() / 100  # 5 W/m²
+        else:  # Nachts
+            internal_gains = 1.0 * self.get_total_area() / 100  # 1 W/m²
             
-        Returns:
-            Ausnutzungsgrad (dimensionslos)
-        """
-        if losses <= 0:
-            return 0.0
-            
-        gamma = gains / losses if losses > 0 else float('inf')
+        # Wärmegewinne gesamt
+        total_gains = solar_gains + internal_gains
         
-        # Zeitkonstante des Gebäudes
-        tau = self.properties.thermal_mass * self.properties.volume / (self.H_T + self.H_V)
+        # Wärmeverluste
+        transmission_losses = self.total_loss_coefficient * (self.room_temperature - outside_temp)
+        ventilation_losses = self.ventilation_loss_coefficient * (self.room_temperature - outside_temp)
+        total_losses = transmission_losses + ventilation_losses
         
-        # Parameter a nach DIN EN ISO 13790
-        a = 1 + tau / 15
+        # Temperaturänderung (vereinfachtes RC-Modell)
+        delta_q = total_gains - total_losses
+        delta_t = delta_q * time_step * 3600 / self.effective_thermal_mass
         
-        if gamma == 1:
-            return a / (a + 1)
-        elif gamma > 0:
-            return (1 - gamma**a) / (1 - gamma**(a + 1))
+        # Neue Raumtemperatur
+        self.previous_temperature = self.room_temperature
+        self.room_temperature += delta_t
+        
+        # Heizlast (wenn Temperatur unter Sollwert)
+        target_temp = 20.0  # °C
+        if self.room_temperature < target_temp:
+            heating_power = (target_temp - self.room_temperature) * \
+                          (self.total_loss_coefficient + self.ventilation_loss_coefficient)
+            self.room_temperature = target_temp
         else:
-            return 1.0
+            heating_power = 0.0
+        
+        return self.room_temperature, heating_power / 1000  # Konvertiere zu kW
+    
+    def calculate_dynamic_temperature(self,
+                              current_temp: float,
+                              heat_power: float,
+                              losses: float,
+                              solar_gains: float,
+                              time_step: float) -> float:
+        """
+        Berechnet die dynamische Temperaturentwicklung für einen Zeitschritt.
+
+        Args:
+            current_temp: Aktuelle Raumtemperatur in °C
+            heat_power: Heizleistung in kW
+            losses: Wärmeverluste in kW
+            solar_gains: Solare Gewinne in kW
+            time_step: Zeitschritt in Sekunden
+
+        Returns:
+            Neue Raumtemperatur in °C
+        """
+        # Energiebilanz in kWh
+        heat_energy = heat_power * time_step / 3600  # kW -> kWh
+        loss_energy = losses * time_step / 3600
+        solar_energy = solar_gains * time_step / 3600
+        
+        # Netto-Energiebilanz
+        net_energy = heat_energy + solar_energy - loss_energy  # kWh
+        
+        # Temperaturänderung (Q = m*c*ΔT)
+        temp_change = net_energy * 3600 / self.effective_thermal_mass  # kWh -> Wh
+        
+        return current_temp + temp_change

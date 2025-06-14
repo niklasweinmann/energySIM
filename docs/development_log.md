@@ -120,3 +120,84 @@
    - [ ] Kopplung von Gebäude- und Wärmepumpensimulation
    - [ ] Lastprofiloptimierung
    - [ ] Betriebskostenberechnung
+
+## 14. Juni 2025 - Fehlerbehebung und PV-System-Integration
+
+### Behobene Probleme
+
+1. **Wetterdaten-Konsistenz**
+   - Fehlende 'timestamp' Spalte in WeatherDataHandler behoben
+   - DataFrame-Erstellung korrigiert für konsistente Datenstruktur
+   - Verwendung von 'h' statt 'H' für pandas date_range (Zukunftskompatibilität)
+
+2. **Wärmepumpen-Integration**
+   - Typ-Konvertierung für Heizwärmebedarf (float statt tuple)
+   - Korrekte Parameter-Übergabe an get_power_output Methode
+   - Energiebedarf-Berechnung präzisiert
+
+3. **PV-System-Implementierung**
+   - Vollständige pvlib-Integration implementiert
+   - Korrekte Konstruktor-Parameter-Reihenfolge
+   - Erweiterte Methoden für:
+     * Einstrahlung auf geneigte Fläche (get_irradiance)
+     * Zelltemperatur-Berechnung (calculate_cell_temperature) 
+     * DC/AC-Leistungsberechnung mit pvlib-Modellen
+   - Single Diode Model für präzise DC-Berechnung
+   - Sandia Inverter Model für AC-Leistung
+
+4. **Test-Infrastruktur**
+   - Import-Pfade in allen Test-Dateien korrigiert
+   - Konsistente Datenzeit-Bereiche für 24-Stunden-Simulationen
+   - Array-Handling in Energy Optimization Tests
+
+### Technische Verbesserungen
+
+1. **PV-System-Modellierung**
+   - Integration von pvlib für wissenschaftlich validierte Berechnungen
+   - Berücksichtigung von:
+     * Sonnenstand und Einstrahlung auf geneigte Fläche
+     * Temperatureffekte auf Modulleistung
+     * Wechselrichter-Effizienz und -Verluste
+     * Optische und thermische Verluste
+
+2. **Datenhandling**
+   - Robuste Fallback-Mechanismen für fehlende Wetterdaten-Parameter
+   - Konsistente Zeitstempel-Behandlung über alle Module
+   - Verbesserte Fehlerbehandlung bei Array-Operationen
+
+3. **Systemintegration**
+   - Nahtlose Kopplung zwischen Wetterdaten und Energiesystemen
+   - Einheitliche Schnittstellen für verschiedene Simulationsmodule
+   - Skalierbare Architektur für weitere Energiesystem-Typen
+
+### Validierte Funktionalitäten
+
+✅ **test_basic_simulation**: Grundlegende Gebäude-Wärmepumpen-Integration  
+✅ **test_building_simulation**: Dynamische Gebäudesimulation über 24h  
+✅ **test_dwd_weather**: DWD-Wetterdaten-Integration  
+✅ **test_energy_optimization**: ML-basierte Energiefluss-Optimierung  
+✅ **test_solar_thermal**: Solarthermie-Simulation nach VDI 6002  
+✅ **test_pv_system**: PV-Anlagen-Simulation mit pvlib
+
+### Nächste Schritte
+
+1. **Modellerweiterungen**
+   - [ ] Integration von Attention-Mechanismen
+   - [ ] Implementierung von Transfer Learning
+   - [ ] Hyperparameter-Optimierung
+
+2. **Feature Engineering**
+   - [ ] Entwicklung zusätzlicher Feature-Transformationen
+   - [ ] Integration von Kalenderdaten (Feiertage, Wochenenden)
+   - [ ] Implementierung von Domain-spezifischen Features
+
+3. **Evaluierung**
+   - [ ] Aufbau einer Validierungspipeline
+   - [ ] Implementierung von Cross-Validation
+   - [ ] Vergleich mit Baseline-Modellen
+
+4. **Systemintegration**
+   - [x] Kopplung von Gebäude- und Wärmepumpensimulation
+   - [ ] Lastprofiloptimierung
+   - [ ] Betriebskostenberechnung
+   - [ ] Multi-System-Szenarien (PV + Wärmepumpe + Solarthermie)

@@ -118,7 +118,8 @@ class EnergyFlowOptimizer:
         """Bereitet Daten für die Optimierung vor."""
         # Kombiniere Zustandsdaten mit Wettervorhersage
         data = []
-        for _, weather in weather_forecast.iterrows():
+        # Begrenze auf genau 24h
+        for _, weather in weather_forecast.head(24).iterrows():
             features = [
                 weather['temperature'],
                 weather['solar_radiation'],
@@ -131,7 +132,17 @@ class EnergyFlowOptimizer:
             ]
             data.append(features)
         
-        return np.array([data])  # Shape: (1, timesteps, features)
+        # Stelle sicher, dass genau 24 Zeitschritte vorhanden sind
+        if len(data) < 24:
+            # Fülle fehlende Daten mit dem letzten bekannten Wert
+            last_data = data[-1]
+            while len(data) < 24:
+                data.append(last_data[:])
+        elif len(data) > 24:
+            # Kürze auf 24 Stunden
+            data = data[:24]
+        
+        return np.array([data])  # Shape: (1, 24, 8)
     
     def _apply_operational_constraints(self,
                                     heat_pump: float,
