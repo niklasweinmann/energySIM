@@ -10,26 +10,20 @@ from src.simulation.pv_system import PVSystem, PVModuleSpecifications, PVArrayCo
 from src.data_handlers.weather import WeatherDataHandler
 
 def test_pv_system():
-    # PV-System erstellen
-    module_specs = PVModuleSpecifications(
-        peak_power=380,  # 380 Wp
-        area=1.95,  # 1.95 m²
-        efficiency_stc=0.195,  # 19.5%
-        temp_coefficient=-0.35,  # -0.35%/°C
-        noct=45.0
-    )
-    
+    # PV-System erstellen mit korrekter Parameterreihenfolge
     config = PVArrayConfiguration(
         modules_count=20,  # 20 Module
         tilt=30,  # 30° Neigung
         azimuth=180,  # Südausrichtung
-        albedo=0.2
+        albedo=0.2,
+        module_key="SunPower_MAX6_440",  # Verwende ein Modul aus der Datenbank
+        inverter_key="SMA_Sunny_Tripower_10"  # Verwende einen Inverter aus der Datenbank
     )
     
     location = (52.52, 13.405)  # Berlin
     altitude = 34.0  # Berlin Höhe
     
-    pv_system = PVSystem(module_specs, config, location, altitude)
+    pv_system = PVSystem(config, location, altitude)
     
     # Wetterdaten laden
     weather = WeatherDataHandler()
@@ -46,11 +40,21 @@ def test_pv_system():
     ac_powers = []
     
     for idx, row in weather_data.iterrows():
+        # Erstelle das weather_data Dictionary im erwarteten Format
+        weather_dict = {
+            'ghi': row['solar_radiation'],
+            'dni': row['solar_radiation'] * 0.85,  # Vereinfachte Annahme
+            'dhi': row['solar_radiation'] * 0.15,  # Vereinfachte Annahme  
+            'temp_air': row['temperature'],
+            'wind_speed': row.get('wind_speed', 1.0)
+        }
+        
+        # Verwende row['timestamp'] als datetime
+        timestamp = pd.to_datetime(row['timestamp'])
+        
         dc_power, ac_power = pv_system.calculate_power_output(
-            solar_irradiance=row['solar_radiation'],
-            ambient_temp=row['temperature'],
-            wind_speed=row['wind_speed'],
-            timestamp=idx
+            timestamp=timestamp,
+            weather_data=weather_dict
         )
         dc_powers.append(dc_power)
         ac_powers.append(ac_power)

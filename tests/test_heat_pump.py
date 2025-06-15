@@ -42,9 +42,10 @@ class TestHeatPump(unittest.TestCase):
         cop = self.heat_pump.calculate_cop(7.0, 35.0)
         self.assertAlmostEqual(cop, 4.0, places=2)
 
-        # Test bei Interpolation
-        cop = self.heat_pump.calculate_cop(0.0, 40.0)
-        self.assertTrue(2.5 < cop < 3.5)
+        # Test bei Interpolation zwischen A2W35 (3.4) und A2W45 (2.7)
+        cop = self.heat_pump.calculate_cop(2.0, 40.0)
+        print(f"\nBerechneter COP bei A2/W40: {cop}")  # Debug-Ausgabe
+        self.assertTrue(2.7 < cop < 3.4, f"COP {cop} liegt nicht zwischen 2.7 und 3.4")
 
         # Test bei niedrigen Temperaturen mit Abtauung
         cop_with_defrost = self.heat_pump.calculate_cop(2.0, 35.0)

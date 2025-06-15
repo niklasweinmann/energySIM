@@ -36,8 +36,8 @@ def test_energy_optimization():
     
     # Beispiel-Strompreise (variable Tarife)
     electricity_prices = pd.DataFrame({
-        'timestamp': weather_forecast.index,
-        'price': 0.30 + 0.10 * np.sin(np.pi * weather_forecast.index.hour / 12)  # Tag/Nacht-Tarif
+        'timestamp': weather_forecast['timestamp'],
+        'price': 0.30 + 0.10 * np.sin(np.pi * pd.to_datetime(weather_forecast['timestamp']).dt.hour / 12)  # Tag/Nacht-Tarif
     })
     
     # Optimierer trainieren
@@ -73,7 +73,12 @@ def test_energy_optimization():
     print("\nOptimierungsergebnisse:")
     print(f"Wärmepumpensteuerung: {controls['heat_pump']:.2f}")
     print(f"Warmwassererwärmung: {controls['dhw_heating']:.2f}")
-    print(f"Batterieladung: {controls['battery_charging']:.2f}")
+    
+    # Handle numpy array case for battery_charging
+    battery_value = controls['battery_charging']
+    if hasattr(battery_value, '__len__') and len(battery_value) > 0:
+        battery_value = battery_value[0]  # Take first element if it's an array
+    print(f"Batterieladung: {battery_value:.2f}")
     print(f"WP-Betrieb wirtschaftlich: {operation_recommended}")
 
 if __name__ == "__main__":

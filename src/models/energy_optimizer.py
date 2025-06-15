@@ -118,7 +118,8 @@ class EnergyFlowOptimizer:
         """Bereitet Daten für die Optimierung vor."""
         # Kombiniere Zustandsdaten mit Wettervorhersage
         data = []
-        for _, weather in weather_forecast.iterrows():
+        # Begrenze auf genau 24h
+        for _, weather in weather_forecast.head(24).iterrows():
             features = [
                 weather['temperature'],
                 weather['solar_radiation'],
@@ -131,7 +132,17 @@ class EnergyFlowOptimizer:
             ]
             data.append(features)
         
-        return np.array([data])  # Shape: (1, timesteps, features)
+        # Stelle sicher, dass genau 24 Zeitschritte vorhanden sind
+        if len(data) < 24:
+            # Fülle fehlende Daten mit dem letzten bekannten Wert
+            last_data = data[-1]
+            while len(data) < 24:
+                data.append(last_data[:])
+        elif len(data) > 24:
+            # Kürze auf 24 Stunden
+            data = data[:24]
+        
+        return np.array([data])  # Shape: (1, 24, 8)
     
     def _apply_operational_constraints(self,
                                     heat_pump: float,
@@ -175,12 +186,18 @@ class EnergyFlowOptimizer:
         Returns:
             True wenn Betrieb wirtschaftlich sinnvoll
         """
-        # JAZ-Berechnung nach VDI 4645
-        delta_t = flow_temp - outside_temp
-        theoretical_cop = (273.15 + flow_temp) / delta_t
+        # JAZ-Berechnung nach VDI 4645 (korrigiert)
+        # Carnot-COP als theoretisches Maximum
+        t_hot = 273.15 + flow_temp  # Kelvin
+        t_cold = 273.15 + outside_temp  # Kelvin
+        carnot_cop = t_hot / (t_hot - t_cold)
         
-        # Realer COP mit Systemverlusten
-        real_cop = theoretical_cop * 0.5  # Typischer Gütegrad
+        # Realer COP mit typischem Gütegrad von 45-55%
+        real_cop = carnot_cop * 0.50  # Korrigiert: 50% Gütegrad
+        
+        # Mindest-COP nach VDI 4645 beachten
+        min_cop = 3.0  # A-7/W35
+        real_cop = max(real_cop, min_cop)
         
         # Wirtschaftlichkeitsberechnung
         operating_cost = electricity_price / real_cop

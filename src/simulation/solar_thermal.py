@@ -88,21 +88,41 @@ class SolarThermalSystem:
         """
         # Stagnationsschutz nach VDI 6002
         if self.collector_temp >= self.vdi6002.max_stagnation_temp:
+            # Bei Stagnation kein Durchfluss und keine Leistung
+            max_temp = ambient_temp + solar_irradiance * self.collector.optical_efficiency / self.collector.heat_loss_coefficient_a1
+            self.collector_temp = min(max_temp, self.vdi6002.max_stagnation_temp)
             return 0.0, self.collector_temp
         
-        delta_t = flow_temp - ambient_temp
-        efficiency = self.calculate_collector_efficiency(delta_t, solar_irradiance)
-        
-        # Thermische Leistung
-        power = (efficiency * solar_irradiance * self.collector.area) / 1000  # kW
-        
-        # Neue Kollektortemperatur
+        # Thermisches Gleichgewicht berechnen
         if self.flow_rate > 0:
-            temp_rise = power * 1000 / (self.flow_rate * self.collector.specific_heat_capacity)
-            self.collector_temp = flow_temp + temp_rise
-        else:
-            self.collector_temp = ambient_temp + (power * 1000) / (self.collector.heat_loss_coefficient_a1 * self.collector.area)
+            # Mit Durchfluss: Vorlauftemperatur + Temperaturhub
+            delta_t = flow_temp - ambient_temp
+            efficiency = self.calculate_collector_efficiency(delta_t, solar_irradiance)
+            power = (efficiency * solar_irradiance * self.collector.area) / 1000  # kW
             
+            # Temperaturanstieg durch thermische Leistung (begrenzt durch Verluste)
+            max_temp_rise = solar_irradiance * self.collector.optical_efficiency / (
+                self.collector.heat_loss_coefficient_a1 + 
+                self.collector.heat_loss_coefficient_a2 * (flow_temp - ambient_temp)
+            )
+            temp_rise = min(
+                power * 1000 / (self.flow_rate * self.collector.specific_heat_capacity),
+                max_temp_rise
+            )
+            
+            new_temp = flow_temp + temp_rise
+            if new_temp > self.vdi6002.max_stagnation_temp:
+                # Reduziere Leistung wenn maximale Temperatur überschritten
+                power *= (self.vdi6002.max_stagnation_temp - flow_temp) / temp_rise
+                new_temp = self.vdi6002.max_stagnation_temp
+            
+            self.collector_temp = new_temp
+        else:
+            # Ohne Durchfluss: Stagnationstemperatur
+            max_temp = ambient_temp + solar_irradiance * self.collector.optical_efficiency / self.collector.heat_loss_coefficient_a1
+            self.collector_temp = min(max_temp, self.vdi6002.max_stagnation_temp)
+            power = 0.0
+        
         return power, self.collector_temp
     
     def update_storage(self,

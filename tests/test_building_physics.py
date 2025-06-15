@@ -104,34 +104,39 @@ def test_building_physics():
     assert building.thermal_bridges == 0.05  # Niedrigenergiehaus-Standard
     
     # Test 3: Heizlastberechnung für verschiedene Bedingungen
-    weather = WeatherDataHandler()
-    start_date = datetime.now()
-    end_date = start_date + timedelta(days=1)
-    weather_data = weather.get_historical_data(
-        location=(52.52, 13.405),  # Berlin
-        start_date=start_date,
-        end_date=end_date
+    # Testszenario 1: Winterfall (-10°C, geringe Solarstrahlung)
+    winter_radiation = {
+        'N': 20.0,  # W/m²
+        'S': 100.0,
+        'E': 50.0,
+        'W': 50.0
+    }
+    trans_loss, vent_loss, solar_gain = building.calculate_heat_load(
+        outside_temp=-10.0,
+        solar_radiation=winter_radiation
     )
+    # Plausibilitätsprüfungen Winter
+    assert trans_loss >= 0
+    assert vent_loss >= 0
+    assert solar_gain >= 0
+    assert trans_loss + vent_loss > solar_gain  # Im Winter müssen die Verluste größer sein
     
-    # Energiebilanz für verschiedene Wetterbedingungen
-    for idx, row in weather_data.iterrows():
-        solar_radiation = {
-            'N': row['solar_radiation'] * 0.3,  # Vereinfachte Verteilung
-            'S': row['solar_radiation'] * 1.0,
-            'E': row['solar_radiation'] * 0.7,
-            'W': row['solar_radiation'] * 0.7
-        }
-        
-        trans_loss, vent_loss, solar_gain = building.calculate_heat_load(
-            outside_temp=row['temperature'],
-            solar_radiation=solar_radiation
-        )
-        
-        # Plausibilitätsprüfungen
-        assert trans_loss >= 0
-        assert vent_loss >= 0
-        assert solar_gain >= 0
-        assert trans_loss + vent_loss > solar_gain  # Im Winter
+    # Testszenario 2: Sommerfall (30°C, hohe Solarstrahlung)
+    summer_radiation = {
+        'N': 100.0,  # W/m²
+        'S': 800.0,
+        'E': 500.0,
+        'W': 500.0
+    }
+    trans_loss, vent_loss, solar_gain = building.calculate_heat_load(
+        outside_temp=30.0,
+        solar_radiation=summer_radiation
+    )
+    # Plausibilitätsprüfungen Sommer
+    assert trans_loss >= 0
+    assert vent_loss >= 0
+    assert solar_gain >= 0
+    assert solar_gain > trans_loss + vent_loss  # Im Sommer müssen die solaren Gewinne größer sein
     
     # Test 4: Dynamische Temperaturentwicklung
     current_temp = 20.0
