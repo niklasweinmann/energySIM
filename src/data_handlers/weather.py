@@ -3,7 +3,16 @@ from datetime import datetime, timedelta
 from typing import List, Optional, Tuple
 import pandas as pd
 import numpy as np
+import logging
 from .dwd_enhanced import DWDDataManager
+try:
+    from .dwd_enhanced_real import DWDRealDataManager
+    REAL_DWD_AVAILABLE = True
+except ImportError:
+    REAL_DWD_AVAILABLE = False
+
+# Logger konfigurieren
+logger = logging.getLogger(__name__)
 
 @dataclass
 class WeatherData:
@@ -19,12 +28,31 @@ class WeatherData:
 class WeatherDataHandler:
     """Klasse zur Verwaltung von Wetterdaten mit DWD-Integration."""
     
-    def __init__(self, use_dwd: bool = True):
+    def __init__(self, use_dwd: bool = True, use_real_api: bool = True):
+        """
+        Initialisiert den WeatherDataHandler.
+        
+        Args:
+            use_dwd: Ob DWD-Daten verwendet werden sollen
+            use_real_api: Ob die echte DWD-API anstelle synthetischer Daten verwendet werden soll
+        """
         self.cached_data: pd.DataFrame = pd.DataFrame()
         self.use_dwd = use_dwd
+        self.use_real_api = use_real_api and REAL_DWD_AVAILABLE
         
         if self.use_dwd:
-            self.dwd_manager = DWDDataManager()
+            if self.use_real_api:
+                logger.info("Verwende echte DWD-API für Wetterdaten")
+                try:
+                    self.dwd_manager = DWDRealDataManager()
+                except Exception as e:
+                    logger.error(f"Fehler beim Initialisieren der echten DWD-API: {e}")
+                    logger.info("Fallback auf synthetische Daten")
+                    self.use_real_api = False
+                    self.dwd_manager = DWDDataManager()
+            else:
+                logger.info("Verwende synthetische DWD-Daten")
+                self.dwd_manager = DWDDataManager()
         else:
             self.dwd_manager = None
     
@@ -50,18 +78,26 @@ class WeatherDataHandler:
             # Finde nächstgelegene Station
             nearest_station = self.dwd_manager.find_nearest_station(latitude, longitude)
             if not nearest_station:
+                logger.error("Keine DWD-Station in der Nähe gefunden")
                 raise ValueError("Keine DWD-Station in der Nähe gefunden")
             
+            logger.info(f"Verwende DWD-Station: {nearest_station['name']} (ID: {nearest_station['id']})")
             print(f"Verwende DWD-Station: {nearest_station['name']} (ID: {nearest_station['id']})")
             
             # Lade Daten für die Station
-            return self.dwd_manager.get_historical_data(
+            data = self.dwd_manager.get_historical_data(
                 nearest_station['id'], 
                 start_date, 
                 end_date
             )
+            
+            # Cache aktualisieren
+            self.cached_data = data
+            
+            return data
         else:
             # Fallback auf synthetische Daten
+            logger.info("Verwende selbstgenerierte synthetische Daten")
             return self._generate_synthetic_data(location, start_date, end_date)
     
     def _generate_synthetic_data(self, 

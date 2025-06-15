@@ -25,7 +25,9 @@ results = run_simulation(
     heated_area=150,       # m²
     building_year=2015,
     heatpump_power=9,      # kW
-    pv_peak_power=10       # kWp
+    pv_peak_power=10,      # kWp
+    time_step_minutes=15,  # 15-Minuten-Zeitschritte
+    save_output=True       # Ergebnisse in CSV speichern
 )
 ```
 
@@ -55,7 +57,9 @@ results = run_simulation(
 ### Simulation
 - **start_date**: Startdatum der Simulation (Format: 'YYYY-MM-DD')
 - **end_date**: Enddatum der Simulation (Format: 'YYYY-MM-DD')
-- **time_step**: Zeitschritt in Stunden (Standard: 1)
+- **time_step_minutes**: Zeitschritt in Minuten (Standard: 60, möglich: 1-60)
+- **save_output**: Wenn True, werden detaillierte Simulationsergebnisse in einer CSV-Datei gespeichert
+- **output_file**: Optionaler Pfad für die Ausgabedatei (Standard: 'simulation_results_{Datum}.csv')
 
 ## Ausgabeparameter
 
@@ -69,6 +73,22 @@ Die Simulation liefert ein Dictionary mit folgenden Schlüsseln:
 - **renewable_share**: Anteil erneuerbarer Energien (0-1)
 - **temperatures**: Zeitreihe der Temperaturen
 - **power_flows**: Zeitreihe der Energieflüsse
+- **output_file**: Pfad zur Ausgabedatei (wenn save_output=True)
+
+### Ausgabedatei-Format
+
+Wenn `save_output=True` gesetzt wird, erstellt die Simulation eine CSV-Datei mit folgenden Spalten:
+
+- **timestamp**: Zeitstempel im Format YYYY-MM-DD HH:MM:SS
+- **outside_temperature**: Außentemperatur in °C
+- **flow_temperature**: Vorlauftemperatur in °C
+- **solar_radiation**: Solare Einstrahlung in W/m²
+- **heat_demand**: Wärmebedarf in kWh
+- **heat_output**: Wärmeabgabe in kWh
+- **cop**: Leistungszahl der Wärmepumpe
+- **power_input**: Stromaufnahme der Wärmepumpe in kWh
+- **pv_dc_output**: DC-Leistung der PV-Anlage in kWh
+- **pv_ac_output**: AC-Leistung der PV-Anlage in kWh
 
 ## Beispiele
 
@@ -95,6 +115,31 @@ trans_loss, vent_loss, solar_gain = building.calculate_heat_load(
     outside_temp=-10,
     solar_radiation={'S': 100, 'N': 20, 'E': 50, 'W': 50},
     inside_temp=20
+)
+```
+
+### Simulation mit verschiedenen Zeitschritten
+
+```python
+# Stündliche Simulation (Standard)
+results_hourly = run_simulation(
+    latitude=52.52,
+    longitude=13.41,
+    building_type="single_family",
+    heated_area=150,
+    time_step_minutes=60,
+    save_output=True
+)
+
+# 15-Minuten-Simulation für höhere Genauigkeit
+results_detailed = run_simulation(
+    latitude=52.52,
+    longitude=13.41,
+    building_type="single_family",
+    heated_area=150,
+    time_step_minutes=15,
+    save_output=True,
+    output_file="ergebnisse_15min.csv"
 )
 ```
 
@@ -146,6 +191,35 @@ energy = pv_system.calculate_energy_production(
     temperature=25,       # °C
     time_step=1.0         # Stunden
 )
+```
+
+## Auswertung der Ausgabedateien
+
+Die generierten CSV-Dateien eignen sich für:
+
+1. **Detaillierte Analysen** des zeitlichen Verlaufs von Energieströmen
+2. **Visualisierungen** mit Tools wie Excel, Python (matplotlib, seaborn) oder R
+3. **Optimierungsberechnungen** für Anlagengrößen und -steuerung
+4. **Export** in andere Energiemanagement- oder Monitoring-Systeme
+
+Beispiel für das Laden und Analysieren der Ausgabedatei:
+
+```python
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Daten laden
+df = pd.read_csv("simulation_results_20250615_120000.csv")
+
+# Tageswerte aggregieren
+daily = df.groupby(pd.to_datetime(df['timestamp']).dt.date).sum()
+
+# Visualisierung
+fig, ax = plt.subplots(figsize=(10, 6))
+ax.plot(daily.index, daily['heat_demand'], 'r-', label='Wärmebedarf')
+ax.plot(daily.index, daily['pv_ac_output'], 'g-', label='PV-Produktion')
+ax.legend()
+plt.savefig('tagesenergiebilanz.png')
 ```
 
 ## Normkonformität
