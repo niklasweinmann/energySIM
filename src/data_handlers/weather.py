@@ -6,7 +6,7 @@ import numpy as np
 import logging
 from .dwd_enhanced import DWDDataManager
 try:
-    from .dwd_enhanced_real import DWDRealDataManager
+    from .dwd_enhanced import DWDRealDataManager
     REAL_DWD_AVAILABLE = True
 except ImportError:
     REAL_DWD_AVAILABLE = False
