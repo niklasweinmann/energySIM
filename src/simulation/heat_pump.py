@@ -94,23 +94,37 @@ class HeatPump:
         if outside_temp < self.specs.min_outside_temp or flow_temp > self.specs.max_flow_temp:
             return 0.0
         
-        # Exakter Match
-        if (outside_temp, flow_temp) in self.specs.cop_rating_points:
-            return self.specs.cop_rating_points[(outside_temp, flow_temp)]
+        # Stelle sicher, dass beide Temperaturen als float behandelt werden
+        outside_temp_float = float(outside_temp)
+        flow_temp_float = float(flow_temp)
         
-        # Finde die verfügbaren Temperaturen
-        outside_temps = sorted(set(t[0] for t in self.specs.cop_rating_points.keys()))
-        flow_temps = sorted(set(t[1] for t in self.specs.cop_rating_points.keys()))
+        # Exakter Match - mit expliziter Float-Konvertierung
+        # Suche nach einem passenden COP-Punkt mit Toleranz für Rundungsfehler
+        for (out_t, fl_t), cop in self.specs.cop_rating_points.items():
+            if abs(float(out_t) - outside_temp_float) < 0.01 and abs(float(fl_t) - flow_temp_float) < 0.01:
+                return cop
+        
+        # Finde die verfügbaren Temperaturen und konvertiere zu float
+        outside_temps = [float(t[0]) for t in self.specs.cop_rating_points.keys()]
+        outside_temps = sorted(set(outside_temps))
+        flow_temps = [float(t[1]) for t in self.specs.cop_rating_points.keys()]
+        flow_temps = sorted(set(flow_temps))
+        
+        # Stelle sicher, dass outside_temp und flow_temp als float behandelt werden
+        outside_temp_float = float(outside_temp)
+        flow_temp_float = float(flow_temp)
         
         # Finde die umgebenden Außentemperaturen
-        lower_outside = max((t for t in outside_temps if t <= outside_temp), default=min(outside_temps))
-        upper_outside = min((t for t in outside_temps if t >= outside_temp), default=max(outside_temps))
+        lower_outside = max((t for t in outside_temps if t <= outside_temp_float), default=min(outside_temps))
+        upper_outside = min((t for t in outside_temps if t >= outside_temp_float), default=max(outside_temps))
         
         # Interpoliere zuerst für die untere Außentemperatur
         lower_outside_cops = []
         for flow_t in flow_temps:
-            if flow_t in [t[1] for t in self.specs.cop_rating_points.keys() if t[0] == lower_outside]:
-                lower_outside_cops.append((flow_t, self.specs.cop_rating_points[(lower_outside, flow_t)]))
+            # Explizite Typkonvertierung für den Vergleich
+            flow_t_float = float(flow_t)
+            if flow_t_float in [float(t[1]) for t in self.specs.cop_rating_points.keys() if float(t[0]) == float(lower_outside)]:
+                lower_outside_cops.append((flow_t_float, self.specs.cop_rating_points[(lower_outside, flow_t_float)]))
         
         lower_cop = self._interpolate_1d(
             flow_temp,
@@ -123,8 +137,10 @@ class HeatPump:
         # Dann für die obere Außentemperatur
         upper_outside_cops = []
         for flow_t in flow_temps:
-            if flow_t in [t[1] for t in self.specs.cop_rating_points.keys() if t[0] == upper_outside]:
-                upper_outside_cops.append((flow_t, self.specs.cop_rating_points[(upper_outside, flow_t)]))
+            # Explizite Typkonvertierung für den Vergleich
+            flow_t_float = float(flow_t)
+            if flow_t_float in [float(t[1]) for t in self.specs.cop_rating_points.keys() if float(t[0]) == float(upper_outside)]:
+                upper_outside_cops.append((flow_t_float, self.specs.cop_rating_points[(upper_outside, flow_t_float)]))
         
         upper_cop = self._interpolate_1d(
             flow_temp,

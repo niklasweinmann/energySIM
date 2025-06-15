@@ -10,6 +10,10 @@ from datetime import datetime, timedelta
 import json
 from typing import Dict, Any, Optional, Tuple, List, Union
 import importlib.util
+import logging
+
+# Logger konfigurieren
+logger = logging.getLogger(__name__)
 
 # Importe basierend auf dem Ausführungskontext
 try:
@@ -41,9 +45,21 @@ def init_heat_pump() -> HeatPump:
     db = ComponentsDatabase()
     heat_pump_data = db.get_heat_pump("Viessmann_Vitocal_200S")
     
+    # COP Datenpunkte konvertieren von A7W35 Format zu (7.0, 35.0) Tupel
+    cop_rating_points = {}
+    for key, cop in heat_pump_data.cop_data.items():
+        # Format A7W35 aufteilen und konvertieren
+        if key.startswith('A') and 'W' in key:
+            try:
+                outside_temp = float(key.split('A')[1].split('W')[0])
+                flow_temp = float(key.split('W')[1])
+                cop_rating_points[(float(outside_temp), float(flow_temp))] = float(cop)
+            except (ValueError, IndexError) as e:
+                logger.error(f"Fehler bei der Konvertierung des COP-Schlüssels {key}: {e}")
+    
     specs = HeatPumpSpecifications(
         nominal_heating_power=heat_pump_data.nominal_heating_power / 1000,  # Convert W to kW
-        cop_rating_points=heat_pump_data.cop_data,
+        cop_rating_points=cop_rating_points,
         min_outside_temp=heat_pump_data.min_outdoor_temp,
         max_flow_temp=heat_pump_data.max_flow_temp,
         min_part_load_ratio=0.3,
@@ -174,6 +190,8 @@ def run_simulation(
     pv_ac_outputs = []
     cop_values = []
     flow_temps = []
+    # Liste der tatsächlich verwendeten Zeitpunkte
+    used_timestamps = []
     
     # Pro Tag simulieren
     current_date = start
@@ -289,10 +307,11 @@ def run_simulation(
             heat_demands.append(heat_demand)
             heat_outputs.append(heat_output)
             power_inputs.append(power_input)
-            pv_dc_outputs.append(float(dc_power.iloc[0]) if not dc_power.empty else 0)
-            pv_ac_outputs.append(float(ac_power.iloc[0]) if not ac_power.empty else 0)
+            pv_dc_outputs.append(float(dc_power) if dc_power is not None else 0)
+            pv_ac_outputs.append(float(ac_power) if ac_power is not None else 0)
             cop_values.append(cop)
             flow_temps.append(flow_temp)
+            used_timestamps.append(timestamp)
         
         current_date += timedelta(days=1)
     
@@ -472,7 +491,7 @@ def run_simulation(
         
         # Erstelle DataFrame mit Zeitreihen
         df_results = pd.DataFrame({
-            'timestamp': timestamps,
+            'timestamp': used_timestamps,  # Verwende die tatsächlich verwendeten Zeitstempel
             'outside_temperature': outside_temps,
             'flow_temperature': flow_temps,
             'solar_radiation': solar_radiations,
@@ -557,8 +576,8 @@ def simulate_day():
             current_datetime,
             current_weather
         )
-        pv_dc_output[i] = float(dc_power.iloc[0])
-        pv_ac_output[i] = float(ac_power.iloc[0])
+        pv_dc_output[i] = float(dc_power) if dc_power is not None else 0
+        pv_ac_output[i] = float(ac_power) if ac_power is not None else 0
     
     # Plot results
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))

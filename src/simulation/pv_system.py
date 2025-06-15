@@ -241,14 +241,19 @@ class PVSystem:
             )
         )
         
-        # Calculate I-V curve and find maximum power point
-        dc_voltage, dc_current = pvlib.pvsystem.singlediode(
-            photocurrent, saturation_current, resistance_series, 
-            resistance_shunt, nNsVth, ivcurve_pnts=100
-        )['p_mp'], pvlib.pvsystem.singlediode(
-            photocurrent, saturation_current, resistance_series, 
-            resistance_shunt, nNsVth, ivcurve_pnts=100
-        )['i_mp']
+        # Calculate I-V curve and find maximum power point using the newer recommended functions
+        # Ersetze 'singlediode' mit separaten v_from_i & i_from_v Berechnungen
+        # Erstelle ein Spannungsarray und berechne die entsprechenden Ströme
+        v = np.linspace(0, 40, 100)  # Spannungsbereich von 0-40V mit 100 Punkten
+        i = pvlib.pvsystem.i_from_v(
+            v, photocurrent, saturation_current, resistance_series, 
+            resistance_shunt, nNsVth
+        )
+        p = v * i  # Berechne Leistung
+        
+        # Finde MPP (Maximum Power Point)
+        idx_max_p = np.argmax(p)
+        dc_voltage, dc_current = v[idx_max_p], i[idx_max_p]
         
         # Simplified approach: Use temperature-corrected power
         temp_coefficient = self.module_specs.temp_coefficient / 100  # Convert from %/°C to 1/°C

@@ -24,6 +24,8 @@ DEFAULT_PARAMETERS = [
 
 # Logger für Debug-Informationen
 logger = logging.getLogger(__name__)
+# Debug-Level setzen
+logging.basicConfig(level=logging.INFO)
 
 class DWDDataManager:
     """
@@ -70,7 +72,8 @@ class DWDDataManager:
                 settings=settings
             )
             
-            stations_df = request.df
+            # Zugriff auf die Stationen
+            stations_df = request.all().df.drop_duplicates(subset=["station_id"])
             
             # Konvertiere das DataFrame in ein Dictionary für einfachen Zugriff
             for _, row in stations_df.iterrows():
@@ -219,7 +222,12 @@ class DWDDataManager:
         if cache_file.exists():
             logger.info(f"Verwende Cache-Datei: {cache_file}")
             try:
-                return pd.read_csv(cache_file, parse_dates=['timestamp'])
+                df = pd.read_csv(cache_file, parse_dates=['timestamp'])
+                # Stelle sicher, dass numerische Spalten auch als float behandelt werden
+                for column in ['temperature', 'solar_radiation', 'wind_speed', 'humidity', 'cloud_cover', 'precipitation']:
+                    if column in df.columns:
+                        df[column] = df[column].astype(float)
+                return df
             except Exception as e:
                 logger.error(f"Fehler beim Lesen des Caches: {e}")
         
@@ -256,10 +264,22 @@ class DWDDataManager:
                 start_date=start_date,
                 end_date=end_date,
                 settings=settings
-            ).filter_by_station_id(station_id=(station_id,))
+            )
             
-            # Daten abrufen
-            values_df = request.values.all().df
+            # Station filtern und Daten abrufen
+            try:
+                # Neue API-Methode probieren
+                values = request.filter_by_station_id(
+                    station_id=station_id
+                ).values.all()
+            except:
+                # Fallback für ältere API-Versionen
+                values = request.filter_by_station_id(
+                    station_id=(station_id,)
+                ).values.all()
+            
+            # Daten in DataFrame umwandeln
+            values_df = values.df
             
             if values_df.empty:
                 raise ValueError(f"Keine Daten für Station {station_id} im angegebenen Zeitraum gefunden")
@@ -269,7 +289,7 @@ class DWDDataManager:
             result_df['timestamp'] = values_df['date']
             result_df['station_id'] = values_df['station_id']
             
-            # Parameter zuordnen
+            # Parameter zuordnen und sicherstellen, dass alle Werte als float gespeichert werden
             for param, series_name in [
                 ('temperature_air_200', 'temperature'),
                 ('radiation_global', 'solar_radiation'),
@@ -279,7 +299,8 @@ class DWDDataManager:
             ]:
                 param_data = values_df[values_df['parameter'] == param]
                 if not param_data.empty:
-                    result_df[series_name] = param_data['value'].reset_index(drop=True)
+                    # Explizite Konvertierung zu float für numerische Werte
+                    result_df[series_name] = param_data['value'].astype(float).reset_index(drop=True)
             
             # Fehlende Spalte für Bewölkung hinzufügen (nicht direkt in DWD-Daten verfügbar)
             if 'cloud_cover' not in result_df.columns:

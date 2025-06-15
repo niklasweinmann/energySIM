@@ -8,6 +8,7 @@ from pathlib import Path
 import json
 from datetime import datetime
 import traceback
+import os
 
 # Import der run_simulation Funktion
 sys.path.insert(0, str(Path(__file__).parent))
@@ -20,6 +21,12 @@ def run_simulation(**kwargs):
     return _run_simulation(**kwargs)
 
 if __name__ == "__main__":
+    # Umleiten der Ausgabe in eine Datei
+    log_file = Path(__file__).parent / "output_log.txt"
+    # Öffne die Datei im Schreibmodus (überschreibt vorhandene Inhalte)
+    sys.stdout = open(log_file, 'w', encoding='utf-8')
+    sys.stderr = sys.stdout
+    
     # Beispiel für eine Simulation mit der Funktion
     try:
         print("Starte Simulation mit folgenden Parametern:")
@@ -51,4 +58,13 @@ if __name__ == "__main__":
         print(f"\nFEHLER bei der Simulation: {type(e).__name__}: {e}")
         print("\nDetaillierter Fehler:")
         traceback.print_exc()
+        sys.stdout.close()
         sys.exit(1)
+    finally:
+        # Stelle sicher, dass die Log-Datei geschlossen wird
+        if hasattr(sys.stdout, 'close'):
+            sys.stdout.close()
+        
+        # Gib eine Nachricht auf der Konsole aus (originaler stdout)
+        original_stdout = sys.__stdout__
+        original_stdout.write(f"Simulation abgeschlossen. Ausgaben wurden in {log_file} gespeichert.\n")
