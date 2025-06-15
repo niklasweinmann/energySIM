@@ -186,12 +186,18 @@ class EnergyFlowOptimizer:
         Returns:
             True wenn Betrieb wirtschaftlich sinnvoll
         """
-        # JAZ-Berechnung nach VDI 4645
-        delta_t = flow_temp - outside_temp
-        theoretical_cop = (273.15 + flow_temp) / delta_t
+        # JAZ-Berechnung nach VDI 4645 (korrigiert)
+        # Carnot-COP als theoretisches Maximum
+        t_hot = 273.15 + flow_temp  # Kelvin
+        t_cold = 273.15 + outside_temp  # Kelvin
+        carnot_cop = t_hot / (t_hot - t_cold)
         
-        # Realer COP mit Systemverlusten
-        real_cop = theoretical_cop * 0.5  # Typischer Gütegrad
+        # Realer COP mit typischem Gütegrad von 45-55%
+        real_cop = carnot_cop * 0.50  # Korrigiert: 50% Gütegrad
+        
+        # Mindest-COP nach VDI 4645 beachten
+        min_cop = 3.0  # A-7/W35
+        real_cop = max(real_cop, min_cop)
         
         # Wirtschaftlichkeitsberechnung
         operating_cost = electricity_price / real_cop

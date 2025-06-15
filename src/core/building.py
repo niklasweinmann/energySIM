@@ -59,7 +59,8 @@ class Building:
         self._calculate_u_values()
         
         # Wärmebrücken nach DIN 4108 Beiblatt 2
-        self.thermal_bridges = 0.05  # W/(m²·K)
+        # Korrektur: 0.05 ist zu niedrig, realistischer Wert ist 0.05-0.10
+        self.thermal_bridges = 0.10  # W/(m²·K) - Standard nach DIN 4108
         
         # Berechne thermische Eigenschaften
         self.total_loss_coefficient = self._calculate_total_loss_coefficient()
