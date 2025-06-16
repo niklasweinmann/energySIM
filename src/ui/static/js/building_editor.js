@@ -23,12 +23,14 @@ class BuildingEditor {
         };
         
         // Editor state
+        this.editMode = false;
         this.selectedTool = null;
         this.isDragging = false;
         this.dragStartPosition = null;
         this.ghostObject = null;
         this.snapTargets = [];
         this.snapThreshold = 0.5; // meters
+        this.editMode = false;
         
         // Three.js core
         this.scene = null;
@@ -980,6 +982,45 @@ class BuildingEditor {
         console.log('🔍 Checking for thermal bridges...');
     }
     
+    // Edit Mode Management
+    toggleEditMode() {
+        this.editMode = !this.editMode;
+        console.log('Edit mode:', this.editMode ? 'ON' : 'OFF');
+        return this.editMode;
+    }
+    
+    exitEditMode() {
+        this.editMode = false;
+        console.log('Edit mode: OFF');
+        return false;
+    }
+    
+    // Wireframe toggle
+    toggleWireframe() {
+        this.buildingGroup.traverse((child) => {
+            if (child.isMesh && child.material) {
+                child.material.wireframe = !child.material.wireframe;
+            }
+        });
+    }
+    
+    // Camera reset
+    resetCamera() {
+        this.camera.position.set(15, 10, 15);
+        this.camera.lookAt(0, 0, 0);
+        if (this.controls) {
+            this.controls.reset();
+        }
+    }
+    
+    // Building update
+    updateBuilding(length, width, height) {
+        // Update building dimensions
+        this.buildingData.dimensions = { length, width, height };
+        this.createInitialBuilding();
+        console.log(`Building updated: ${length}x${width}x${height}`);
+    }
+    
     // Utility methods
     generateId() {
         return 'component_' + Math.random().toString(36).substr(2, 9);
@@ -1022,15 +1063,6 @@ class BuildingEditor {
         this.scene.traverse((child) => {
             if (child.userData.type === 'grid') {
                 child.visible = !child.visible;
-            }
-        });
-    }
-    
-    toggleWireframe() {
-        // Toggle wireframe mode
-        this.buildingGroup.traverse((child) => {
-            if (child.isMesh) {
-                child.material.wireframe = !child.material.wireframe;
             }
         });
     }

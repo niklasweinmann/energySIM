@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>energyOS - Erweiterte 3D-Gebäudemodellierung</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>energyOS - Neue Kompakte Toolbox v2.0</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a1a; color: #ffffff; overflow: hidden; }
@@ -84,28 +87,231 @@
         }
         .debug-toggle { color: #00ff00; font-weight: bold; }
         
-        /* Toolbox Styles - Neue Position: rechts */
+        /* Neue kompakte Toolbox am rechten Rand - Platzsparend */
         .toolbox {
             position: fixed;
-            right: 10px;
+            right: 0;
             top: 50%;
             transform: translateY(-50%);
-            background: rgba(45, 45, 45, 0.95);
-            border: 2px solid #4CAF50;
-            border-radius: 10px;
-            padding: 15px;
+            width: 50px;
+            background: linear-gradient(135deg, rgba(45, 45, 45, 0.95), rgba(35, 35, 35, 0.95));
+            border: 1px solid #4CAF50;
+            border-right: none;
+            border-radius: 15px 0 0 15px;
+            box-shadow: -3px 0 15px rgba(0,0,0,0.4);
             z-index: 1000;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-            min-width: 180px;
+            display: none;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(8px);
+            overflow: visible;
+        }
+        
+        .toolbox.expanded {
+            width: 320px;
+            max-height: 85vh;
+        }
+        
+        .toolbox.minimized {
+            width: 35px;
+            border-radius: 20px 0 0 20px;
         }
         
         .toolbox-header {
+            background: linear-gradient(135deg, #4CAF50, #66BB6A);
+            color: white;
+            padding: 12px 8px;
+            font-weight: bold;
+            font-size: 10px;
+            text-align: center;
+            cursor: pointer;
+            user-select: none;
+            border-radius: 15px 0 0 0;
+            position: relative;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .toolbox-header .title {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            letter-spacing: 1px;
+        }
+        
+        .toolbox.expanded .toolbox-header {
+            border-radius: 15px 0 0 0;
+            padding: 10px 15px;
+            min-height: auto;
+        }
+        
+        .toolbox.expanded .toolbox-header .title {
+            writing-mode: horizontal-tb;
+            text-orientation: initial;
+            font-size: 12px;
+        }
+        
+        .toolbox-controls {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            display: none;
+            gap: 3px;
+        }
+        
+        .toolbox.expanded .toolbox-controls {
+            display: flex;
+        }
+        
+        .toolbox-control-btn {
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: white;
+            width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            cursor: pointer;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        
+        .toolbox-control-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.1);
+        }
+        
+        .toolbox-main {
+            padding: 0;
+            display: none;
+            overflow-y: auto;
+            max-height: calc(85vh - 80px);
+        }
+        
+        .toolbox.expanded .toolbox-main {
+            display: block;
+            padding: 12px;
+        }
+        
+        .toolbox-options {
+            position: absolute;
+            right: 100%;
+            top: 0;
+            width: 300px;
+            background: linear-gradient(135deg, rgba(45, 45, 45, 0.96), rgba(35, 35, 35, 0.96));
+            border: 1px solid #FFA500;
+            border-radius: 15px 0 0 15px;
+            border-right: none;
+            padding: 15px;
+            display: none;
+            max-height: 85vh;
+            overflow-y: auto;
+            backdrop-filter: blur(8px);
+            box-shadow: -3px 0 20px rgba(255, 165, 0, 0.2);
+        }
+        
+        .toolbox-options.active {
+            display: block;
+            animation: slideInLeft 0.3s ease;
+        }
+        
+        @keyframes slideInLeft {
+            from { transform: translateX(20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .options-header {
             color: #4CAF50;
             font-weight: bold;
             margin-bottom: 15px;
             text-align: center;
             border-bottom: 1px solid #555;
             padding-bottom: 10px;
+        }
+        
+        .option-group {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(64, 64, 64, 0.5);
+            border-radius: 5px;
+        }
+        
+        .option-group h5 {
+            color: #66BB6A;
+            font-size: 11px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        
+        .option-control {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .option-control label {
+            font-size: 10px;
+            color: #ccc;
+            min-width: 60px;
+        }
+        
+        .option-control input {
+            flex: 1;
+            padding: 4px 6px;
+            border: 1px solid #666;
+            border-radius: 3px;
+            background: #333;
+            color: white;
+            font-size: 10px;
+        }
+        
+        .option-button {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            margin: 2px;
+            transition: all 0.2s ease;
+        }
+        
+        .option-button:hover {
+            background: #66BB6A;
+            transform: translateY(-1px);
+        }
+        
+        .option-button.danger {
+            background: #f44336;
+        }
+        
+        .option-button.danger:hover {
+            background: #e57373;
+        }
+        
+        .rotation-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 4px;
+        }
+        
+        .toolbox.minimized .toolbox-main {
+            display: none;
+        }
+        
+        .toolbox.minimized {
+            width: 60px;
+        }
+        
+        .toolbox.minimized .toolbox-header {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            margin: 10px 0;
+            transform: rotate(180deg);
         }
         
         .toolbox-category {
@@ -165,6 +371,126 @@
             cursor: pointer;
             z-index: 1001;
             font-size: 12px;
+        }
+         /* Zweites Sidebar-Menü für Gebäude-Bearbeitung */
+        #edit-sidebar {
+            position: fixed;
+            left: -400px;
+            top: 0;
+            width: 400px;
+            height: 100vh;
+            background: #2d2d2d;
+            border-right: 2px solid #4CAF50;
+            z-index: 1500;
+            transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto;
+            padding: 20px;
+            box-shadow: 2px 0 20px rgba(0,0,0,0.3);
+        }
+        
+        #edit-sidebar.active {
+            left: 0;
+        }
+        
+        #edit-sidebar h2 {
+            color: #4CAF50;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .edit-close-btn {
+            background: #f44336;
+            border: none;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .edit-close-btn:hover {
+            background: #d32f2f;
+            transform: scale(1.1);
+        }
+        
+        .edit-category {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: #3d3d3d;
+            border-radius: 8px;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .edit-category h3 {
+            color: #66BB6A;
+            margin-bottom: 15px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .component-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .edit-component-item {
+            background: #404040;
+            border: 1px solid #666;
+            border-radius: 6px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            position: relative;
+        }
+        
+        .edit-component-item:hover {
+            background: #4CAF50;
+            border-color: #66BB6A;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+        }
+        
+        .edit-component-item.selected {
+            background: #FFA500;
+            border-color: #FFD700;
+            box-shadow: 0 0 15px rgba(255, 165, 0, 0.5);
+        }
+        
+        .edit-component-name {
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .edit-component-item:hover .edit-component-name {
+            color: white;
+        }
+        
+        /* Overlay für das Hauptmenü */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1400;
+            display: none;
+            backdrop-filter: blur(2px);
+        }
+        
+        .sidebar-overlay.active {
+            display: block;
         }
     </style>
 </head>
@@ -322,44 +648,6 @@
         </div>
     </div>
 
-    <!-- Toolbox (nur im Bearbeitungsmodus) -->
-    <div class="toolbox" id="toolbox" style="display: none;">
-        <div class="toolbox-header">🧰 Bauteile</div>
-        
-        <!-- Wände -->
-        <div class="toolbox-category">
-            <h4>Wände</h4>
-            <div class="component-item" data-component="wall" onclick="selectComponent('wall', 'Außenwand')">
-                <div class="component-name">Außenwand</div>
-            </div>
-            <div class="component-item" data-component="inner-wall" onclick="selectComponent('inner-wall', 'Innenwand')">
-                <div class="component-name">Innenwand</div>
-            </div>
-        </div>
-        
-        <!-- Fenster & Türen -->
-        <div class="toolbox-category">
-            <h4>Öffnungen</h4>
-            <div class="component-item" data-component="window" onclick="selectComponent('window', 'Fenster')">
-                <div class="component-name">Fenster</div>
-            </div>
-            <div class="component-item" data-component="door" onclick="selectComponent('door', 'Haustür')">
-                <div class="component-name">Haustür</div>
-            </div>
-        </div>
-        
-        <!-- Dach & Boden -->
-        <div class="toolbox-category">
-            <h4>Hülle</h4>
-            <div class="component-item" data-component="roof" onclick="selectComponent('roof', 'Dach')">
-                <div class="component-name">Dach</div>
-            </div>
-            <div class="component-item" data-component="floor" onclick="selectComponent('floor', 'Bodenplatte')">
-                <div class="component-name">Bodenplatte</div>
-            </div>
-        </div>
-    </div>
-
     <!-- Debug Panel -->
     <div class="debug-panel">
         <div class="debug-header" onclick="toggleDebug()">
@@ -368,6 +656,80 @@
         </div>
         <div class="debug-content" id="debug-content">
             <div id="debug-log">Initialisierung...</div>
+        </div>
+    </div>
+
+    <!-- Overlay für Verdunklung des Hauptmenüs -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeEditSidebar()"></div>
+    
+    <!-- Zweites Sidebar-Menü für Gebäude-Bearbeitung -->
+    <div id="edit-sidebar">
+        <h2>
+            🏗️ Gebäude bearbeiten
+            <button class="edit-close-btn" onclick="closeEditSidebar()" title="Schließen">✕</button>
+        </h2>
+        
+        <!-- Bauteile-Kategorien -->
+        <div class="edit-category">
+            <h3>🧱 Wände & Struktur</h3>
+            <div class="component-grid">
+                <div class="edit-component-item" onclick="selectEditComponent('wall', 'Außenwand')">
+                    <div class="edit-component-name">Außenwand</div>
+                </div>
+                <div class="edit-component-item" onclick="selectEditComponent('inner-wall', 'Innenwand')">
+                    <div class="edit-component-name">Innenwand</div>
+                </div>
+                <div class="edit-component-item" onclick="selectEditComponent('column', 'Stütze')">
+                    <div class="edit-component-name">Stütze</div>
+                </div>
+                <div class="edit-component-item" onclick="selectEditComponent('beam', 'Träger')">
+                    <div class="edit-component-name">Träger</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="edit-category">
+            <h3>🚪 Öffnungen</h3>
+            <div class="component-grid">
+                <div class="edit-component-item" onclick="selectEditComponent('window', 'Fenster')">
+                    <div class="edit-component-name">Fenster</div>
+                </div>
+                <div class="edit-component-item" onclick="selectEditComponent('door', 'Haustür')">
+                    <div class="edit-component-name">Haustür</div>
+                </div>
+                <div class="edit-component-item" onclick="selectEditComponent('balcony-door', 'Balkontür')">
+                    <div class="edit-component-name">Balkontür</div>
+                </div>
+                <div class="edit-component-item" onclick="selectEditComponent('garage-door', 'Garagentor')">
+                    <div class="edit-component-name">Garagentor</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="edit-category">
+            <h3>🏠 Gebäudehülle</h3>
+            <div class="component-grid">
+                <div class="edit-component-item" onclick="selectEditComponent('roof', 'Dach')">
+                    <div class="edit-component-name">Dach</div>
+                </div>
+                <div class="edit-component-item" onclick="selectEditComponent('floor', 'Bodenplatte')">
+                    <div class="edit-component-name">Bodenplatte</div>
+                </div>
+                <div class="edit-component-item" onclick="selectEditComponent('ceiling', 'Decke')">
+                    <div class="edit-component-name">Decke</div>
+                </div>
+                <div class="edit-component-item" onclick="selectEditComponent('balcony', 'Balkon')">
+                    <div class="edit-component-name">Balkon</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ausgewähltes Bauteil Optionen -->
+        <div class="edit-category" id="edit-options-panel" style="display: none;">
+            <h3 id="edit-options-title">⚙️ Bauteil-Optionen</h3>
+            <div id="edit-options-content">
+                <!-- Wird dynamisch gefüllt -->
+            </div>
         </div>
     </div>
 
@@ -468,26 +830,56 @@
 
         // Edit Mode
         function toggleEditMode() {
-            if (building3D) {
-                const editModeActive = building3D.toggleEditMode();
-                const btn = document.getElementById('edit-mode-btn');
-                const icon = document.getElementById('edit-mode-icon');
-                const toolbox = document.getElementById('toolbox');
+            const btn = document.getElementById('edit-mode-btn');
+            const icon = document.getElementById('edit-mode-icon');
+            
+            console.log('toggleEditMode called'); // Debug
+            debugLog('🔧 toggleEditMode aufgerufen');
+            
+            // Vereinfachter Test ohne building3D-Abhängigkeit
+            const isCurrentlyActive = btn.classList.contains('btn-warning');
+            
+            if (!isCurrentlyActive) {
+                // Aktiviere Bearbeitungsmodus - öffne Edit-Sidebar
+                btn.className = 'btn btn-warning';
+                icon.textContent = '🔒';
+                btn.innerHTML = icon.outerHTML + ' Bearbeitung aktiv';
                 
-                if (editModeActive) {
-                    btn.className = 'btn btn-warning';
-                    icon.textContent = '🔒';
-                    btn.innerHTML = icon.outerHTML + ' Bearbeitung aktiv';
-                    toolbox.style.display = 'block'; // Zeige Toolbox
-                } else {
-                    btn.className = 'btn';
-                    icon.textContent = '✏️';
-                    btn.innerHTML = icon.outerHTML + ' Bearbeiten';
-                    toolbox.style.display = 'none'; // Verstecke Toolbox
-                    clearSelection(); // Lösche aktuelle Selektion
+                // Öffne das neue Edit-Sidebar
+                openEditSidebar();
+                
+                debugLog('✏️ Bearbeitungsmodus aktiviert - Edit-Sidebar geöffnet');
+                
+                // Versuche building3D zu aktivieren falls verfügbar
+                if (building3D && building3D.toggleEditMode) {
+                    try {
+                        building3D.toggleEditMode();
+                    } catch(e) {
+                        console.warn('building3D.toggleEditMode failed:', e);
+                    }
                 }
-                debugLog('✏️ Bearbeitungsmodus: ' + (editModeActive ? 'Ein' : 'Aus'));
+            } else {
+                // Deaktiviere Bearbeitungsmodus - schließe Edit-Sidebar
+                closeEditSidebar();
             }
+        }
+                newToolbox.style.display = 'none';
+                newToolbox.classList.remove('expanded');
+                editSidebar.classList.remove('active');
+                document.querySelector('.sidebar-overlay').classList.remove('active');
+                
+                clearSelection();
+                debugLog('✏️ Bearbeitungsmodus deaktiviert');
+                updateStatus('Bearbeitungsmodus beendet');
+                
+                // Versuche building3D zu deaktivieren falls verfügbar
+                if (building3D && building3D.exitEditMode) {
+                    try {
+                        building3D.exitEditMode();
+                    } catch(e) {
+                        console.warn('building3D.exitEditMode failed:', e);
+                    }
+                }
         }
         
         // PV-Funktionen
@@ -554,8 +946,250 @@
             }, 3000);
         }
 
-        // Entfernt: Toolbox-Toggle-Funktion nicht mehr benötigt
+        // 3D-Transformationsfunktionen
+        function updateComponentProperty(property, value) {
+            if (!selectedComponent) return;
+            
+            selectedComponent[property] = parseFloat(value) || value;
+            
+            // Update Preview wenn vorhanden
+            if (previewMesh && building3D) {
+                updatePreviewProperties();
+            }
+            
+            // Update Header wenn Name geändert wurde
+            if (property === 'name') {
+                const header = document.querySelector('.options-header');
+                if (header) {
+                    header.innerHTML = `⚙️ ${value} Optionen`;
+                }
+            }
+            
+            debugLog('🔧 Eigenschaft aktualisiert: ' + property + ' = ' + value);
+        }
         
+        // Update Bauteilgröße in Metern (statt Skalierung)
+        function updateComponentSize(property, value) {
+            if (!selectedComponent) return;
+            
+            const numValue = parseFloat(value);
+            if (isNaN(numValue) || numValue <= 0) return;
+            
+            // Setze direkte Größe in Metern
+            selectedComponent[property] = numValue;
+            
+            // Update Preview wenn vorhanden
+            if (previewMesh) {
+                updatePreviewSize();
+            }
+            
+            // Bei existierenden Komponenten: Update auch das 3D-Objekt
+            if (selectedComponent.isPlaced && building3D) {
+                updateExisting3DComponent();
+            }
+            
+            debugLog(`📏 ${property} geändert auf: ${numValue}m`);
+            updateStatus(`${property}: ${numValue}m`);
+        }
+        
+        function updatePreviewSize() {
+            if (!previewMesh || !selectedComponent) return;
+            
+            // Berechne neue Skalierung basierend auf den absoluten Größen
+            const baseSize = 1.0; // Standard-Bauteilgröße in Three.js
+            
+            const scaleX = (selectedComponent.width || 1.0) / baseSize;
+            const scaleY = (selectedComponent.height || 1.0) / baseSize;
+            const scaleZ = (selectedComponent.thickness || selectedComponent.length || 1.0) / baseSize;
+            
+            previewMesh.scale.set(scaleX, scaleY, scaleZ);
+        }
+        
+        // Verbesserte Rotationsfunktion für manuelle Eingabe
+        function setRotation(axis, value) {
+            if (!selectedComponent) return;
+            
+            const numValue = parseFloat(value);
+            if (isNaN(numValue)) return;
+            
+            // Normalisiere Rotation (0-360°)
+            let normalizedValue = numValue % 360;
+            if (normalizedValue < 0) normalizedValue += 360;
+            
+            selectedComponent.rotation[axis] = normalizedValue;
+            
+            // Update Preview
+            if (previewMesh) {
+                updatePreviewRotation();
+            }
+            
+            // Bei existierenden Komponenten: Update auch das 3D-Objekt
+            if (selectedComponent.isPlaced && building3D) {
+                updateExisting3DComponent();
+            }
+            
+            // Update Input-Feld mit normalisiertem Wert
+            const input = document.getElementById(`rotation-${axis}`);
+            if (input) {
+                input.value = normalizedValue;
+            }
+            
+            debugLog(`🔄 Rotation ${axis}: ${normalizedValue}°`);
+        }
+        
+        function rotateComponent(axis, degrees) {
+            if (!selectedComponent) return;
+            
+            selectedComponent.rotation[axis] += degrees;
+            
+            // Normalisiere Rotation (0-360°)
+            selectedComponent.rotation[axis] = selectedComponent.rotation[axis] % 360;
+            if (selectedComponent.rotation[axis] < 0) {
+                selectedComponent.rotation[axis] += 360;
+            }
+            
+            // Update Preview
+            if (previewMesh) {
+                updatePreviewRotation();
+            }
+            
+            // Update Input-Felder
+            updateRotationInputs();
+            
+            debugLog('🔄 Rotation ' + axis + ': ' + selectedComponent.rotation[axis] + '°');
+        }
+        
+        function updateRotationInputs() {
+            if (!selectedComponent) return;
+            
+            const xInput = document.getElementById('rotation-x');
+            const yInput = document.getElementById('rotation-y');
+            const zInput = document.getElementById('rotation-z');
+            
+            if (xInput) xInput.value = selectedComponent.rotation.x;
+            if (yInput) yInput.value = selectedComponent.rotation.y;
+            if (zInput) zInput.value = selectedComponent.rotation.z;
+        }
+        
+        function resetRotation() {
+            if (!selectedComponent) return;
+            
+            selectedComponent.rotation = { x: 0, y: 0, z: 0 };
+            
+            if (previewMesh) {
+                previewMesh.rotation.set(0, 0, 0);
+            }
+            
+            updateRotationInputs();
+            debugLog('🔄 Rotation zurückgesetzt');
+        }
+        
+        function duplicateComponent() {
+            if (!selectedComponent) return;
+            
+            // Erstelle Kopie mit leicht versetzter Position
+            const duplicate = { 
+                ...selectedComponent,
+                name: selectedComponent.name + ' (Kopie)',
+                rotation: { ...selectedComponent.rotation },
+                scale: { ...selectedComponent.scale }
+            };
+            
+            // Entferne isPlaced-Flag für neue Komponente
+            delete duplicate.isPlaced;
+            delete duplicate.id;
+            
+            // Setze als neue Selektion
+            selectedComponent = duplicate;
+            
+            // Update Options-Panel
+            showComponentOptions(selectedComponent);
+            
+            debugLog('📋 Komponente dupliziert: ' + duplicate.name);
+            updateStatus('Kopie erstellt - Platzieren Sie die Kopie');
+        }
+        
+        function updateExistingComponent() {
+            if (!selectedComponent || !selectedComponent.isPlaced || !building3D) return;
+            
+            // Finde existierende Komponente
+            const existingComponent = building3D.components.find(c => c.id === selectedComponent.id);
+            if (!existingComponent) return;
+            
+            // Update Eigenschaften
+            Object.assign(existingComponent, selectedComponent);
+            
+            // Entferne altes Mesh
+            if (existingComponent.mesh) {
+                building3D.buildingGroup.remove(existingComponent.mesh);
+            }
+            
+            // Erstelle neues Mesh
+            building3D.create3DComponent(existingComponent);
+            
+            // Update Komponenten-Liste
+            building3D.updateComponentsList();
+            
+            debugLog('� Komponente aktualisiert: ' + selectedComponent.name);
+            updateStatus('Änderungen gespeichert');
+        }
+        
+        function deleteComponent() {
+            if (!selectedComponent || !selectedComponent.isPlaced || !building3D) return;
+            
+            // Lösche Komponente
+            building3D.removeComponent(selectedComponent.id);
+            
+            // Lösche Selektion
+            clearSelection();
+            
+            debugLog('�️ Komponente gelöscht');
+            updateStatus('Komponente gelöscht');
+        }
+        
+        function snapToGrid() {
+            if (!previewMesh) return;
+            
+            // Runde Position auf nächstes Raster (1m)
+            const pos = previewMesh.position;
+            pos.x = Math.round(pos.x);
+            pos.z = Math.round(pos.z);
+            
+            debugLog('🎯 Am Raster ausgerichtet: (' + pos.x + ', ' + pos.z + ')');
+        }
+        
+        function updatePreviewProperties() {
+            if (!previewMesh || !selectedComponent) return;
+            
+            // Update Geometrie basierend auf neuen Eigenschaften
+            const newMesh = createPreviewMesh(selectedComponent, previewMesh.position);
+            if (newMesh && building3D) {
+                building3D.scene.remove(previewMesh);
+                previewMesh = newMesh;
+                previewMesh.material.transparent = true;
+                previewMesh.material.opacity = 0.5;
+                previewMesh.material.color.setHex(0x00FF00);
+                
+                // Wende Transformationen an
+                updatePreviewRotation();
+                
+                building3D.scene.add(previewMesh);
+            }
+        }
+        
+        function updatePreviewRotation() {
+            if (!previewMesh || !selectedComponent) return;
+            
+            const rot = selectedComponent.rotation;
+            previewMesh.rotation.set(
+                THREE.MathUtils.degToRad(rot.x),
+                THREE.MathUtils.degToRad(rot.y),
+                THREE.MathUtils.degToRad(rot.z)
+            );
+        }
+        
+        // Entfernt: updatePreviewProperties, updateRotationDisplay, resetScale
+
         // Click-to-Select System
         let selectedComponent = null;
         let previewMesh = null;
@@ -574,194 +1208,233 @@
                 name: name,
                 uValue: getDefaultUValue(type),
                 width: getDefaultWidth(type),
-                height: getDefaultHeight(type)
+                height: getDefaultHeight(type),
+                rotation: { x: 0, y: 0, z: 0 },
+                scale: { x: 1, y: 1, z: 1 }
             };
+            
+            // Zeige Options-Panel
+            showComponentOptions(selectedComponent);
             
             debugLog('🎯 Bauteil ausgewählt: ' + name);
             updateStatus('Bauteil ausgewählt: ' + name + ' - Bewegen Sie die Maus über das Gebäude');
         }
         
-        function getDefaultUValue(type) {
-            const defaults = {
-                'wall': 0.20,
-                'inner-wall': 2.50,
-                'window': 1.10,
-                'door': 1.80,
-                'roof': 0.15,
-                'floor': 0.25
-            };
-            return defaults[type] || 1.0;
-        }
-        
-        function getDefaultWidth(type) {
-            const defaults = {
-                'window': 1.2,
-                'door': 1.0,
-                'wall': 2.0,
-                'inner-wall': 2.0,
-                'roof': 2.0,
-                'floor': 2.0
-            };
-            return defaults[type] || 1.0;
-        }
-        
-        function getDefaultHeight(type) {
-            const defaults = {
-                'window': 1.5,
-                'door': 2.1,
-                'wall': 2.5,
-                'inner-wall': 2.5,
-                'roof': 0.2,
-                'floor': 0.1
-            };
-            return defaults[type] || 1.0;
-        }
-        
-        function initializeClickSystem() {
-            const viewer = document.getElementById('building-3d');
+        function showComponentOptions(component) {
+            const optionsPanel = document.getElementById('toolbox-options');
             
-            // Mouse move für Preview
-            viewer.addEventListener('mousemove', onMouseMove);
-            
-            // Click für Platzierung
-            viewer.addEventListener('click', onMouseClick);
-            
-            debugLog('🖱️ Click-System initialisiert');
-        }
-        
-        function onMouseMove(event) {
-            if (!selectedComponent || !building3D || !building3D.editMode) return;
-            
-            // Berechne Mausposition in normalized device coordinates
-            const rect = event.target.getBoundingClientRect();
-            const mouse = {
-                x: ((event.clientX - rect.left) / rect.width) * 2 - 1,
-                y: -((event.clientY - rect.top) / rect.height) * 2 + 1
-            };
-            
-            // Raycasting für 3D-Position
-            const raycaster = new THREE.Raycaster();
-            raycaster.setFromCamera(mouse, building3D.camera);
-            
-            // Schnitt mit Boden finden
-            const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-            const intersectPoint = new THREE.Vector3();
-            raycaster.ray.intersectPlane(groundPlane, intersectPoint);
-            
-            if (intersectPoint) {
-                updatePreview(intersectPoint);
-            }
-        }
-        
-        function updatePreview(position) {
-            if (!building3D || !selectedComponent) return;
-            
-            // Entferne alten Preview
-            if (previewMesh) {
-                building3D.scene.remove(previewMesh);
-                previewMesh = null;
-            }
-            
-            // Erstelle neuen Preview
-            previewMesh = createPreviewMesh(selectedComponent, position);
-            if (previewMesh) {
-                previewMesh.material.transparent = true;
-                previewMesh.material.opacity = 0.5;
-                previewMesh.material.color.setHex(0x00FF00); // Grün für Preview
-                building3D.scene.add(previewMesh);
-            }
-        }
-        
-        function createPreviewMesh(component, position) {
-            let geometry, material, mesh;
-            
-            switch(component.type) {
-                case 'window':
-                    geometry = new THREE.BoxGeometry(component.width, component.height, 0.1);
-                    material = new THREE.MeshLambertMaterial({ color: 0x00FF00 });
-                    mesh = new THREE.Mesh(geometry, material);
-                    mesh.position.set(position.x, component.height/2, position.z);
-                    break;
-                    
-                case 'door':
-                    geometry = new THREE.BoxGeometry(component.width, component.height, 0.1);
-                    material = new THREE.MeshLambertMaterial({ color: 0x00FF00 });
-                    mesh = new THREE.Mesh(geometry, material);
-                    mesh.position.set(position.x, component.height/2, position.z);
-                    break;
-                    
-                case 'wall':
-                case 'inner-wall':
-                    geometry = new THREE.BoxGeometry(component.width, component.height, 0.2);
-                    material = new THREE.MeshLambertMaterial({ color: 0x00FF00 });
-                    mesh = new THREE.Mesh(geometry, material);
-                    mesh.position.set(position.x, component.height/2, position.z);
-                    break;
-                    
-                case 'roof':
-                    geometry = new THREE.BoxGeometry(component.width, component.height, component.width);
-                    material = new THREE.MeshLambertMaterial({ color: 0x00FF00 });
-                    mesh = new THREE.Mesh(geometry, material);
-                    mesh.position.set(position.x, building3D.buildingData.height + component.height/2, position.z);
-                    break;
-                    
-                case 'floor':
-                    geometry = new THREE.BoxGeometry(component.width, component.height, component.width);
-                    material = new THREE.MeshLambertMaterial({ color: 0x00FF00 });
-                    mesh = new THREE.Mesh(geometry, material);
-                    mesh.position.set(position.x, -component.height/2, position.z);
-                    break;
-            }
-            
-            return mesh;
-        }
-        
-        function onMouseClick(event) {
-            if (!selectedComponent || !building3D || !building3D.editMode) return;
-            
-            // Berechne Mausposition
-            const rect = event.target.getBoundingClientRect();
-            const mouse = {
-                x: ((event.clientX - rect.left) / rect.width) * 2 - 1,
-                y: -((event.clientY - rect.top) / rect.height) * 2 + 1
-            };
-            
-            // Raycasting
-            const raycaster = new THREE.Raycaster();
-            raycaster.setFromCamera(mouse, building3D.camera);
-            const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-            const intersectPoint = new THREE.Vector3();
-            raycaster.ray.intersectPlane(groundPlane, intersectPoint);
-            
-            if (intersectPoint) {
-                // Platziere Komponente
-                placeComponent(selectedComponent, intersectPoint);
+            optionsPanel.innerHTML = `
+                <div class="options-header">
+                    ⚙️ ${component.name} Optionen
+                </div>
                 
-                // Reset Selektion
-                clearSelection();
-            }
+                <!-- Bauteil-Name (ganz oben) -->
+                <div class="option-group">
+                    <h5>📝 Bezeichnung</h5>
+                    <div class="option-control">
+                        <label>Name:</label>
+                        <input type="text" id="comp-name" value="${component.name}" onchange="updateComponentProperty('name', this.value)" style="flex: 1; padding: 4px 6px; border: 1px solid #666; border-radius: 3px; background: #333; color: white; font-size: 10px;">
+                    </div>
+                </div>
+                
+                <!-- Abmessungen in Metern (statt Skalierung) -->
+                <div class="option-group">
+                    <h5>📏 Größe in Metern</h5>
+                    <div class="option-control">
+                        <label>Breite:</label>
+                        <input type="number" id="comp-width" value="${component.width || 1.0}" step="0.1" min="0.1" max="20" onchange="updateComponentSize('width', this.value)">
+                        <span style="font-size: 9px; color: #aaa;">m</span>
+                    </div>
+                    <div class="option-control">
+                        <label>Höhe:</label>
+                        <input type="number" id="comp-height" value="${component.height || 1.0}" step="0.1" min="0.1" max="20" onchange="updateComponentSize('height', this.value)">
+                        <span style="font-size: 9px; color: #aaa;">m</span>
+                    </div>
+                    ${component.type === 'wall' || component.type === 'inner-wall' ? `
+                        <div class="option-control">
+                            <label>Dicke:</label>
+                            <input type="number" id="comp-thickness" value="${component.thickness || 0.2}" step="0.01" min="0.05" max="0.5" onchange="updateComponentSize('thickness', this.value)">
+                            <span style="font-size: 9px; color: #aaa;">m</span>
+                        </div>
+                    ` : ''}
+                    ${component.type === 'roof' || component.type === 'floor' ? `
+                        <div class="option-control">
+                            <label>Länge:</label>
+                            <input type="number" id="comp-length" value="${component.length || component.width || 1.0}" step="0.1" min="0.1" max="50" onchange="updateComponentSize('length', this.value)">
+                            <span style="font-size: 9px; color: #aaa;">m</span>
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <!-- U-Wert -->
+                <div class="option-group">
+                    <h5>🌡️ Thermik</h5>
+                    <div class="option-control">
+                        <label>U-Wert:</label>
+                        <input type="number" id="comp-uvalue" value="${component.uValue}" step="0.01" min="0.01" max="10" onchange="updateComponentProperty('uValue', this.value)">
+                        <span style="font-size: 9px; color: #aaa;">W/(m²·K)</span>
+                    </div>
+                </div>
+                
+                <!-- 3D-Rotation (manuelle Winkeleingabe) -->
+                <div class="option-group">
+                    <h5>🔄 Rotation (manuelle Winkeleingabe)</h5>
+                    <div class="option-control">
+                        <label>X-Achse:</label>
+                        <input type="number" id="rotation-x" value="${component.rotation.x}" step="1" min="-360" max="360" onchange="setRotation('x', this.value)">
+                        <span style="font-size: 9px; color: #aaa;">°</span>
+                    </div>
+                    <div class="option-control">
+                        <label>Y-Achse:</label>
+                        <input type="number" id="rotation-y" value="${component.rotation.y}" step="1" min="-360" max="360" onchange="setRotation('y', this.value)">
+                        <span style="font-size: 9px; color: #aaa;">°</span>
+                    </div>
+                    <div class="option-control">
+                        <label>Z-Achse:</label>
+                        <input type="number" id="rotation-z" value="${component.rotation.z}" step="1" min="-360" max="360" onchange="setRotation('z', this.value)">
+                        <span style="font-size: 9px; color: #aaa;">°</span>
+                    </div>
+                    <div class="rotation-controls">
+                        <button class="option-button" onclick="rotateComponent('x', -15)">↻ X-15°</button>
+                        <button class="option-button" onclick="rotateComponent('y', -15)">↻ Y-15°</button>
+                        <button class="option-button" onclick="rotateComponent('z', -15)">↻ Z-15°</button>
+                        <button class="option-button" onclick="rotateComponent('x', 15)">↺ X+15°</button>
+                        <button class="option-button" onclick="rotateComponent('y', 15)">↺ Y+15°</button>
+                        <button class="option-button" onclick="rotateComponent('z', 15)">↺ Z+15°</button>
+                        <button class="option-button" onclick="resetRotation()" style="grid-column: 1 / -1;">🔄 Rotation zurücksetzen</button>
+                    </div>
+                </div>
+                
+                <!-- Material-Optionen -->
+                ${getComponentMaterialOptions(component)}
+                
+                <!-- Aktionen -->
+                <div class="option-group">
+                    <h5>⚡ Aktionen</h5>
+                    <button class="option-button" onclick="duplicateComponent()">📋 Duplizieren</button>
+                    <button class="option-button" onclick="snapToGrid()">🎯 Am Raster ausrichten</button>
+                    ${component.isPlaced ? `
+                        <button class="option-button" onclick="updateExistingComponent()">💾 Änderungen speichern</button>
+                        <button class="option-button danger" onclick="deleteComponent()">🗑️ Löschen</button>
+                    ` : ''}
+                    <button class="option-button danger" onclick="clearSelection()">❌ Abbrechen</button>
+                </div>
+            `;
+            
+            optionsPanel.classList.add('active');
+            
+            // Erweitere Toolbox visuell
+            document.getElementById('toolbox').classList.add('expanded');
         }
         
-        function placeComponent(component, position) {
-            // Kopiere Komponente für Platzierung
-            const placedComponent = {
+        function selectExistingComponent(component) {
+            // Lösche vorherige Selektion
+            clearSelection();
+            
+            // Markiere als "bearbeitete" Komponente
+            selectedComponent = { 
                 ...component,
-                position: {
-                    x: position.x,
-                    y: position.y,
-                    z: position.z
-                }
+                rotation: component.rotation || { x: 0, y: 0, z: 0 },
+                scale: component.scale || { x: 1, y: 1, z: 1 },
+                isPlaced: true,
+                originalId: component.id
             };
             
-            // Füge zum Gebäude hinzu
-            if (building3D) {
-                building3D.addComponent(placedComponent);
-                debugLog('✅ Komponente platziert: ' + component.name + ' bei (' + position.x.toFixed(2) + ', 0, ' + position.z.toFixed(2) + ')');
-                updateStatus('Komponente platziert: ' + component.name);
+            // Zeige Options-Panel
+            showComponentOptions(selectedComponent);
+            
+            // Markiere Komponente visuell
+            if (component.mesh) {
+                component.mesh.material = component.mesh.material.clone();
+                component.mesh.material.color.setHex(0xFF4444);
+            }
+            
+            debugLog('🔧 Bearbeite existierende Komponente: ' + component.name);
+            updateStatus('Komponente bearbeiten: ' + component.name);
+        }
+        
+        function deleteComponent() {
+            if (!selectedComponent) return;
+            
+            if (selectedComponent.isPlaced && building3D) {
+                // Lösche existierende Komponente
+                const originalComponent = building3D.components.find(c => c.id === selectedComponent.originalId);
+                if (originalComponent) {
+                    building3D.removeComponent(originalComponent);
+                    clearSelection();
+                    debugLog('🗑️ Komponente gelöscht');
+                }
             }
         }
         
+        function finishEditingComponent() {
+            if (!selectedComponent || !selectedComponent.isExisting) return;
+            
+            // Entferne visuelle Markierung
+            const originalComponent = building3D.components.find(c => c.id === selectedComponent.originalId);
+            if (originalComponent && originalComponent.mesh) {
+                originalComponent.mesh.material.emissive.setHex(0x000000);
+            }
+            
+            clearSelection();
+            updateStatus('Bearbeitung abgeschlossen');
+        }
+        
+        function updateExisting3DComponent() {
+            if (!selectedComponent || !selectedComponent.isExisting || !building3D) return;
+            
+            // Finde originale Komponente
+            const originalComponent = building3D.components.find(c => c.id === selectedComponent.originalId);
+            if (!originalComponent || !originalComponent.mesh) return;
+            
+            const mesh = originalComponent.mesh;
+            
+            // Update Position
+            mesh.position.set(
+                selectedComponent.position.x,
+                originalComponent.position.y, // Y-Position bleibt gleich
+                selectedComponent.position.z
+            );
+            
+            // Update Rotation
+            if (selectedComponent.rotation) {
+                const rot = selectedComponent.rotation;
+                mesh.rotation.set(
+                    THREE.MathUtils.degToRad(rot.x),
+                    THREE.MathUtils.degToRad(rot.y),
+                    THREE.MathUtils.degToRad(rot.z)
+                );
+            }
+            
+            // Update Scale
+            if (selectedComponent.scale) {
+                const scale = selectedComponent.scale;
+                mesh.scale.set(scale.x, scale.y, scale.z);
+            }
+            
+            // Update originalComponent mit neuen Werten
+            Object.assign(originalComponent, selectedComponent);
+            delete originalComponent.isExisting;
+            delete originalComponent.originalId;
+        }
+        
+        function updateExistingRotationDisplay() {
+            const rotDisplay = document.querySelector('.rotation-controls + div');
+            if (rotDisplay && selectedComponent && selectedComponent.rotation) {
+                const rot = selectedComponent.rotation;
+                rotDisplay.innerHTML = `X: ${rot.x}° Y: ${rot.y}° Z: ${rot.z}°`;
+            }
+        }
+
         function clearSelection() {
+            // Entferne visuelle Markierung von existierenden Komponenten
+            if (selectedComponent && selectedComponent.isExisting && building3D) {
+                const originalComponent = building3D.components.find(c => c.id === selectedComponent.originalId);
+                if (originalComponent && originalComponent.mesh) {
+                    originalComponent.mesh.material.emissive.setHex(0x000000);
+                }
+            }
+            
             selectedComponent = null;
             
             // Entferne Preview
@@ -775,350 +1448,461 @@
                 item.classList.remove('selected');
             });
             
+            // Verstecke Options-Panel
+            const optionsPanel = document.getElementById('toolbox-options');
+            optionsPanel.classList.remove('active');
+            optionsPanel.innerHTML = '';
+            
+            // Kollabiere Toolbox
+            document.getElementById('toolbox').classList.remove('expanded');
+            
             updateStatus('Selektion aufgehoben');
         }
-        
-        // Entfernt: Modal-Editor nicht mehr benötigt - direkte Platzierung
 
-        // Building3D Viewer Klasse
-        class BuildingViewer {
-            constructor(containerId) {
-                this.container = document.getElementById(containerId);
-                this.wireframe = false;
-                this.editMode = false;
-                this.buildingData = {
-                    length: 10,
-                    width: 8,
-                    height: 2.5
-                };
-                this.components = []; // Array für alle Bauteile
-                this.selectedComponent = null; // Aktuell ausgewählte Komponente
-                this.init();
-            }
-            
-            init() {
-                debugLog('🏗️ Initialisiere 3D-Szene mit Tab-System...');
-                
-                this.scene = new THREE.Scene();
-                this.scene.background = new THREE.Color(0x87CEEB);
-                
-                this.camera = new THREE.PerspectiveCamera(
-                    75, 
-                    this.container.clientWidth / this.container.clientHeight, 
-                    0.1, 
-                    1000
-                );
-                this.camera.position.set(15, 10, 15);
-                
-                this.renderer = new THREE.WebGLRenderer({ antialias: true });
-                this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
-                this.container.appendChild(this.renderer.domElement);
-                
-                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
-                this.controls.enableDamping = true;
-                this.controls.dampingFactor = 0.1;
-                
-                this.setupLights();
-                this.createBuilding();
-                this.animate();
-                
-                window.addEventListener('resize', () => this.onWindowResize());
-                
-                debugLog('✅ 3D-Szene mit Tab-System erfolgreich initialisiert!');
-                updateStatus('3D-Szene mit Tabs aktiv');
-            }
-            
-            setupLights() {
-                const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
-                this.scene.add(ambientLight);
-                
-                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-                directionalLight.position.set(10, 10, 5);
-                this.scene.add(directionalLight);
-                
-                debugLog('💡 Beleuchtung eingerichtet');
-            }
-            
-            createBuilding() {
-                if (this.buildingGroup) {
-                    this.scene.remove(this.buildingGroup);
-                }
-                
-                this.buildingGroup = new THREE.Group();
-                
-                const { length, width, height } = this.buildingData;
-                
-                // Raster-Boden (20x20m mit 1x1m Raster)
-                const gridSize = 20;
-                const gridStep = 1;
-                const gridGeometry = new THREE.PlaneGeometry(gridSize, gridSize);
-                const gridMaterial = new THREE.MeshLambertMaterial({ 
-                    color: 0x666666, 
-                    transparent: true, 
-                    opacity: 0.8 
-                });
-                const gridFloor = new THREE.Mesh(gridGeometry, gridMaterial);
-                gridFloor.rotation.x = -Math.PI / 2;
-                gridFloor.position.y = -0.01; // Leicht unter dem Gebäude
-                this.buildingGroup.add(gridFloor);
-                
-                // Raster-Linien
-                const gridHelper = new THREE.GridHelper(gridSize, gridSize / gridStep, 0x888888, 0x444444);
-                gridHelper.position.y = 0;
-                this.buildingGroup.add(gridHelper);
-                
-                // Gebäude-Boden
-                const floorGeometry = new THREE.PlaneGeometry(length, width);
-                const floorMaterial = new THREE.MeshLambertMaterial({ color: 0xf0f0f0 });
-                const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-                floor.rotation.x = -Math.PI / 2;
-                floor.position.y = 0.01; // Leicht über dem Raster
-                this.buildingGroup.add(floor);
-                
-                // Wände
-                const wallMaterial = new THREE.MeshLambertMaterial({ color: 0xDDDDDD });
-                
-                // Südwand
-                const southWallGeometry = new THREE.BoxGeometry(length, height, 0.2);
-                const southWall = new THREE.Mesh(southWallGeometry, wallMaterial);
-                southWall.position.set(0, height/2, -width/2);
-                this.buildingGroup.add(southWall);
-                
-                // Nordwand
-                const northWall = new THREE.Mesh(southWallGeometry, wallMaterial);
-                northWall.position.set(0, height/2, width/2);
-                this.buildingGroup.add(northWall);
-                
-                // Westwand
-                const westWallGeometry = new THREE.BoxGeometry(0.2, height, width);
-                const westWall = new THREE.Mesh(westWallGeometry, wallMaterial);
-                westWall.position.set(-length/2, height/2, 0);
-                this.buildingGroup.add(westWall);
-                
-                // Ostwand
-                const eastWall = new THREE.Mesh(westWallGeometry, wallMaterial);
-                eastWall.position.set(length/2, height/2, 0);
-                this.buildingGroup.add(eastWall);
-                
-                // Dach
-                const roofGeometry = new THREE.PlaneGeometry(length + 0.5, width + 0.5);
-                const roofMaterial = new THREE.MeshLambertMaterial({ color: 0x8B0000 });
-                const roof = new THREE.Mesh(roofGeometry, roofMaterial);
-                roof.rotation.x = -Math.PI / 2;
-                roof.position.y = height;
-                this.buildingGroup.add(roof);
-                
-                this.scene.add(this.buildingGroup);
-                debugLog('🏠 Gebäude erstellt: ' + length + 'x' + width + 'x' + height);
-            }
-            
-            updateBuilding(length, width, height) {
-                this.buildingData = { length, width, height };
-                this.createBuilding();
-            }
-            
-            toggleWireframe() {
-                this.wireframe = !this.wireframe;
-                this.scene.traverse((child) => {
-                    if (child.isMesh) {
-                        child.material.wireframe = this.wireframe;
-                    }
-                });
-            }
-            
-            resetCamera() {
-                this.camera.position.set(15, 10, 15);
-                this.camera.lookAt(0, 0, 0);
-                this.controls.update();
-            }
-            
-            // Komponenten-Verwaltung
-            addComponent(component) {
-                // Generiere eindeutige ID
-                component.id = 'comp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                
-                // Füge zur Komponenten-Liste hinzu
-                this.components.push(component);
-                
-                // Erstelle 3D-Objekt
-                this.create3DComponent(component);
-                
-                debugLog('🔧 Komponente hinzugefügt: ' + component.name + ' (ID: ' + component.id + ')');
-                
-                // Aktualisiere UI-Liste
-                this.updateComponentsList();
-                
-                return component.id;
-            }
-            
-            create3DComponent(component) {
-                let mesh;
-                const { x, y, z } = component.position;
-                
-                switch(component.type) {
-                    case 'window':
-                        mesh = this.createWindowMesh(component);
-                        mesh.position.set(x, component.height/2, z);
-                        break;
-                        
-                    case 'door':
-                        mesh = this.createDoorMesh(component);
-                        mesh.position.set(x, component.height/2, z);
-                        break;
-                        
-                    case 'wall':
-                    case 'inner-wall':
-                        mesh = this.createWallMesh(component);
-                        mesh.position.set(x, component.height/2, z);
-                        break;
-                        
-                    case 'roof':
-                        mesh = this.createRoofMesh(component);
-                        mesh.position.set(x, this.buildingData.height + component.height/2, z);
-                        break;
-                        
-                    case 'floor':
-                        mesh = this.createFloorMesh(component);
-                        mesh.position.set(x, -component.height/2, z);
-                        break;
-                }
-                
-                if (mesh) {
-                    mesh.userData = { componentId: component.id, component: component };
-                    this.buildingGroup.add(mesh);
-                    component.mesh = mesh;
-                }
-            }
-            
-            createWindowMesh(component) {
-                const geometry = new THREE.BoxGeometry(component.width, component.height, 0.1);
-                const material = new THREE.MeshLambertMaterial({ 
-                    color: 0x87CEEB, 
-                    transparent: true, 
-                    opacity: 0.6 
-                });
-                return new THREE.Mesh(geometry, material);
-            }
-            
-            createDoorMesh(component) {
-                const geometry = new THREE.BoxGeometry(component.width, component.height, 0.1);
-                const material = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
-                return new THREE.Mesh(geometry, material);
-            }
-            
-            createWallMesh(component) {
-                const geometry = new THREE.BoxGeometry(component.width, component.height, 0.2);
-                const material = new THREE.MeshLambertMaterial({ color: 0xDDDDDD });
-                return new THREE.Mesh(geometry, material);
-            }
-            
-            createRoofMesh(component) {
-                const geometry = new THREE.BoxGeometry(component.width, component.height, component.width);
-                const material = new THREE.MeshLambertMaterial({ color: 0x8B0000 });
-                return new THREE.Mesh(geometry, material);
-            }
-            
-            createFloorMesh(component) {
-                const geometry = new THREE.BoxGeometry(component.width, component.height, component.width);
-                const material = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
-                return new THREE.Mesh(geometry, material);
-            }
-            
-            removeComponent(componentId) {
-                const componentIndex = this.components.findIndex(c => c.id === componentId);
-                if (componentIndex !== -1) {
-                    const component = this.components[componentIndex];
-                    
-                    // Entferne 3D-Objekt
-                    if (component.mesh) {
-                        this.buildingGroup.remove(component.mesh);
-                    }
-                    
-                    // Entferne aus Array
-                    this.components.splice(componentIndex, 1);
-                    
-                    debugLog('🗑️ Komponente entfernt: ' + component.name);
-                    this.updateComponentsList();
-                }
-            }
-            
-            updateComponentsList() {
-                // Erstelle Liste für Sidebar
-                const listHtml = this.components.map(comp => `
-                    <div class="component-list-item" data-id="${comp.id}" style="background: #404040; padding: 8px; margin: 4px 0; border-radius: 4px; cursor: pointer;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <strong>${comp.name}</strong><br>
-                                <small>U = ${comp.uValue} W/(m²·K)</small>
-                            </div>
-                            <button onclick="building3D.removeComponent('${comp.id}')" style="background: #ff4444; border: none; color: white; padding: 4px 8px; border-radius: 3px; cursor: pointer;">
-                                🗑️
-                            </button>
-                        </div>
-                    </div>
-                `).join('');
-                
-                // Aktualisiere Komponenten-Liste im Gebäude-Tab
-                const gebaudeTab = document.getElementById('gebaude-tab');
-                let componentsList = gebaudeTab.querySelector('.components-list');
-                
-                if (!componentsList) {
-                    componentsList = document.createElement('div');
-                    componentsList.className = 'components-list section';
-                    componentsList.innerHTML = '<h3 style="color: #4CAF50;">📦 Hinzugefügte Komponenten</h3>';
-                    gebaudeTab.appendChild(componentsList);
-                }
-                
-                // Ersetze den Inhalt nach dem Titel
-                const existingTitle = componentsList.querySelector('h3');
-                componentsList.innerHTML = existingTitle.outerHTML + listHtml;
-            }
-
-            animate() {
-                requestAnimationFrame(() => this.animate());
-                this.controls.update();
-                this.renderer.render(this.scene, this.camera);
-            }
-            
-            onWindowResize() {
-                this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
-                this.camera.updateProjectionMatrix();
-                this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
-            }
-            
-            toggleEditMode() {
-                this.editMode = !this.editMode;
-                debugLog('✏️ Edit Mode: ' + (this.editMode ? 'ON' : 'OFF'));
-                return this.editMode;
+        // Toolbox-Steuerung: Minimieren/Erweitern
+        function toggleToolboxExpansion() {
+            const toolbox = document.getElementById('toolbox');
+            if (!toolbox.classList.contains('expanded')) {
+                toolbox.classList.add('expanded');
+                debugLog('🧰 Toolbox erweitert');
             }
         }
         
-        // Initialisierung
-        document.addEventListener('DOMContentLoaded', function() {
-            debugLog('🚀 DOM loaded - energyOS Hauptanwendung');
+        function toggleToolboxMinimize() {
+            const toolbox = document.getElementById('toolbox');
+            const optionsPanel = document.getElementById('toolbox-options');
             
-            if (typeof THREE === 'undefined') {
-                debugLog('❌ THREE.js not loaded!');
-                updateStatus('❌ THREE.js Fehler');
-                return;
+            if (toolbox.classList.contains('minimized')) {
+                toolbox.classList.remove('minimized');
+                debugLog('🧰 Toolbox wiederhergestellt');
+            } else {
+                toolbox.classList.add('minimized');
+                toolbox.classList.remove('expanded');
+                optionsPanel.classList.remove('active');
+                clearSelection();
+                debugLog('🧰 Toolbox minimiert');
             }
-            debugLog('✅ THREE.js available (v' + THREE.REVISION + ')');
+        }
+        
+        function closeToolbox() {
+            const toolbox = document.getElementById('toolbox');
+            const optionsPanel = document.getElementById('toolbox-options');
             
-            try {
-                building3D = new BuildingViewer('building-3d');
-                debugLog('✅ energyOS erfolgreich initialisiert!');
-                debugLog('🎮 Alle Funktionen verfügbar: Tabs, 3D-Modellierung, Tests');
-                updateStatus('energyOS bereit');
-                
-                // Click-System initialisieren
-                initializeClickSystem();
-                debugLog('🖱️ Click-System aktiviert');
-                
-            } catch (error) {
-                debugLog('❌ Error: ' + error.message);
-                updateStatus('❌ Initialisierung fehlgeschlagen');
+            toolbox.style.display = 'none';
+            toolbox.classList.remove('expanded', 'minimized');
+            optionsPanel.classList.remove('active');
+            
+            // Bearbeitungsmodus beenden
+            if (building3D) {
+                building3D.exitEditMode();
             }
+            
+            // Button-Status zurücksetzen
+            const btn = document.getElementById('edit-mode-btn');
+            const icon = document.getElementById('edit-mode-icon');
+            if (btn && icon) {
+                btn.className = 'btn';
+                icon.textContent = '✏️';
+                btn.innerHTML = icon.outerHTML + ' Bearbeiten';
+            }
+            
+            clearSelection();
+            debugLog('🧰 Toolbox geschlossen, Bearbeitungsmodus beendet');
+        }
+
+        // Neue Toolbox-Funktionen
+        function expandNewToolbox() {
+            const toolbox = document.getElementById('new-toolbox');
+            const main = toolbox.querySelector('.new-toolbox-main');
+            const controls = toolbox.querySelector('.new-toolbox-controls');
+            
+            toolbox.classList.add('expanded');
+            main.style.display = 'block';
+            controls.style.display = 'flex';
+            
+            debugLog('🧰 Neue Toolbox erweitert');
+        }
+        
+        function minimizeNewToolbox() {
+            const toolbox = document.getElementById('new-toolbox');
+            const main = toolbox.querySelector('.new-toolbox-main');
+            const controls = toolbox.querySelector('.new-toolbox-controls');
+            const options = document.getElementById('new-toolbox-options');
+            
+            toolbox.classList.remove('expanded');
+            main.style.display = 'none';
+            controls.style.display = 'none';
+            options.style.display = 'none';
+            
+            debugLog('🧰 Neue Toolbox minimiert');
+        }
+        
+        function closeNewToolbox() {
+            const toolbox = document.getElementById('new-toolbox');
+            toolbox.style.display = 'none';
+            
+            // Bearbeitungsmodus beenden - versuche building3D falls verfügbar
+            if (building3D && building3D.exitEditMode) {
+                try {
+                    building3D.exitEditMode();
+                } catch(e) {
+                    console.warn('building3D.exitEditMode failed:', e);
+                }
+            }
+            
+            // Button-Status zurücksetzen
+            const btn = document.getElementById('edit-mode-btn');
+            const icon = document.getElementById('edit-mode-icon');
+            if (btn && icon) {
+                btn.className = 'btn';
+                icon.textContent = '✏️';
+                btn.innerHTML = icon.outerHTML + ' Bearbeiten';
+            }
+            
+            clearSelection();
+            debugLog('🧰 Neue Toolbox geschlossen');
+        }
+
+        // Toolbox Drag-Funktionalität
+        let isDragging = false;
+        let dragOffset = { x: 0, y: 0 };
+        
+        function initializeToolboxDrag() {
+            const toolbox = document.getElementById('toolbox');
+            const header = toolbox.querySelector('.toolbox-header');
+            
+            header.addEventListener('mousedown', startDragging);
+            document.addEventListener('mousemove', onDragging);
+            document.addEventListener('mouseup', stopDragging);
+        }
+        
+        function startDragging(e) {
+            if (e.target.classList.contains('toolbox-control-btn')) return; // Ignoriere Control-Buttons
+            
+            const toolbox = document.getElementById('toolbox');
+            const rect = toolbox.getBoundingClientRect();
+            
+            isDragging = true;
+            dragOffset.x = e.clientX - rect.left;
+            dragOffset.y = e.clientY - rect.top;
+            
+            toolbox.classList.add('dragging');
+            e.preventDefault();
+        }
+        
+        function onDragging(e) {
+            if (!isDragging) return;
+            
+            const toolbox = document.getElementById('toolbox');
+            const newX = e.clientX - dragOffset.x;
+            const newY = e.clientY - dragOffset.y;
+            
+            // Begrenze auf Bildschirmgrenzen
+            const maxX = window.innerWidth - toolbox.offsetWidth;
+            const maxY = window.innerHeight - toolbox.offsetHeight;
+            
+            const clampedX = Math.max(0, Math.min(newX, maxX));
+            const clampedY = Math.max(0, Math.min(newY, maxY));
+            
+            toolbox.style.left = clampedX + 'px';
+            toolbox.style.top = clampedY + 'px';
+            toolbox.style.right = 'auto';
+            toolbox.style.transform = 'none';
+        }
+        
+        function stopDragging() {
+            if (!isDragging) return;
+            
+            const toolbox = document.getElementById('toolbox');
+            toolbox.classList.remove('dragging');
+            isDragging = false;
+        }
+
+        // Force-Update der Toolbox-Styles (um Cache-Probleme zu umgehen)
+        function forceToolboxStyles() {
+            const toolbox = document.getElementById('toolbox');
+            if (toolbox) {
+                // Force neue Styles
+                toolbox.style.cssText = `
+                    position: fixed !important;
+                    right: 0 !important;
+                    top: 50% !important;
+                    transform: translateY(-50%) !important;
+                    width: 50px !important;
+                    background: linear-gradient(135deg, rgba(45, 45, 45, 0.95), rgba(35, 35, 35, 0.95)) !important;
+                    border: 1px solid #4CAF50 !important;
+                    border-right: none !important;
+                    border-radius: 15px 0 0 15px !important;
+                    box-shadow: -3px 0 15px rgba(0,0,0,0.4) !important;
+                    z-index: 1000 !important;
+                    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                    backdrop-filter: blur(8px) !important;
+                    overflow: visible !important;
+                    display: none !important;
+                `;
+                
+                debugLog('🧰 Toolbox-Styles forciert');
+            }
+        }
+
+        // Initialisierung beim Laden der Seite
+        window.addEventListener('load', function() {
+            debugLog('🚀 energyOS 3D-Gebäudemodellierung geladen');
+            updateStatus('Bereit');
+            
+            // Force neue Toolbox-Styles
+            forceToolboxStyles();
+            
+            // Initialisiere Toolbox-Drag-Funktionalität
+            initializeToolboxDrag();
+            
+            debugLog('🧰 Toolbox-Steuerung aktiviert (Drag & Drop, Minimieren, Schließen)');
+            
+            // 3D-Viewer initialisieren
+            if (typeof BuildingEditor !== 'undefined') {
+                building3D = new BuildingEditor('building-3d');
+                debugLog('✅ 3D-Viewer initialisiert');
+            } else {
+                debugLog('❌ BuildingEditor nicht verfügbar');
+                updateStatus('Fehler: 3D-Engine nicht geladen');
+            }
+            
+            // Toolbox Drag-Init
+            initializeToolboxDrag();
         });
+
+        // Edit-Sidebar Management
+        function openEditSidebar() {
+            const editSidebar = document.getElementById('edit-sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            
+            editSidebar.classList.add('active');
+            overlay.classList.add('active');
+            
+            debugLog('🏗️ Edit-Sidebar geöffnet');
+            updateStatus('Gebäude-Bearbeitung aktiv - Wählen Sie ein Bauteil aus');
+        }
+        
+        function closeEditSidebar() {
+            const editSidebar = document.getElementById('edit-sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const optionsPanel = document.getElementById('edit-options-panel');
+            
+            editSidebar.classList.remove('active');
+            overlay.classList.remove('active');
+            optionsPanel.style.display = 'none';
+            
+            // Bearbeitungsmodus beenden
+            const btn = document.getElementById('edit-mode-btn');
+            const icon = document.getElementById('edit-mode-icon');
+            if (btn && icon) {
+                btn.className = 'btn';
+                icon.textContent = '✏️';
+                btn.innerHTML = icon.outerHTML + ' Bearbeiten';
+            }
+            
+            // 3D-Engine Edit-Modus beenden falls verfügbar
+            if (building3D && building3D.exitEditMode) {
+                try {
+                    building3D.exitEditMode();
+                } catch(e) {
+                    console.warn('building3D.exitEditMode failed:', e);
+                }
+            }
+            
+            clearSelection();
+            debugLog('🏗️ Edit-Sidebar geschlossen');
+            updateStatus('Bearbeitungsmodus beendet');
+        }
+        
+        // Bauteil-Auswahl im Edit-Sidebar
+        function selectEditComponent(type, name) {
+            // Entferne vorherige Selektion
+            document.querySelectorAll('.edit-component-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            // Markiere gewähltes Element
+            event.target.closest('.edit-component-item').classList.add('selected');
+            
+            // Zeige Optionen-Panel
+            showEditComponentOptions(type, name);
+            
+            debugLog(`🔧 Bauteil ausgewählt: ${name} (${type})`);
+            updateStatus(`Bauteil ausgewählt: ${name} - Konfigurieren Sie die Eigenschaften`);
+        }
+        
+        // Zeige Bauteil-Optionen im Edit-Sidebar
+        function showEditComponentOptions(type, name) {
+            const optionsPanel = document.getElementById('edit-options-panel');
+            const optionsTitle = document.getElementById('edit-options-title');
+            const optionsContent = document.getElementById('edit-options-content');
+            
+            optionsTitle.innerHTML = `⚙️ ${name} - Optionen`;
+            
+            // Erstelle Optionen basierend auf Bauteil-Typ
+            const defaultOptions = {
+                name: name,
+                width: 1.0,
+                height: 2.5,
+                thickness: type.includes('wall') ? 0.2 : 0.1,
+                uValue: getDefaultUValue(type),
+                material: getDefaultMaterial(type),
+                rotation: { x: 0, y: 0, z: 0 }
+            };
+            
+            optionsContent.innerHTML = generateEditOptionsHTML(defaultOptions, type);
+            optionsPanel.style.display = 'block';
+            
+            // Scroll zu Optionen
+            optionsPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        
+        // Generiere HTML für Bauteil-Optionen
+               function generateEditOptionsHTML(options, type) {
+            return `
+                <!-- Name (ganz oben) -->
+                <div class="form-group">
+                    <label>📝 Name:</label>
+                    <input type="text" value="${options.name}" onchange="updateEditOption('name', this.value)" 
+                           style="width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; background: #333; color: white;">
+                </div>
+                
+                <!-- Größe in Metern -->
+                <div class="form-group">
+                    <label>📏 Abmessungen (in Metern):</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;">
+                        <div>
+                            <label style="font-size: 11px; color: #aaa;">Breite (m):</label>
+                            <input type="number" value="${options.width}" step="0.1" min="0.1" max="20" 
+                                   onchange="updateEditOption('width', this.value)"
+                                   style="width: 100%; padding: 6px; border: 1px solid #555; border-radius: 3px; background: #333; color: white; font-size: 12px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; color: #aaa;">Höhe (m):</label>
+                            <input type="number" value="${options.height}" step="0.1" min="0.1" max="10" 
+                                   onchange="updateEditOption('height', this.value)"
+                                   style="width: 100%; padding: 6px; border: 1px solid #555; border-radius: 3px; background: #333; color: white; font-size: 12px;">
+                        </div>
+                        ${type.includes('wall') || type.includes('floor') || type.includes('roof') ? `
+                        <div style="grid-column: 1 / -1;">
+                            <label style="font-size: 11px; color: #aaa;">Dicke (m):</label>
+                            <input type="number" value="${options.thickness}" step="0.01" min="0.05" max="1.0" 
+                                   onchange="updateEditOption('thickness', this.value)"
+                                   style="width: 100%; padding: 6px; border: 1px solid #555; border-radius: 3px; background: #333; color: white; font-size: 12px;">
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+                
+                <!-- U-Wert -->
+                <div class="form-group">
+                    <label>🌡️ U-Wert (W/m²K):</label>
+                    <input type="number" value="${options.uValue}" step="0.01" min="0.1" max="5.0" 
+                           onchange="updateEditOption('uValue', this.value)"
+                           style="width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; background: #333; color: white;">
+                </div>
+                
+                <!-- Rotation (manuelle Winkeleingabe) -->
+                <div class="form-group">
+                    <label>🔄 Rotation (Grad):</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 8px;">
+                        <div>
+                            <label style="font-size: 11px; color: #aaa;">X-Achse:</label>
+                            <input type="number" value="${options.rotation.x}" step="1" min="-360" max="360" 
+                                   onchange="updateEditRotation('x', this.value)"
+                                   style="width: 100%; padding: 4px; border: 1px solid #555; border-radius: 3px; background: #333; color: white; font-size: 11px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; color: #aaa;">Y-Achse:</label>
+                            <input type="number" value="${options.rotation.y}" step="1" min="-360" max="360" 
+                                   onchange="updateEditRotation('y', this.value)"
+                                   style="width: 100%; padding: 4px; border: 1px solid #555; border-radius: 3px; background: #333; color: white; font-size: 11px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; color: #aaa;">Z-Achse:</label>
+                            <input type="number" value="${options.rotation.z}" step="1" min="-360" max="360" 
+                                   onchange="updateEditRotation('z', this.value)"
+                                   style="width: 100%; padding: 4px; border: 1px solid #555; border-radius: 3px; background: #333; color: white; font-size: 11px;">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Material -->
+                <div class="form-group">
+                    <label>🧱 Material:</label>
+                    <select onchange="updateEditOption('material', this.value)" 
+                            style="width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; background: #333; color: white;">
+                        <option value="${options.material}" selected>${options.material}</option>
+                        <option value="Ziegel">Ziegel</option>
+                        <option value="Beton">Beton</option>
+                        <option value="Holz">Holz</option>
+                        <option value="Stahl">Stahl</option>
+                        <option value="Glas">Glas</option>
+                    </select>
+                </div>
+                
+                <!-- Aktionen -->
+                <div class="form-group">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+                        <button onclick="addEditComponent()" 
+                                style="padding: 10px; background: #4CAF50; border: none; border-radius: 5px; color: white; cursor: pointer;">
+                            ➕ Hinzufügen
+                        </button>
+                        <button onclick="previewEditComponent()" 
+                                style="padding: 10px; background: #2196F3; border: none; border-radius: 5px; color: white; cursor: pointer;">
+                            👁️ Vorschau
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Helper-Funktionen
+        function getDefaultUValue(type) {
+            const uValues = {
+                'wall': 0.24, 'inner-wall': 0.40,
+                'window': 1.1, 'door': 1.8,
+                'roof': 0.20, 'floor': 0.30,
+                'ceiling': 0.35
+            };
+            return uValues[type] || 1.0;
+        }
+        
+        function getDefaultMaterial(type) {
+            const materials = {
+                'wall': 'Ziegel', 'inner-wall': 'Gipskarton',
+                'window': 'Glas', 'door': 'Holz',
+                'roof': 'Ziegel', 'floor': 'Beton'
+            };
+            return materials[type] || 'Standard';
+        }
+        
+        // Optionen-Update-Funktionen
+        function updateEditOption(property, value) {
+            debugLog(`🔧 ${property} geändert auf: ${value}`);
+            // Hier später 3D-Update implementieren
+        }
+        
+        function updateEditRotation(axis, value) {
+            debugLog(`🔄 Rotation ${axis} geändert auf: ${value}°`);
+            // Hier später 3D-Update implementieren
+        }
+        
+        function addEditComponent() {
+            debugLog('➕ Bauteil wird hinzugefügt');
+            updateStatus('Bauteil hinzugefügt - Klicken Sie im 3D-Bereich zum Platzieren');
+        }
+        
+        function previewEditComponent() {
+            debugLog('👁️ Vorschau aktiviert');
+            updateStatus('Vorschau-Modus - Bewegen Sie die Maus über das Gebäude');
+        }
     </script>
+    
+    <!-- Lokale JavaScript-Dateien -->
+    <script src="{{ url_for('static', filename='js/building_viewer.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/building_editor.js') }}"></script>
+    
 </body>
 </html>
