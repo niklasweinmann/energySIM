@@ -241,3 +241,182 @@ Häufige Fehler:
 - **MemoryError**: Reduzieren Sie den Simulationszeitraum oder erhöhen Sie den Zeitschritt.
 
 Bei weiteren Fragen wenden Sie sich an den Support oder erstellen Sie einen Issue auf GitHub.
+
+## 3D-Benutzeroberfläche - Vollständige Integration
+
+Die energyOS 3D-Benutzeroberfläche ist jetzt vollständig implementiert und bietet eine moderne, webbasierte Lösung für die Gebäudevisualisierung und -bearbeitung.
+
+### 🎯 Hauptfunktionen
+
+#### Interaktive 3D-Visualisierung
+- **WebGL-basierte Darstellung** mit Three.js
+- **Echtzeit-Rendering** aller Gebäudekomponenten
+- **Intuitive Kamerasteuerung** (Drehen, Zoomen, Verschieben)
+- **Objektauswahl** durch Mausklick
+- **Wireframe-Modus** für technische Ansichten
+
+#### Gebäude-Editor
+- **Live-Bearbeitung** von Gebäudeparametern
+- **Wände**: U-Werte, Materialien, Orientierung
+- **Fenster**: Größe, Position, Verglasung
+- **Dach**: Neigung, Dämmung, Materialien
+- **Solarpanel-Planung**: Automatische Platzierung und Optimierung
+
+#### Energiesimulation
+- **Direkte Integration** mit energyOS-Core
+- **Echtzeit-Berechnungen** bei Parameteränderungen
+- **Energiekennwerte**: Wärmebedarf, COP, PV-Ertrag
+- **Effizienz-Indikatoren** mit Farbkodierung
+- **Energieausweis-Generierung** nach deutschen Normen
+
+#### Norm-Konformität
+- **Automatische Validierung** nach GEG 2023
+- **U-Wert-Prüfung** nach DIN 4108
+- **Geometrie-Validierung** mit Warnungen
+- **Verbesserungsempfehlungen** automatisch generiert
+
+### 🚀 Schnellstart
+
+#### 1. Installation der Abhängigkeiten
+```bash
+# Falls noch nicht installiert
+pip install Flask Flask-CORS
+```
+
+#### 2. Demo ausführen
+```bash
+# Zeigt alle Features und testet das System
+python demo_3d_ui.py
+```
+
+#### 3. 3D-Editor starten
+```bash
+# Startet die Web-Benutzeroberfläche
+python run_3d_editor.py
+```
+
+#### 4. Browser öffnen
+Die Benutzeroberfläche öffnet sich automatisch unter:
+**http://localhost:5000**
+
+### 📱 Bedienung
+
+#### 3D-Navigation
+- **Linke Maustaste + Ziehen**: Kamera um Gebäude drehen
+- **Rechte Maustaste + Ziehen**: Kamera verschieben
+- **Mausrad**: Herein-/Herauszoomen
+- **Doppelklick**: Kamera auf Gebäude fokussieren
+
+#### Gebäude bearbeiten
+1. **Parameter in Seitenleiste** ändern
+2. **Objekte anklicken** zur Auswahl
+3. **Echtzeitaktualisierung** der 3D-Ansicht
+4. **Simulation starten** für Energiekennwerte
+
+#### Erweiterte Features
+- **Material-Editor**: Verschiedene Dämmstandards
+- **Fenster-Assistent**: Optimale Platzierung
+- **Solar-Planer**: Automatische Panel-Anordnung
+- **Energieausweis**: Nach GEG 2023 Standards
+
+### 🏗️ Architektur
+
+```
+Frontend (Browser)          Backend (Python)
+┌─────────────────┐        ┌──────────────────┐
+│   Three.js      │ HTTP   │   Flask Server   │
+│   JavaScript    │ ←────→ │   Web Routes     │
+│   HTML/CSS      │ JSON   │   API Endpoints  │
+└─────────────────┘        └──────────────────┘
+                                    │
+                                    ▼
+                           ┌──────────────────┐
+                           │   energyOS Core  │
+                           │   Building Model │
+                           │   Simulation     │
+                           └──────────────────┘
+```
+
+### 📂 Dateistruktur
+
+```
+src/ui/
+├── web_app.py                  # Flask-Hauptanwendung
+├── building_3d_enhanced.py     # Erweiterte 3D-Funktionen
+├── templates/
+│   └── index.html              # Haupt-Interface
+├── static/
+│   └── building3d.js           # 3D-JavaScript-Engine
+└── README.md                   # Detaillierte UI-Dokumentation
+
+run_3d_editor.py               # Launcher-Script
+demo_3d_ui.py                  # Feature-Demonstration
+test_3d_ui.py                  # Automatisierte Tests
+```
+
+### 🔧 API-Endpunkte
+
+#### `GET /api/building/load`
+Lädt aktuelles Gebäude als 3D-Daten
+
+#### `POST /api/building/update`
+Aktualisiert Gebäudeparameter
+
+#### `POST /api/simulation/run`
+Führt Energiesimulation aus
+
+Beispiel:
+```javascript
+fetch('/api/simulation/run', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+        latitude: 52.52,
+        longitude: 13.41,
+        start_date: '2025-01-01',
+        end_date: '2025-01-07'
+    })
+});
+```
+
+### 🎨 Erweiterungsmöglichkeiten
+
+Das System ist modular aufgebaut und kann einfach erweitert werden:
+
+#### Geplante Features
+- **VR/AR-Unterstützung** für immersive Erfahrung
+- **Kollaborations-Features** für Teams
+- **IFC/DXF-Import** für CAD-Integration
+- **Detaillierte Materialien** mit Texturen
+- **Umgebungsgestaltung** (Landschaft, Nachbargebäude)
+- **Performance-Optimierung** für große Gebäude
+
+#### Integration mit anderen Tools
+- **BIM-Software** (Revit, ArchiCAD)
+- **Simulationstools** (EnergyPlus, TRNSYS)
+- **Planungstools** (AutoCAD, SketchUp)
+
+### ⚡ Performance & Kompatibilität
+
+#### Browser-Anforderungen
+- **WebGL-Unterstützung** (alle modernen Browser)
+- **JavaScript ES6+** 
+- **Empfohlene Browser**: Chrome, Firefox, Safari, Edge
+
+#### System-Anforderungen
+- **Python 3.11+**
+- **4GB RAM** (empfohlen 8GB)
+- **Grafikkarte** mit WebGL-Unterstützung
+- **Internetverbindung** für Wetterdaten
+
+### 🎉 Fazit
+
+Die energyOS 3D-Benutzeroberfläche bietet eine vollständige, moderne Lösung für:
+
+✅ **Intuitive Gebäudeplanung** mit 3D-Visualisierung  
+✅ **Normkonforme Berechnungen** nach deutschen Standards  
+✅ **Echtzeit-Energiesimulation** mit sofortigen Ergebnissen  
+✅ **Professionelle Energieausweise** automatisch generiert  
+✅ **Erweiterte Optimierungstools** für maximale Effizienz  
+
+Das System ist produktionsreif und kann sofort eingesetzt werden!

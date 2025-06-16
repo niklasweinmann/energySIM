@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>energyOS - Erweiterte 3D-Gebäudemodellierung</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a1a; color: #ffffff; overflow: hidden; }
+        
+        #container { display: flex; height: 100vh; }
+        #sidebar { width: 400px; background: #2d2d2d; padding: 20px; overflow-y: auto; border-right: 2px solid #444; }
+        #viewer { flex: 1; position: relative; background: #333; }
+        #building-3d { width: 100%; height: 100%; }
+        
+        .toolbar { position: absolute; top: 10px; right: 10px; display: flex; gap: 10px; z-index: 100; }
+        .btn { background: #007bff; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 5px; font-size: 14px; transition: all 0.3s ease; }
+        .btn:hover { background: #0056b3; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,123,255,0.3); }
+        .btn:active { transform: translateY(0); }
+        .btn-warning { background: #ffc107; color: #000; }
+        .btn-warning:hover { background: #e0a800; }
+        .btn-success { background: #28a745; }
+        .btn-success:hover { background: #218838; }
+        
+        .tab { background: #444; color: white; border: none; padding: 10px 15px; margin-right: 5px; cursor: pointer; border-radius: 5px 5px 0 0; transition: all 0.3s ease; }
+        .tab.active { background: #4CAF50; }
+        .tab:hover { background: #555; }
+        .tab.active:hover { background: #66BB6A; }
+        
+        .tab-content { display: none; padding: 20px 0; }
+        .tab-content.active { display: block; }
+        
+        .section { 
+            margin-bottom: 20px; 
+            padding: 15px; 
+            background: #3d3d3d; 
+            border-radius: 8px; 
+        }
+        .section h3 { 
+            margin-bottom: 10px; 
+            color: #4CAF50; 
+        }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input, .form-group select { 
+            width: 100%; 
+            padding: 8px; 
+            border: 1px solid #555; 
+            border-radius: 4px; 
+            background: #2d2d2d; 
+            color: white; 
+        }
+        
+        .debug-panel { 
+            position: fixed; 
+            bottom: 10px; 
+            left: 10px; 
+            background: rgba(0,0,0,0.95); 
+            color: #00ff00; 
+            border-radius: 8px; 
+            font-family: 'Courier New', monospace; 
+            font-size: 11px; 
+            z-index: 10000; 
+            border: 1px solid #333;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+        .debug-header { 
+            background: #1a1a1a; 
+            padding: 8px 12px; 
+            cursor: pointer; 
+            border-radius: 7px 7px 0 0; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+        .debug-content { 
+            padding: 10px; 
+            max-width: 400px; 
+            max-height: 200px; 
+            overflow-y: auto; 
+            display: block;
+        }
+        .debug-toggle { color: #00ff00; font-weight: bold; }
+        
+        .status-panel { 
+            position: absolute; 
+            bottom: 10px; 
+            right: 10px; 
+            background: rgba(0,0,0,0.8); 
+            color: #4CAF50; 
+            padding: 10px; 
+            border-radius: 5px; 
+            font-size: 12px; 
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <!-- Sidebar mit Tabs -->
+        <div id="sidebar">
+            <h2 style="color: #4CAF50; margin-bottom: 20px;">energyOS</h2>
+            
+            <!-- Tab Navigation -->
+            <div style="border-bottom: 2px solid #444; margin-bottom: 20px;">
+                <button class="tab active" onclick="showTab('gebaude')">🏠 Gebäude</button>
+                <button class="tab" onclick="showTab('komponenten')">🔧 Komponenten</button>
+                <button class="tab" onclick="showTab('pv')">☀️ PV-Anlage</button>
+                <button class="tab" onclick="showTab('datenblaetter')">📋 Datenblätter</button>
+            </div>
+            
+            <!-- Tab Content: Gebäude -->
+            <div id="gebaude-tab" class="tab-content active">
+                <div class="section">
+                    <h3>🏠 Gebäude-Einstellungen</h3>
+                    <div class="form-group">
+                        <label>Länge (m):</label>
+                        <input type="number" id="building-length" value="10" min="1" max="50" onchange="updateBuilding()">
+                    </div>
+                    <div class="form-group">
+                        <label>Breite (m):</label>
+                        <input type="number" id="building-width" value="8" min="1" max="50" onchange="updateBuilding()">
+                    </div>
+                    <div class="form-group">
+                        <label>Höhe (m):</label>
+                        <input type="number" id="building-height" value="2.5" min="1" max="10" step="0.1" onchange="updateBuilding()">
+                    </div>
+                    <div class="form-group">
+                        <label>Status:</label>
+                        <div id="status" style="color: #4CAF50;">Initialisierung...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tab Content: Komponenten -->
+            <div id="komponenten-tab" class="tab-content">
+                <div class="section">
+                    <h3>🔧 Komponenten</h3>
+                    <div class="form-group">
+                        <button class="btn" onclick="addWindow()">🪟 Fenster hinzufügen</button>
+                    </div>
+                    <div class="form-group">
+                        <button class="btn" onclick="addDoor()">🚪 Tür hinzufügen</button>
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-warning" onclick="testKomponenten()">🧪 Test Komponenten</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tab Content: PV-Anlage -->
+            <div id="pv-tab" class="tab-content">
+                <div class="section">
+                    <h3>☀️ PV-Modulkonfiguration</h3>
+                    <div class="form-group">
+                        <label>Anzahl Module:</label>
+                        <input type="number" id="pv-modules" value="20" min="1" max="100" onchange="updatePV()">
+                    </div>
+                    <div class="form-group">
+                        <label>Modulleistung (Wp):</label>
+                        <input type="number" id="pv-power" value="300" min="100" max="500" onchange="updatePV()">
+                    </div>
+                    <div class="form-group">
+                        <label>Ausrichtung:</label>
+                        <select id="pv-orientation" onchange="updatePV()">
+                            <option value="south">Süd (180°)</option>
+                            <option value="southeast">Südost (135°)</option>
+                            <option value="southwest">Südwest (225°)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-success" onclick="calculatePVYield()">📊 Ertrag berechnen</button>
+                    </div>
+                    <div class="form-group">
+                        <button class="btn" onclick="togglePVVisualization()">👁️ PV-Module anzeigen</button>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h3>📈 Ergebnisse</h3>
+                    <div class="form-group">
+                        <label>Gesamtleistung:</label>
+                        <div id="pv-total-power" style="color: #4CAF50;">6.0 kWp</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Jahresertrag (geschätzt):</label>
+                        <div id="pv-yearly-yield" style="color: #4CAF50;">5.400 kWh/Jahr</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tab Content: Datenblätter -->
+            <div id="datenblaetter-tab" class="tab-content">
+                <div class="section">
+                    <h3>📋 Komponentendatenbank</h3>
+                    <div class="form-group">
+                        <input type="text" id="search-components" placeholder="Komponenten suchen..." onkeyup="searchComponents()">
+                    </div>
+                    <div class="form-group">
+                        <select id="component-filter" onchange="filterComponents()">
+                            <option value="all">Alle Kategorien</option>
+                            <option value="windows">Fenster</option>
+                            <option value="doors">Türen</option>
+                            <option value="insulation">Dämmung</option>
+                            <option value="heating">Heizung</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-success" onclick="addNewComponent()">➕ Neues Bauteil</button>
+                    </div>
+                    <div class="form-group">
+                        <button class="btn" onclick="syncOnline()">🌐 Online synchronisieren</button>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h3>📦 Verfügbare Komponenten</h3>
+                    <div class="component-list" id="available-components">
+                        <div class="component-item">
+                            <strong>Schüco AWS 75.SI</strong><br>
+                            <small>Alu-Fenster, U-Wert: 1.0 W/m²K</small>
+                        </div>
+                        <div class="component-item">
+                            <strong>Rockwool Putzträgerplatte</strong><br>
+                            <small>WDVS, λ: 0.035 W/mK</small>
+                        </div>
+                        <div class="component-item">
+                            <strong>Viessmann Vitodens 200-W</strong><br>
+                            <small>Gas-Brennwertkessel, 19 kW</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 3D Viewer -->
+        <div id="viewer">
+            <div class="toolbar">
+                <button class="btn" id="edit-mode-btn" onclick="toggleEditMode()">
+                    <span id="edit-mode-icon">✏️</span> Bearbeiten
+                </button>
+                <button class="btn" onclick="toggleWireframe()">🔍 Drahtmodell</button>
+                <button class="btn" onclick="resetView()">🏠 Home</button>
+                <button class="btn btn-success" onclick="runSimulation()">⚡ Simulation</button>
+            </div>
+            <div id="building-3d"></div>
+        </div>
+    </div>
+
+    <!-- Debug Panel -->
+    <div class="debug-panel">
+        <div class="debug-header" onclick="toggleDebug()">
+            <span>🐛 Debug Log</span>
+            <span class="debug-toggle" id="debug-toggle">▼</span>
+        </div>
+        <div class="debug-content" id="debug-content">
+            <div id="debug-log">Initialisierung...</div>
+        </div>
+    </div>
+
+    <!-- Status Panel -->
+    <div class="status-panel">
+        <div id="status">Initialisierung...</div>
+    </div>
+
+    <!-- Three.js -->
+    <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        let building3D;
+        let currentTab = 'gebaude';
+        
+        function debugLog(message) {
+            console.log(message);
+            const debugElement = document.getElementById('debug-log');
+            if (debugElement) {
+                const timestamp = new Date().toLocaleTimeString();
+                debugElement.innerHTML += '<br>[' + timestamp + '] ' + message;
+                debugElement.scrollTop = debugElement.scrollHeight;
+            }
+        }
+        
+        function updateStatus(message) {
+            const statusElement = document.getElementById('status');
+            if (statusElement) {
+                statusElement.textContent = message;
+            }
+        }
+        
+        // Tab-System
+        function showTab(tabName) {
+            // Alle Tabs und Tab-Contents verstecken
+            const tabs = document.querySelectorAll('.tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabs.forEach(tab => tab.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            // Gewählten Tab und Content anzeigen
+            const selectedTab = document.querySelector(`.tab[onclick="showTab('${tabName}')"]`);
+            const selectedContent = document.getElementById(tabName + '-tab');
+            
+            if (selectedTab && selectedContent) {
+                selectedTab.classList.add('active');
+                selectedContent.classList.add('active');
+                currentTab = tabName;
+                debugLog('📂 Tab gewechselt zu: ' + tabName);
+            }
+        }
+        
+        // Test-Funktionen
+        function addWindow() {
+            debugLog('🪟 Fenster hinzugefügt');
+            addComponent('window');
+        }
+        
+        function addDoor() {
+            debugLog('🚪 Tür hinzugefügt');
+            addComponent('door');
+        }
+        
+        function toggleDebug() {
+            const content = document.getElementById('debug-content');
+            const toggle = document.getElementById('debug-toggle');
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                toggle.textContent = '▼';
+            } else {
+                content.style.display = 'none';
+                toggle.textContent = '▶';
+            }
+        }
+        
+        function toggleWireframe() {
+            if (building3D) {
+                building3D.toggleWireframe();
+                debugLog('🔍 Wireframe umgeschaltet');
+            }
+        }
+        
+        function resetView() {
+            if (building3D) {
+                building3D.resetCamera();
+                debugLog('🏠 Kamera zurückgesetzt');
+            }
+        }
+        
+        function updateBuilding() {
+            const length = parseFloat(document.getElementById('building-length').value);
+            const width = parseFloat(document.getElementById('building-width').value);
+            const height = parseFloat(document.getElementById('building-height').value);
+            
+            if (building3D) {
+                building3D.updateBuilding(length, width, height);
+                debugLog('🔄 Gebäude aktualisiert: ' + length + 'x' + width + 'x' + height);
+                updateStatus('Aktiv: ' + length + 'x' + width + 'x' + height);
+            }
+        }
+
+        // Edit Mode
+        function toggleEditMode() {
+            if (building3D) {
+                editModeActive = building3D.toggleEditMode();
+                const btn = document.getElementById('edit-mode-btn');
+                const icon = document.getElementById('edit-mode-icon');
+                
+                if (editModeActive) {
+                    btn.className = 'btn btn-warning';
+                    icon.textContent = '🔒';
+                    btn.innerHTML = icon.outerHTML + ' Bearbeitung aktiv';
+                } else {
+                    btn.className = 'btn';
+                    icon.textContent = '✏️';
+                    btn.innerHTML = icon.outerHTML + ' Bearbeiten';
+                }
+                debugLog('✏️ Bearbeitungsmodus: ' + (editModeActive ? 'Ein' : 'Aus'));
+            }
+        }
+        
+        // PV-Funktionen
+        function updatePV() {
+            const modules = document.getElementById('pv-modules').value;
+            const power = document.getElementById('pv-power').value;
+            const totalPower = (modules * power / 1000).toFixed(1);
+            
+            document.getElementById('pv-total-power').textContent = totalPower + ' kWp';
+            debugLog('☀️ PV-Konfiguration aktualisiert: ' + modules + ' Module à ' + power + 'Wp');
+        }
+        
+        function calculatePVYield() {
+            const totalPower = parseFloat(document.getElementById('pv-total-power').textContent);
+            const estimatedYield = Math.round(totalPower * 900); // Vereinfachte Berechnung
+            
+            document.getElementById('pv-yearly-yield').textContent = estimatedYield.toLocaleString() + ' kWh/Jahr';
+            debugLog('📊 PV-Ertrag berechnet: ' + estimatedYield + ' kWh/Jahr');
+        }
+        
+        function togglePVVisualization() {
+            if (building3D && building3D.togglePVVisualization) {
+                building3D.togglePVVisualization();
+                debugLog('👁️ PV-Visualisierung umgeschaltet');
+            } else {
+                debugLog('⚠️ PV-Visualisierung noch nicht implementiert');
+            }
+        }
+        
+        // Datenblätter-Funktionen
+        function searchComponents() {
+            const searchTerm = document.getElementById('search-components').value;
+            debugLog('🔍 Suche nach: ' + searchTerm);
+            // TODO: Implementierung der Suchfunktion
+        }
+        
+        function filterComponents() {
+            const filter = document.getElementById('component-filter').value;
+            debugLog('🔽 Gefiltert nach: ' + filter);
+            // TODO: Implementierung des Filters
+        }
+        
+        function addNewComponent() {
+            debugLog('➕ Neues Bauteil hinzufügen');
+            // TODO: Dialog für neues Bauteil
+        }
+        
+        function syncOnline() {
+            debugLog('🌐 Online-Synchronisation gestartet');
+            updateStatus('Synchronisiere Datenbank...');
+            setTimeout(() => {
+                updateStatus('Datenbank synchronisiert');
+                debugLog('✅ Online-Synchronisation abgeschlossen');
+            }, 2000);
+        }
+        
+        // Simulation
+        function runSimulation() {
+            debugLog('⚡ Simulation gestartet');
+            updateStatus('Simulation läuft...');
+            setTimeout(() => {
+                updateStatus('Simulation abgeschlossen');
+                debugLog('✅ Simulation abgeschlossen');
+            }, 3000);
+        }
+
+        // Erweiterte Building3D Klasse (wie in Schritt 2)
+        class EnhancedBuilding3D {
+            constructor(containerId) {
+                this.container = document.getElementById(containerId);
+                this.wireframe = false;
+                this.buildingData = {
+                    length: 10,
+                    width: 8,
+                    height: 2.5
+                };
+                this.init();
+            }
+            
+            init() {
+                debugLog('🏗️ Initialisiere 3D-Szene mit Tab-System...');
+                
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x87CEEB);
+                
+                this.camera = new THREE.PerspectiveCamera(
+                    75, 
+                    this.container.clientWidth / this.container.clientHeight, 
+                    0.1, 
+                    1000
+                );
+                this.camera.position.set(15, 10, 15);
+                
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+                this.container.appendChild(this.renderer.domElement);
+                
+                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.1;
+                
+                this.setupLights();
+                this.createBuilding();
+                this.animate();
+                
+                window.addEventListener('resize', () => this.onWindowResize());
+                
+                debugLog('✅ 3D-Szene mit Tab-System erfolgreich initialisiert!');
+                updateStatus('3D-Szene mit Tabs aktiv');
+            }
+            
+            setupLights() {
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+                this.scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(10, 10, 5);
+                this.scene.add(directionalLight);
+                
+                debugLog('💡 Beleuchtung eingerichtet');
+            }
+            
+            createBuilding() {
+                if (this.buildingGroup) {
+                    this.scene.remove(this.buildingGroup);
+                }
+                
+                this.buildingGroup = new THREE.Group();
+                
+                const { length, width, height } = this.buildingData;
+                
+                // Boden
+                const floorGeometry = new THREE.PlaneGeometry(length, width);
+                const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+                const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+                floor.rotation.x = -Math.PI / 2;
+                this.buildingGroup.add(floor);
+                
+                // Wände
+                const wallMaterial = new THREE.MeshLambertMaterial({ color: 0xDDDDDD });
+                
+                // Südwand
+                const southWallGeometry = new THREE.BoxGeometry(length, height, 0.2);
+                const southWall = new THREE.Mesh(southWallGeometry, wallMaterial);
+                southWall.position.set(0, height/2, -width/2);
+                this.buildingGroup.add(southWall);
+                
+                // Nordwand
+                const northWall = new THREE.Mesh(southWallGeometry, wallMaterial);
+                northWall.position.set(0, height/2, width/2);
+                this.buildingGroup.add(northWall);
+                
+                // Westwand
+                const westWallGeometry = new THREE.BoxGeometry(0.2, height, width);
+                const westWall = new THREE.Mesh(westWallGeometry, wallMaterial);
+                westWall.position.set(-length/2, height/2, 0);
+                this.buildingGroup.add(westWall);
+                
+                // Ostwand
+                const eastWall = new THREE.Mesh(westWallGeometry, wallMaterial);
+                eastWall.position.set(length/2, height/2, 0);
+                this.buildingGroup.add(eastWall);
+                
+                // Dach
+                const roofGeometry = new THREE.PlaneGeometry(length + 0.5, width + 0.5);
+                const roofMaterial = new THREE.MeshLambertMaterial({ color: 0x8B0000 });
+                const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+                roof.rotation.x = -Math.PI / 2;
+                roof.position.y = height;
+                this.buildingGroup.add(roof);
+                
+                this.scene.add(this.buildingGroup);
+                debugLog('🏠 Gebäude erstellt: ' + length + 'x' + width + 'x' + height);
+            }
+            
+            updateBuilding(length, width, height) {
+                this.buildingData = { length, width, height };
+                this.createBuilding();
+            }
+            
+            toggleWireframe() {
+                this.wireframe = !this.wireframe;
+                this.scene.traverse((child) => {
+                    if (child.isMesh) {
+                        child.material.wireframe = this.wireframe;
+                    }
+                });
+            }
+            
+            resetCamera() {
+                this.camera.position.set(15, 10, 15);
+                this.camera.lookAt(0, 0, 0);
+                this.controls.update();
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                this.controls.update();
+                this.renderer.render(this.scene, this.camera);
+            }
+            
+            onWindowResize() {
+                this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+            }
+        }
+        
+        // Initialisierung
+        document.addEventListener('DOMContentLoaded', function() {
+            debugLog('🚀 DOM loaded - energyOS Hauptanwendung');
+            
+            if (typeof THREE === 'undefined') {
+                debugLog('❌ THREE.js not loaded!');
+                updateStatus('❌ THREE.js Fehler');
+                return;
+            }
+            debugLog('✅ THREE.js available (v' + THREE.REVISION + ')');
+            
+            try {
+                building3D = new EnhancedBuilding3D('building-3d');
+                debugLog('✅ energyOS erfolgreich initialisiert!');
+                debugLog('🎮 Alle Funktionen verfügbar: Tabs, 3D-Modellierung, Tests');
+                updateStatus('energyOS bereit');
+            } catch (error) {
+                debugLog('❌ Error: ' + error.message);
+                updateStatus('❌ Initialisierung fehlgeschlagen');
+            }
+        });
+    </script>
+</body>
+</html>

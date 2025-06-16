@@ -100,3 +100,22 @@ Dieses Projekt ist unter der Creative Commons Attribution-NonCommercial 4.0 Inte
 Das bedeutet, dass Sie den Code frei verwenden, anpassen und teilen können, solange dies nicht für kommerzielle Zwecke geschieht.
 
 Siehe [LICENSE](LICENSE) für den vollständigen Lizenztext.
+
+## 3D-Benutzeroberfläche
+
+energyOS verfügt über eine moderne webbasierte 3D-Benutzeroberfläche für die Gebäudevisualisierung und -bearbeitung.
+
+### Starten der 3D-UI
+
+```bash
+python run_3d_editor.py
+```
+
+Die 3D-Benutzeroberfläche öffnet sich automatisch im Browser unter http://localhost:8080 und bietet:
+
+- **Interaktive 3D-Visualisierung** des Gebäudes
+- **Echtzeit-Bearbeitung** von Gebäudeparametern  
+- **Direkte Simulation** mit sofortigen Ergebnissen
+- **Energieeffizienz-Indikatoren** in Echtzeit
+
+Weitere Details finden Sie in der [3D-UI Dokumentation](src/ui/README.md).
