@@ -83,89 +83,6 @@
             display: block;
         }
         .debug-toggle { color: #00ff00; font-weight: bold; }
-        
-        /* Toolbox Styles - Neue Position: rechts */
-        .toolbox {
-            position: fixed;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(45, 45, 45, 0.95);
-            border: 2px solid #4CAF50;
-            border-radius: 10px;
-            padding: 15px;
-            z-index: 1000;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-            min-width: 180px;
-        }
-        
-        .toolbox-header {
-            color: #4CAF50;
-            font-weight: bold;
-            margin-bottom: 15px;
-            text-align: center;
-            border-bottom: 1px solid #555;
-            padding-bottom: 10px;
-        }
-        
-        .toolbox-category {
-            margin-bottom: 15px;
-        }
-        
-        .toolbox-category h4 {
-            color: #66BB6A;
-            font-size: 12px;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-        }
-        
-        .component-item {
-            background: #404040;
-            border: 1px solid #666;
-            border-radius: 6px;
-            padding: 10px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            text-align: center;
-        }
-        
-        .component-item:hover {
-            background: #4CAF50;
-            border-color: #66BB6A;
-            transform: translateX(-5px);
-        }
-        
-        .component-item.selected {
-            background: #FFA500;
-            border-color: #FFD700;
-            box-shadow: 0 0 10px rgba(255, 165, 0, 0.5);
-        }
-        
-        .component-name {
-            font-size: 12px;
-            font-weight: bold;
-        }
-        
-        /* 3D Preview Styles */
-        .preview-component {
-            opacity: 0.5;
-            pointer-events: none;
-        }
-        
-        .toolbox-toggle {
-            position: fixed;
-            right: 10px;
-            top: 20px;
-            background: #4CAF50;
-            border: none;
-            border-radius: 5px;
-            padding: 8px 12px;
-            color: white;
-            cursor: pointer;
-            z-index: 1001;
-            font-size: 12px;
-        }
     </style>
 </head>
 <body>
@@ -322,44 +239,6 @@
         </div>
     </div>
 
-    <!-- Toolbox (nur im Bearbeitungsmodus) -->
-    <div class="toolbox" id="toolbox" style="display: none;">
-        <div class="toolbox-header">🧰 Bauteile</div>
-        
-        <!-- Wände -->
-        <div class="toolbox-category">
-            <h4>Wände</h4>
-            <div class="component-item" data-component="wall" onclick="selectComponent('wall', 'Außenwand')">
-                <div class="component-name">Außenwand</div>
-            </div>
-            <div class="component-item" data-component="inner-wall" onclick="selectComponent('inner-wall', 'Innenwand')">
-                <div class="component-name">Innenwand</div>
-            </div>
-        </div>
-        
-        <!-- Fenster & Türen -->
-        <div class="toolbox-category">
-            <h4>Öffnungen</h4>
-            <div class="component-item" data-component="window" onclick="selectComponent('window', 'Fenster')">
-                <div class="component-name">Fenster</div>
-            </div>
-            <div class="component-item" data-component="door" onclick="selectComponent('door', 'Haustür')">
-                <div class="component-name">Haustür</div>
-            </div>
-        </div>
-        
-        <!-- Dach & Boden -->
-        <div class="toolbox-category">
-            <h4>Hülle</h4>
-            <div class="component-item" data-component="roof" onclick="selectComponent('roof', 'Dach')">
-                <div class="component-name">Dach</div>
-            </div>
-            <div class="component-item" data-component="floor" onclick="selectComponent('floor', 'Bodenplatte')">
-                <div class="component-name">Bodenplatte</div>
-            </div>
-        </div>
-    </div>
-
     <!-- Debug Panel -->
     <div class="debug-panel">
         <div class="debug-header" onclick="toggleDebug()">
@@ -472,19 +351,16 @@
                 const editModeActive = building3D.toggleEditMode();
                 const btn = document.getElementById('edit-mode-btn');
                 const icon = document.getElementById('edit-mode-icon');
-                const toolbox = document.getElementById('toolbox');
                 
                 if (editModeActive) {
                     btn.className = 'btn btn-warning';
                     icon.textContent = '🔒';
                     btn.innerHTML = icon.outerHTML + ' Bearbeitung aktiv';
-                    toolbox.style.display = 'block'; // Zeige Toolbox
                 } else {
                     btn.className = 'btn';
                     icon.textContent = '✏️';
                     btn.innerHTML = icon.outerHTML + ' Bearbeiten';
-                    toolbox.style.display = 'none'; // Verstecke Toolbox
-                    clearSelection(); // Lösche aktuelle Selektion
+                    clearSelection();
                 }
                 debugLog('✏️ Bearbeitungsmodus: ' + (editModeActive ? 'Ein' : 'Aus'));
             }
@@ -554,7 +430,7 @@
             }, 3000);
         }
 
-        // Entfernt: Toolbox-Toggle-Funktion nicht mehr benötigt
+        // Toolbox entfernt
         
         // Click-to-Select System
         let selectedComponent = null;

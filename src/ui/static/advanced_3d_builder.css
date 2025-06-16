@@ -1,14 +1,4 @@
-/* Advanced 3D Builder Styles */
-
-.advanced-toolbar {
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    user-select: none;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.advanced-toolbar.minimized .toolbar-content {
-    display: none;
-}
+/* Advanced 3D Builder Styles - Toolbox removed */
 
 .toolbar-header {
     background: linear-gradient(135deg, #4CAF50, #45a049);

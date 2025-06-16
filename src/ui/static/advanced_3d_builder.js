@@ -60,7 +60,6 @@ class Advanced3DBuilder {
         this.setupControls();
         this.setupLights();
         this.setupMaterials();
-        this.setupToolbar();
         this.setupEventListeners();
         this.createInitialBuilding();
         
@@ -249,207 +248,9 @@ class Advanced3DBuilder {
         this.scene.add(gridHelper);
     }
     
-    setupToolbar() {
-        // Create floating toolbar
-        this.toolbar = document.createElement('div');
-        this.toolbar.className = 'advanced-toolbar';
-        this.toolbar.innerHTML = `
-            <div class="toolbar-header">
-                <h3>🔧 Bauteile</h3>
-                <button class="minimize-btn" onclick="this.parentElement.parentElement.classList.toggle('minimized')">−</button>
-            </div>
-            <div class="toolbar-content">
-                <div class="tool-category">
-                    <h4>Struktur</h4>
-                    <div class="tool-item" data-tool="wall" draggable="true">
-                        <div class="tool-icon">🧱</div>
-                        <div class="tool-info">
-                            <div class="tool-name">Wand</div>
-                            <div class="tool-desc">U-Wert: 0.24 W/m²K</div>
-                        </div>
-                    </div>
-                    <div class="tool-item" data-tool="insulated-wall" draggable="true">
-                        <div class="tool-icon">🧱</div>
-                        <div class="tool-info">
-                            <div class="tool-name">Gedämmte Wand</div>
-                            <div class="tool-desc">U-Wert: 0.15 W/m²K</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="tool-category">
-                    <h4>Öffnungen</h4>
-                    <div class="tool-item" data-tool="window" draggable="true">
-                        <div class="tool-icon">🪟</div>
-                        <div class="tool-info">
-                            <div class="tool-name">Fenster</div>
-                            <div class="tool-desc">2-fach Verglasung</div>
-                        </div>
-                    </div>
-                    <div class="tool-item" data-tool="triple-window" draggable="true">
-                        <div class="tool-icon">🪟</div>
-                        <div class="tool-info">
-                            <div class="tool-name">3-fach Fenster</div>
-                            <div class="tool-desc">U-Wert: 0.8 W/m²K</div>
-                        </div>
-                    </div>
-                    <div class="tool-item" data-tool="door" draggable="true">
-                        <div class="tool-icon">🚪</div>
-                        <div class="tool-info">
-                            <div class="tool-name">Tür</div>
-                            <div class="tool-desc">Holztür</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="tool-category">
-                    <h4>Dach & Boden</h4>
-                    <div class="tool-item" data-tool="roof" draggable="true">
-                        <div class="tool-icon">🏠</div>
-                        <div class="tool-info">
-                            <div class="tool-name">Dach</div>
-                            <div class="tool-desc">Neigung: 30°</div>
-                        </div>
-                    </div>
-                    <div class="tool-item" data-tool="floor" draggable="true">
-                        <div class="tool-icon">⬜</div>
-                        <div class="tool-info">
-                            <div class="tool-name">Bodenplatte</div>
-                            <div class="tool-desc">Gedämmt</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        // Position toolbar
-        this.toolbar.style.cssText = `
-            position: fixed;
-            left: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(255, 255, 255, 0.95);
-            border: 2px solid #4CAF50;
-            border-radius: 12px;
-            padding: 0;
-            z-index: 1000;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            min-width: 280px;
-            max-height: 80vh;
-            overflow-y: auto;
-            backdrop-filter: blur(10px);
-        `;
-        
-        document.body.appendChild(this.toolbar);
-        
-        // Setup drag and drop
-        this.setupToolbarDragDrop();
-    }
+    // Tool selection and ghost mode moved to external toolbox
     
-    setupToolbarDragDrop() {
-        const toolItems = this.toolbar.querySelectorAll('.tool-item');
-        
-        toolItems.forEach(item => {
-            item.addEventListener('dragstart', (e) => {
-                const toolType = item.dataset.tool;
-                e.dataTransfer.setData('text/plain', toolType);
-                e.dataTransfer.effectAllowed = 'copy';
-                
-                // Start ghost object
-                this.startGhostMode(toolType);
-            });
-            
-            item.addEventListener('click', (e) => {
-                const toolType = item.dataset.tool;
-                this.selectTool(toolType);
-            });
-        });
-        
-        // Setup drop zone on canvas
-        this.renderer.domElement.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'copy';
-        });
-        
-        this.renderer.domElement.addEventListener('drop', (e) => {
-            e.preventDefault();
-            const toolType = e.dataTransfer.getData('text/plain');
-            this.handleDrop(e, toolType);
-        });
-    }
-    
-    selectTool(toolType) {
-        this.selectedTool = toolType;
-        this.startGhostMode(toolType);
-        
-        // Update cursor
-        this.renderer.domElement.style.cursor = 'crosshair';
-        
-        // Visual feedback
-        this.showToolInstructions(toolType);
-    }
-    
-    startGhostMode(toolType) {
-        // Remove existing ghost
-        if (this.ghostObject) {
-            this.scene.remove(this.ghostObject);
-            this.ghostObject = null;
-        }
-        
-        // Create new ghost object
-        this.ghostObject = this.createGhostObject(toolType);
-        if (this.ghostObject) {
-            this.scene.add(this.ghostObject);
-        }
-        
-        // Update snap targets
-        this.updateSnapTargets();
-    }
-    
-    createGhostObject(toolType) {
-        let geometry, material;
-        
-        switch (toolType) {
-            case 'wall':
-            case 'insulated-wall':
-                geometry = new THREE.BoxGeometry(4, 2.5, 0.2);
-                material = this.materials.ghost.clone();
-                material.color.setHex(0x00ff00);
-                break;
-                
-            case 'window':
-            case 'triple-window':
-                geometry = new THREE.BoxGeometry(1.2, 1.5, 0.1);
-                material = this.materials.ghost.clone();
-                material.color.setHex(0x0088ff);
-                break;
-                
-            case 'door':
-                geometry = new THREE.BoxGeometry(1, 2.1, 0.1);
-                material = this.materials.ghost.clone();
-                material.color.setHex(0x8B4513);
-                break;
-                
-            case 'roof':
-                geometry = new THREE.BoxGeometry(12, 0.3, 12);
-                material = this.materials.ghost.clone();
-                material.color.setHex(0x8B0000);
-                break;
-                
-            case 'floor':
-                geometry = new THREE.BoxGeometry(10, 0.2, 10);
-                material = this.materials.ghost.clone();
-                material.color.setHex(0x8B4513);
-                break;
-                
-            default:
-                return null;
-        }
-        
-        const ghost = new THREE.Mesh(geometry, material);
-        ghost.userData = { type: 'ghost', toolType: toolType };
-        return ghost;
-    }
+    // Ghost object creation moved to external toolbox
     
     setupEventListeners() {
         // Mouse events
@@ -985,14 +786,7 @@ class Advanced3DBuilder {
         return 'component_' + Math.random().toString(36).substr(2, 9);
     }
     
-    showToolInstructions(toolType) {
-        // Show contextual instructions
-        console.log(`🎯 Tool selected: ${toolType}`);
-    }
-    
-    hideToolInstructions() {
-        // Hide instructions
-    }
+    // Tool instructions removed - handled by external toolbox
     
     showPlacementFeedback(toolType, position) {
         console.log(`✅ ${toolType} placed at`, position);
@@ -1012,10 +806,7 @@ class Advanced3DBuilder {
         }
     }
     
-    handleDrop(event, toolType) {
-        this.selectTool(toolType);
-        // The ghost object will be positioned by mouse move
-    }
+    // Drop handling removed - external toolbox responsibility
     
     toggleGrid() {
         // Toggle grid visibility
@@ -1095,3 +886,8 @@ document.addEventListener('DOMContentLoaded', () => {
         window.advanced3DBuilder = new Advanced3DBuilder('building-3d');
     }
 });
+
+// Core functions for external toolboxes
+window.getBuilderInstance = function() {
+    return window.advanced3DBuilder;
+};
