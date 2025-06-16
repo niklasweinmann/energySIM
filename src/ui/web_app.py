@@ -6,7 +6,7 @@ Erweiterte Web-App für detaillierte Gebäudemodellierung mit allen Bauteilen,
 U-Werten und Heizkörpern nach deutschen Normen.
 """
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect
 from flask_cors import CORS
 import sys
 import json
@@ -824,6 +824,351 @@ class Building3DManager:
         
         return recommendations
 
+    def save_building_from_3d(self, building_data):
+        """Speichert 3D-Gebäude-Daten in den Building Manager"""
+        try:
+            # Erstelle neue Building-ID
+            building_id = f"3d_building_{len(self.simulation_results) + 1}"
+            
+            # Konvertiere 3D-Komponenten zu Building-Objekten
+            components = building_data.get('components', [])
+            
+            # Initialisiere Gebäudedaten
+            building_components = {
+                'walls': [],
+                'windows': [],
+                'doors': [],
+                'roof': None,
+                'floor': None,
+                'heating_elements': []
+            }
+            
+            # Verarbeite jede Komponente
+            for component in components:
+                component_type = component.get('type')
+                properties = component.get('properties', {})
+                position = component.get('position', [0, 0, 0])
+                
+                if component_type == 'wall':
+                    wall = self._create_wall_from_3d(component, properties, position)
+                    building_components['walls'].append(wall)
+                
+                elif component_type == 'window':
+                    window = self._create_window_from_3d(component, properties, position)
+                    building_components['windows'].append(window)
+                
+                elif component_type == 'door':
+                    door = self._create_door_from_3d(component, properties, position)
+                    building_components['doors'].append(door)
+                
+                elif component_type == 'roof':
+                    roof = self._create_roof_from_3d(component, properties, position)
+                    building_components['roof'] = roof
+                
+                elif component_type == 'floor':
+                    floor = self._create_floor_from_3d(component, properties, position)
+                    building_components['floor'] = floor
+            
+            # Speichere in simulation_results
+            self.simulation_results[building_id] = {
+                'building_data': building_components,
+                'metadata': {
+                    'created': building_data.get('metadata', {}).get('created'),
+                    'source': '3D_Builder',
+                    'version': '1.0'
+                }
+            }
+            
+            self.current_building_id = building_id
+            return building_id
+            
+        except Exception as e:
+            raise Exception(f"Fehler beim Speichern des 3D-Gebäudes: {str(e)}")
+    
+    def _create_wall_from_3d(self, component, properties, position):
+        """Erstellt DetailedWall aus 3D-Komponentendaten"""
+        # Bestimme Wandaufbau basierend auf U-Wert
+        u_value = properties.get('uValue', 0.24)
+        
+        if u_value <= 0.15:
+            # Passivhaus-Standard
+            layers = [
+                Layer(self.building_manager.standard_materials["plaster_internal"], 0.015),
+                Layer(self.building_manager.standard_materials["brick"], 0.175),
+                Layer(self.building_manager.standard_materials["insulation_mineral_wool"], 0.20),
+                Layer(self.building_manager.standard_materials["plaster_external"], 0.02)
+            ]
+        elif u_value <= 0.25:
+            # Gut gedämmt
+            layers = [
+                Layer(self.building_manager.standard_materials["plaster_internal"], 0.015),
+                Layer(self.building_manager.standard_materials["brick"], 0.175),
+                Layer(self.building_manager.standard_materials["insulation_eps"], 0.14),
+                Layer(self.building_manager.standard_materials["plaster_external"], 0.02)
+            ]
+        else:
+            # Standard
+            layers = [
+                Layer(self.building_manager.standard_materials["plaster_internal"], 0.015),
+                Layer(self.building_manager.standard_materials["brick"], 0.175),
+                Layer(self.building_manager.standard_materials["insulation_eps"], 0.08),
+                Layer(self.building_manager.standard_materials["plaster_external"], 0.02)
+            ]
+        
+        wall = DetailedWall(
+            name=f"Wand_{component.get('id', 'unknown')}",
+            area=properties.get('width', 4) * properties.get('height', 2.5),
+            height=properties.get('height', 2.5),
+            orientation=self._determine_orientation(position),
+            layers=layers,
+            position=Position3D(position[0], position[1], position[2], 0, 0, 0),
+            is_external=True
+        )
+        
+        return wall
+    
+    def _create_window_from_3d(self, component, properties, position):
+        """Erstellt DetailedWindow aus 3D-Komponentendaten"""
+        glazing_type = properties.get('glazing', 'double')
+        
+        window = DetailedWindow(
+            name=f"Fenster_{component.get('id', 'unknown')}",
+            area=properties.get('width', 1.2) * properties.get('height', 1.5),
+            width=properties.get('width', 1.2),
+            height=properties.get('height', 1.5),
+            u_value=properties.get('uValue', 1.3),
+            g_value=properties.get('gValue', 0.6),
+            orientation=self._determine_orientation(position),
+            glazing_type=glazing_type,
+            position=Position3D(position[0], position[1], position[2], 0, 0, 0),
+            is_openable=True
+        )
+        
+        return window
+    
+    def _create_door_from_3d(self, component, properties, position):
+        """Erstellt DetailedDoor aus 3D-Komponentendaten"""
+        door = DetailedDoor(
+            name=f"Tür_{component.get('id', 'unknown')}",
+            area=properties.get('width', 1.0) * properties.get('height', 2.1),
+            width=properties.get('width', 1.0),
+            height=properties.get('height', 2.1),
+            u_value=properties.get('uValue', 2.0),
+            orientation=self._determine_orientation(position),
+            door_type="entrance",
+            material=properties.get('material', 'wood'),
+            position=Position3D(position[0], position[1], position[2], 0, 0, 0),
+            is_main_entrance=True
+        )
+        
+        return door
+    
+    def _create_roof_from_3d(self, component, properties, position):
+        """Erstellt DetailedRoof aus 3D-Komponentendaten"""
+        roof = DetailedRoof(
+            name=f"Dach_{component.get('id', 'unknown')}",
+            area=100.0,  # Wird dynamisch berechnet
+            u_value=properties.get('uValue', 0.20),
+            tilt=properties.get('tilt', 30),
+            orientation="S",
+            roof_type="pitched",
+            position=Position3D(position[0], position[1], position[2], 0, 0, 0),
+            pv_suitable=True,
+            pv_area_available=80.0
+        )
+        
+        return roof
+    
+    def _create_floor_from_3d(self, component, properties, position):
+        """Erstellt DetailedFloor aus 3D-Komponentendaten"""
+        floor = DetailedFloor(
+            name=f"Boden_{component.get('id', 'unknown')}",
+            area=100.0,  # Wird dynamisch berechnet
+            u_value=properties.get('uValue', 0.30),
+            floor_type="concrete_slab",
+            ground_coupling=True,
+            position=Position3D(position[0], position[1], position[2], 0, 0, 0),
+            has_underfloor_heating=False
+        )
+        
+        return floor
+    
+    def _determine_orientation(self, position):
+        """Bestimmt Orientierung basierend auf Position"""
+        # Vereinfachte Logik - in der Praxis würde man die Rotation berücksichtigen
+        x, y, z = position
+        
+        if z < 0:
+            return "S"
+        elif z > 0:
+            return "N"
+        elif x > 0:
+            return "E"
+        else:
+            return "W"
+    
+    def load_building_for_3d(self, building_id):
+        """Lädt Gebäude-Daten für 3D-Darstellung"""
+        try:
+            if building_id not in self.simulation_results:
+                return None
+            
+            building_data = self.simulation_results[building_id]['building_data']
+            
+            # Konvertiere zu 3D-Format
+            result = {
+                'id': building_id,
+                'components': [],
+                'metadata': self.simulation_results[building_id]['metadata']
+            }
+            
+            # Konvertiere Wände
+            for wall in building_data.get('walls', []):
+                result['components'].append({
+                    'id': wall.name,
+                    'type': 'wall',
+                    'position': [wall.position.x, wall.position.y, wall.position.z],
+                    'properties': {
+                        'width': 4.0,  # Standardwerte
+                        'height': wall.height,
+                        'thickness': 0.3,
+                        'uValue': wall.calculate_u_value(),
+                        'orientation': wall.orientation
+                    }
+                })
+            
+            # Konvertiere Fenster
+            for window in building_data.get('windows', []):
+                result['components'].append({
+                    'id': window.name,
+                    'type': 'window',
+                    'position': [window.position.x, window.position.y, window.position.z],
+                    'properties': {
+                        'width': window.width,
+                        'height': window.height,
+                        'uValue': window.u_value,
+                        'gValue': window.g_value,
+                        'glazing': window.glazing_type
+                    }
+                })
+            
+            return result
+            
+        except Exception as e:
+            raise Exception(f"Fehler beim Laden des Gebäudes: {str(e)}")
+    
+    def calculate_thermal_performance(self, building_data):
+        """Berechnet thermische Performance des Gebäudes"""
+        try:
+            components = building_data.get('components', [])
+            
+            total_area = 0
+            total_heat_loss = 0
+            
+            # Berechne für jede Komponente
+            for component in components:
+                properties = component.get('properties', {})
+                
+                if component.get('type') in ['wall', 'window', 'door']:
+                    area = properties.get('width', 1) * properties.get('height', 1)
+                    u_value = properties.get('uValue', 1.0)
+                    
+                    total_area += area
+                    total_heat_loss += area * u_value
+            
+            avg_u_value = total_heat_loss / total_area if total_area > 0 else 0
+            
+            # Bestimme Energieklasse
+            if avg_u_value < 0.15:
+                energy_class = 'A+'
+            elif avg_u_value < 0.25:
+                energy_class = 'A'
+            elif avg_u_value < 0.35:
+                energy_class = 'B'
+            elif avg_u_value < 0.50:
+                energy_class = 'C'
+            else:
+                energy_class = 'D'
+            
+            return {
+                'total_area': round(total_area, 2),
+                'total_heat_loss': round(total_heat_loss, 2),
+                'average_u_value': round(avg_u_value, 3),
+                'energy_class': energy_class,
+                'estimated_heating_demand': round(total_heat_loss * 2000, 0)  # kWh/Jahr (vereinfacht)
+            }
+            
+        except Exception as e:
+            raise Exception(f"Fehler bei der Performance-Berechnung: {str(e)}")
+    
+    def validate_building(self, building_data):
+        """Validiert Gebäude nach deutschen Bauvorschriften"""
+        try:
+            validation_result = {
+                'is_valid': True,
+                'warnings': [],
+                'errors': [],
+                'recommendations': []
+            }
+            
+            components = building_data.get('components', [])
+            
+            # Prüfe Mindestanforderungen
+            walls = [c for c in components if c.get('type') == 'wall']
+            windows = [c for c in components if c.get('type') == 'window']
+            
+            # Fenster-Wand-Verhältnis prüfen
+            total_wall_area = sum(
+                c.get('properties', {}).get('width', 1) * c.get('properties', {}).get('height', 1)
+                for c in walls
+            )
+            total_window_area = sum(
+                c.get('properties', {}).get('width', 1) * c.get('properties', {}).get('height', 1)
+                for c in windows
+            )
+            
+            if total_wall_area > 0:
+                window_ratio = total_window_area / (total_wall_area + total_window_area)
+                
+                if window_ratio > 0.4:
+                    validation_result['warnings'].append(
+                        f"Fensterflächenanteil sehr hoch ({window_ratio:.1%}). Empfohlen: < 40%"
+                    )
+                elif window_ratio < 0.1:
+                    validation_result['warnings'].append(
+                        f"Fensterflächenanteil sehr niedrig ({window_ratio:.1%}). Empfohlen: 10-30%"
+                    )
+            
+            # U-Wert Prüfungen
+            for component in components:
+                properties = component.get('properties', {})
+                u_value = properties.get('uValue', 0)
+                comp_type = component.get('type')
+                
+                if comp_type == 'wall' and u_value > 0.28:
+                    validation_result['warnings'].append(
+                        f"Wand U-Wert ({u_value}) überschreitet EnEV-Anforderung (0.28 W/m²K)"
+                    )
+                elif comp_type == 'window' and u_value > 1.3:
+                    validation_result['warnings'].append(
+                        f"Fenster U-Wert ({u_value}) überschreitet EnEV-Anforderung (1.3 W/m²K)"
+                    )
+                elif comp_type == 'roof' and u_value > 0.20:
+                    validation_result['warnings'].append(
+                        f"Dach U-Wert ({u_value}) überschreitet EnEV-Anforderung (0.20 W/m²K)"
+                    )
+            
+            # Empfehlungen
+            if len(validation_result['warnings']) == 0:
+                validation_result['recommendations'].append(
+                    "Gebäude erfüllt alle Mindestanforderungen. Für Passivhaus-Standard weitere Optimierung möglich."
+                )
+            
+            return validation_result
+            
+        except Exception as e:
+            raise Exception(f"Fehler bei der Validierung: {str(e)}")
+
 # Global manager instance will be created on demand
 
 # Flask Routes
@@ -848,7 +1193,220 @@ def advanced():
     """Erweiterte Anwendung (Original)"""
     return render_template('index.html')
 
+# Route für 3D-Gebäudeeditor
+@app.route('/building-editor')
+def building_editor():
+    """Route für die 3D-Gebäudemodellierung"""
+    return render_template('building_editor.html')
 
+# Neue Route für erweiterten 3D-Builder (Fallback)
+@app.route('/advanced-3d-builder')
+def advanced_3d_builder():
+    """Route für die erweiterte 3D-Gebäudemodellierung (Redirect)"""
+    return redirect('/building-editor')
+
+@app.route('/api/3d-builder/components', methods=['GET'])
+def get_3d_components():
+    """API: Verfügbare 3D-Komponenten abrufen"""
+    try:
+        components = {
+            'walls': [
+                {
+                    'id': 'standard-wall',
+                    'name': 'Standard Wand',
+                    'type': 'wall',
+                    'u_value': 0.24,
+                    'thickness': 0.2,
+                    'thermal_quality': 'standard',
+                    'icon': '🧱'
+                },
+                {
+                    'id': 'insulated-wall',
+                    'name': 'Gedämmte Wand',
+                    'type': 'wall',
+                    'u_value': 0.15,
+                    'thickness': 0.3,
+                    'thermal_quality': 'good',
+                    'icon': '🧱'
+                },
+                {
+                    'id': 'passive-wall',
+                    'name': 'Passivhaus Wand',
+                    'type': 'wall',
+                    'u_value': 0.10,
+                    'thickness': 0.4,
+                    'thermal_quality': 'excellent',
+                    'icon': '🧱'
+                }
+            ],
+            'windows': [
+                {
+                    'id': 'double-window',
+                    'name': '2-fach Verglasung',
+                    'type': 'window',
+                    'u_value': 1.3,
+                    'g_value': 0.6,
+                    'glazing_type': 'double',
+                    'icon': '🪟'
+                },
+                {
+                    'id': 'triple-window',
+                    'name': '3-fach Verglasung',
+                    'type': 'window',
+                    'u_value': 0.8,
+                    'g_value': 0.5,
+                    'glazing_type': 'triple',
+                    'icon': '🪟'
+                }
+            ],
+            'doors': [
+                {
+                    'id': 'wood-door',
+                    'name': 'Holztür',
+                    'type': 'door',
+                    'u_value': 2.0,
+                    'material': 'wood',
+                    'icon': '🚪'
+                },
+                {
+                    'id': 'insulated-door',
+                    'name': 'Gedämmte Tür',
+                    'type': 'door',
+                    'u_value': 1.2,
+                    'material': 'insulated',
+                    'icon': '🚪'
+                }
+            ],
+            'roofs': [
+                {
+                    'id': 'standard-roof',
+                    'name': 'Standard Dach',
+                    'type': 'roof',
+                    'u_value': 0.20,
+                    'tilt': 30,
+                    'icon': '🏠'
+                },
+                {
+                    'id': 'insulated-roof',
+                    'name': 'Gedämmtes Dach',
+                    'type': 'roof',
+                    'u_value': 0.12,
+                    'tilt': 30,
+                    'icon': '🏠'
+                }
+            ]
+        }
+        
+        return jsonify({
+            'success': True,
+            'components': components
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/3d-builder/save-building', methods=['POST'])
+def save_3d_building():
+    """API: 3D-Gebäude speichern"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'Keine Daten empfangen'
+            }), 400
+        
+        # Validiere Gebäudedaten
+        building_data = data.get('building', {})
+        components = building_data.get('components', [])
+        
+        # Erstelle Building Manager
+        manager = create_building_manager()
+        
+        # Konvertiere und speichere Komponenten
+        building_id = manager.save_building_from_3d(building_data)
+        
+        return jsonify({
+            'success': True,
+            'building_id': building_id,
+            'message': 'Gebäude erfolgreich gespeichert'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/3d-builder/load-building/<building_id>', methods=['GET'])
+def load_3d_building(building_id):
+    """API: 3D-Gebäude laden"""
+    try:
+        manager = create_building_manager()
+        building_data = manager.load_building_for_3d(building_id)
+        
+        if not building_data:
+            return jsonify({
+                'success': False,
+                'error': 'Gebäude nicht gefunden'
+            }), 404
+        
+        return jsonify({
+            'success': True,
+            'building': building_data
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/3d-builder/calculate-performance', methods=['POST'])
+def calculate_3d_performance():
+    """API: Berechne thermische Performance des 3D-Gebäudes"""
+    try:
+        data = request.get_json()
+        building_data = data.get('building', {})
+        
+        manager = create_building_manager()
+        performance = manager.calculate_thermal_performance(building_data)
+        
+        return jsonify({
+            'success': True,
+            'performance': performance
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/3d-builder/validate-building', methods=['POST'])
+def validate_3d_building():
+    """API: Validiere 3D-Gebäude nach Normen"""
+    try:
+        data = request.get_json()
+        building_data = data.get('building', {})
+        
+        manager = create_building_manager()
+        validation_result = manager.validate_building(building_data)
+        
+        return jsonify({
+            'success': True,
+            'validation': validation_result
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @app.route('/api/building/load')
 def load_building():

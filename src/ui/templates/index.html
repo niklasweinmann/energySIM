@@ -84,10 +84,10 @@
         }
         .debug-toggle { color: #00ff00; font-weight: bold; }
         
-        /* Toolbox Styles */
+        /* Toolbox Styles - Neue Position: rechts */
         .toolbox {
             position: fixed;
-            left: 10px;
+            right: 10px;
             top: 50%;
             transform: translateY(-50%);
             background: rgba(45, 45, 45, 0.95);
@@ -96,7 +96,7 @@
             padding: 15px;
             z-index: 1000;
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-            min-width: 200px;
+            min-width: 180px;
         }
         
         .toolbox-header {
@@ -135,36 +135,23 @@
         .component-item:hover {
             background: #4CAF50;
             border-color: #66BB6A;
-            transform: translateX(5px);
+            transform: translateX(-5px);
         }
         
         .component-item:active {
             cursor: grabbing;
         }
         
-        .component-icon {
-            font-size: 16px;
-            width: 20px;
-            text-align: center;
-        }
-        
-        .component-info {
-            flex: 1;
-        }
-        
         .component-name {
-            font-size: 11px;
+            font-size: 12px;
             font-weight: bold;
-        }
-        
-        .component-uvalue {
-            font-size: 9px;
-            color: #aaa;
+            text-align: center;
+            width: 100%;
         }
         
         .toolbox-toggle {
             position: fixed;
-            left: 10px;
+            right: 10px;
             top: 20px;
             background: #4CAF50;
             border: none;
@@ -186,13 +173,22 @@
             <!-- Tab Navigation -->
             <div style="border-bottom: 2px solid #444; margin-bottom: 20px;">
                 <button class="tab active" onclick="showTab('gebaude')">🏠 Gebäude</button>
-                <button class="tab" onclick="showTab('komponenten')">🔧 Komponenten</button>
                 <button class="tab" onclick="showTab('pv')">☀️ PV-Anlage</button>
                 <button class="tab" onclick="showTab('datenblaetter')">📋 Datenblätter</button>
             </div>
             
             <!-- Tab Content: Gebäude -->
             <div id="gebaude-tab" class="tab-content active">
+                <div class="section">
+                    <h3>🏠 3D-Gebäudemodellierung</h3>
+                    <div class="form-group">
+                        <button class="btn" id="edit-mode-btn" onclick="toggleEditMode()">
+                            <span id="edit-mode-icon">✏️</span> Bearbeiten
+                        </button>
+                        <button class="btn" onclick="toggleToolbox()" style="margin-left: 10px;">🧰 Bauteile</button>
+                    </div>
+                </div>
+                
                 <div class="section">
                     <h3>🏠 Gebäude-Einstellungen</h3>
                     <div class="form-group">
@@ -212,12 +208,9 @@
                         <div id="status" style="color: #4CAF50;">Initialisierung...</div>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Tab Content: Komponenten -->
-            <div id="komponenten-tab" class="tab-content">
+                
                 <div class="section">
-                    <h3>🔧 Komponenten</h3>
+                    <h3>🔧 Bauteile & Komponenten</h3>
                     <div class="form-group">
                         <button class="btn" onclick="addWindow()">🪟 Fenster hinzufügen</button>
                     </div>
@@ -318,9 +311,6 @@
         <!-- 3D Viewer -->
         <div id="viewer">
             <div class="toolbar">
-                <button class="btn" id="edit-mode-btn" onclick="toggleEditMode()">
-                    <span id="edit-mode-icon">✏️</span> Bearbeiten
-                </button>
                 <button class="btn" onclick="toggleWireframe()">🔍 Drahtmodell</button>
                 <button class="btn" onclick="resetView()">🏠 Home</button>
                 <button class="btn btn-success" onclick="runSimulation()">⚡ Simulation</button>
@@ -334,62 +324,38 @@
 
     <!-- Toolbox -->
     <div class="toolbox" id="toolbox" style="display: none;">
-        <div class="toolbox-header">🧰 Bauteile-Toolbox</div>
+        <div class="toolbox-header">🧰 Bauteile</div>
         
         <!-- Wände -->
         <div class="toolbox-category">
-            <h4>🧱 Wände</h4>
-            <div class="component-item" draggable="true" data-component="wall" data-uvalue="0.20">
-                <span class="component-icon">🧱</span>
-                <div class="component-info">
-                    <div class="component-name">Außenwand</div>
-                    <div class="component-uvalue">U = 0.20 W/(m²·K)</div>
-                </div>
+            <h4>Wände</h4>
+            <div class="component-item" draggable="true" data-component="wall">
+                <div class="component-name">Außenwand</div>
             </div>
-            <div class="component-item" draggable="true" data-component="inner-wall" data-uvalue="2.50">
-                <span class="component-icon">🏢</span>
-                <div class="component-info">
-                    <div class="component-name">Innenwand</div>
-                    <div class="component-uvalue">U = 2.50 W/(m²·K)</div>
-                </div>
+            <div class="component-item" draggable="true" data-component="inner-wall">
+                <div class="component-name">Innenwand</div>
             </div>
         </div>
         
         <!-- Fenster & Türen -->
         <div class="toolbox-category">
-            <h4>🪟 Öffnungen</h4>
-            <div class="component-item" draggable="true" data-component="window" data-uvalue="1.10">
-                <span class="component-icon">🪟</span>
-                <div class="component-info">
-                    <div class="component-name">Fenster</div>
-                    <div class="component-uvalue">U = 1.10 W/(m²·K)</div>
-                </div>
+            <h4>Öffnungen</h4>
+            <div class="component-item" draggable="true" data-component="window">
+                <div class="component-name">Fenster</div>
             </div>
-            <div class="component-item" draggable="true" data-component="door" data-uvalue="1.80">
-                <span class="component-icon">🚪</span>
-                <div class="component-info">
-                    <div class="component-name">Haustür</div>
-                    <div class="component-uvalue">U = 1.80 W/(m²·K)</div>
-                </div>
+            <div class="component-item" draggable="true" data-component="door">
+                <div class="component-name">Haustür</div>
             </div>
         </div>
         
         <!-- Dach & Boden -->
         <div class="toolbox-category">
-            <h4>🏠 Hülle</h4>
-            <div class="component-item" draggable="true" data-component="roof" data-uvalue="0.15">
-                <span class="component-icon">🏠</span>
-                <div class="component-info">
-                    <div class="component-name">Dach</div>
-                    <div class="component-uvalue">U = 0.15 W/(m²·K)</div>
-                </div>
+            <h4>Hülle</h4>
+            <div class="component-item" draggable="true" data-component="roof">
+                <div class="component-name">Dach</div>
             </div>
-            <div class="component-item" draggable="true" data-component="floor" data-uvalue="0.25">
-                <span class="component-icon">⬛</span>
-                <div class="component-info">
-                    <div class="component-name">Bodenplatte</div>
-                    <div class="component-uvalue">U = 0.25 W/(m²·K)</div>
-                </div>
+            <div class="component-item" draggable="true" data-component="floor">
+                <div class="component-name">Bodenplatte</div>
             </div>
         </div>
     </div>
@@ -618,7 +584,6 @@
         function handleDragStart(e) {
             draggedComponent = {
                 type: e.target.dataset.component,
-                uValue: parseFloat(e.target.dataset.uvalue),
                 name: e.target.querySelector('.component-name').textContent
             };
             e.target.style.opacity = '0.5';
@@ -751,11 +716,12 @@
             cancelComponentEditor();
         }
 
-        // Erweiterte Building3D Klasse (wie in Schritt 2)
-        class EnhancedBuilding3D {
+        // Building3D Viewer Klasse
+        class BuildingViewer {
             constructor(containerId) {
                 this.container = document.getElementById(containerId);
                 this.wireframe = false;
+                this.editMode = false;
                 this.buildingData = {
                     length: 10,
                     width: 8,
@@ -818,11 +784,31 @@
                 
                 const { length, width, height } = this.buildingData;
                 
-                // Boden
+                // Raster-Boden (20x20m mit 1x1m Raster)
+                const gridSize = 20;
+                const gridStep = 1;
+                const gridGeometry = new THREE.PlaneGeometry(gridSize, gridSize);
+                const gridMaterial = new THREE.MeshLambertMaterial({ 
+                    color: 0x666666, 
+                    transparent: true, 
+                    opacity: 0.8 
+                });
+                const gridFloor = new THREE.Mesh(gridGeometry, gridMaterial);
+                gridFloor.rotation.x = -Math.PI / 2;
+                gridFloor.position.y = -0.01; // Leicht unter dem Gebäude
+                this.buildingGroup.add(gridFloor);
+                
+                // Raster-Linien
+                const gridHelper = new THREE.GridHelper(gridSize, gridSize / gridStep, 0x888888, 0x444444);
+                gridHelper.position.y = 0;
+                this.buildingGroup.add(gridHelper);
+                
+                // Gebäude-Boden
                 const floorGeometry = new THREE.PlaneGeometry(length, width);
-                const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+                const floorMaterial = new THREE.MeshLambertMaterial({ color: 0xf0f0f0 });
                 const floor = new THREE.Mesh(floorGeometry, floorMaterial);
                 floor.rotation.x = -Math.PI / 2;
+                floor.position.y = 0.01; // Leicht über dem Raster
                 this.buildingGroup.add(floor);
                 
                 // Wände
@@ -1011,19 +997,19 @@
                     </div>
                 `).join('');
                 
-                // Aktualisiere Komponenten-Tab
-                const komponentsTab = document.getElementById('komponenten-tab');
-                let componentsList = komponentsTab.querySelector('.components-list');
+                // Aktualisiere Komponenten-Liste im Gebäude-Tab
+                const gebaudeTab = document.getElementById('gebaude-tab');
+                let componentsList = gebaudeTab.querySelector('.components-list');
                 
                 if (!componentsList) {
                     componentsList = document.createElement('div');
-                    componentsList.className = 'components-list';
-                    componentsList.innerHTML = '<h4 style="color: #4CAF50; margin: 15px 0 10px 0;">📦 Hinzugefügte Komponenten</h4>';
-                    komponentsTab.appendChild(componentsList);
+                    componentsList.className = 'components-list section';
+                    componentsList.innerHTML = '<h3 style="color: #4CAF50;">📦 Hinzugefügte Komponenten</h3>';
+                    gebaudeTab.appendChild(componentsList);
                 }
                 
                 // Ersetze den Inhalt nach dem Titel
-                const existingTitle = componentsList.querySelector('h4');
+                const existingTitle = componentsList.querySelector('h3');
                 componentsList.innerHTML = existingTitle.outerHTML + listHtml;
             }
 
@@ -1037,6 +1023,12 @@
                 this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
                 this.camera.updateProjectionMatrix();
                 this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+            }
+            
+            toggleEditMode() {
+                this.editMode = !this.editMode;
+                debugLog('✏️ Edit Mode: ' + (this.editMode ? 'ON' : 'OFF'));
+                return this.editMode;
             }
         }
         
@@ -1052,7 +1044,7 @@
             debugLog('✅ THREE.js available (v' + THREE.REVISION + ')');
             
             try {
-                building3D = new EnhancedBuilding3D('building-3d');
+                building3D = new BuildingViewer('building-3d');
                 debugLog('✅ energyOS erfolgreich initialisiert!');
                 debugLog('🎮 Alle Funktionen verfügbar: Tabs, 3D-Modellierung, Tests');
                 updateStatus('energyOS bereit');

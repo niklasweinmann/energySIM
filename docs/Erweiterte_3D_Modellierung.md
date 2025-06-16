@@ -39,13 +39,13 @@ pip install Flask Flask-CORS numpy
 
 ### Erweiterte 3D-Anwendung starten
 ```bash
-python run_enhanced_3d_editor.py
+python run_building_editor.py
 ```
 → Öffnet automatisch http://localhost:8080
 
 ### Demo der Funktionen
 ```bash
-python demo_enhanced_3d.py
+python demo_building_editor.py
 ```
 
 ## 📱 Benutzeroberfläche
@@ -244,16 +244,16 @@ src/core/
 └── standards.py                     # Normen und Berechnungen
 
 src/ui/
-├── enhanced_web_app.py              # Erweiterte Flask-App
-├── templates/enhanced_index.html    # Web-Interface
-└── static/enhanced_building3d.js    # 3D-Visualisierung
+├── web_app.py                       # Flask-App
+├── templates/building_editor.html   # Web-Interface
+└── static/js/building_editor.js     # 3D-Visualisierung
 ```
 
 ### Neue Komponenten hinzufügen
 1. **Datenklasse** in `detailed_building_components.py`
-2. **3D-Darstellung** in `enhanced_building3d.js`
-3. **UI-Integration** in `enhanced_index.html`
-4. **API-Endpunkt** in `enhanced_web_app.py`
+2. **3D-Darstellung** in `building_editor.js`
+3. **UI-Integration** in `building_editor.html`
+4. **API-Endpunkt** in `web_app.py`
 
 ### Neue Materialien
 ```python

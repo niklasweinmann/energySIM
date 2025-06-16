@@ -1,0 +1,172 @@
+/* 3D Building Viewer Styles */
+
+.building-viewer {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.viewer-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* Viewer Controls */
+.viewer-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+}
+
+.viewer-btn {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(10px);
+}
+
+.viewer-btn:hover {
+    background: #4CAF50;
+    color: white;
+    border-color: #45a049;
+}
+
+.viewer-btn.active {
+    background: #4CAF50;
+    color: white;
+    border-color: #45a049;
+}
+
+/* Building Info Panel */
+.building-info {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 12px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 11px;
+    max-width: 300px;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+}
+
+.building-info.hidden {
+    display: none;
+}
+
+.info-header {
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #4CAF50;
+}
+
+.info-item {
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.info-label {
+    color: #ccc;
+}
+
+.info-value {
+    color: white;
+    font-weight: bold;
+}
+
+/* Loading Indicator */
+.viewer-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    z-index: 1000;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top: 3px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 12px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Error Display */
+.viewer-error {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #f44336;
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    z-index: 1000;
+    max-width: 400px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .viewer-controls {
+        top: 5px;
+        right: 5px;
+        gap: 4px;
+    }
+    
+    .viewer-btn {
+        padding: 6px 8px;
+        font-size: 11px;
+    }
+    
+    .building-info {
+        top: 5px;
+        left: 5px;
+        padding: 8px;
+        font-size: 10px;
+        max-width: 200px;
+    }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+    .viewer-btn {
+        border: 2px solid #000;
+        background: #fff;
+        color: #000;
+    }
+    
+    .viewer-btn:hover {
+        background: #000;
+        color: #fff;
+    }
+    
+    .building-info {
+        border: 2px solid #fff;
+    }
+}
