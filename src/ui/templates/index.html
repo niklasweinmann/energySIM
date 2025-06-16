@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>energyOS - 3D-Gebäudemodellierung</title>
+    <title>energyOS - Erweiterte 3D-Gebäudemodellierung</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a1a; color: #ffffff; overflow: hidden; }
@@ -428,7 +428,7 @@
         }
 
         // Erweiterte Building3D Klasse (wie in Schritt 2)
-        class Building3D {
+        class EnhancedBuilding3D {
             constructor(containerId) {
                 this.container = document.getElementById(containerId);
                 this.wireframe = false;
@@ -581,7 +581,7 @@
             debugLog('✅ THREE.js available (v' + THREE.REVISION + ')');
             
             try {
-                building3D = new Building3D('building-3d');
+                building3D = new EnhancedBuilding3D('building-3d');
                 debugLog('✅ energyOS erfolgreich initialisiert!');
                 debugLog('🎮 Alle Funktionen verfügbar: Tabs, 3D-Modellierung, Tests');
                 updateStatus('energyOS bereit');
