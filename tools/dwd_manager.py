@@ -8,7 +8,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.data_handlers.dwd_enhanced import DWDDataManager
+from src.data_handlers.dwd_weather import DWDDataManager
 import pandas as pd
 from datetime import datetime
 import argparse

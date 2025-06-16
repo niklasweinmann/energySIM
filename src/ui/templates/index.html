@@ -293,6 +293,193 @@
             border-color: #4CAF50;
         }
         
+        /* Bearbeitungsmodus-spezifisches Header */
+        .edit-mode-header {
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 10px 15px;
+            background: #333;
+            border-radius: 8px;
+            border: 2px solid #ff6b35;
+        }
+        
+        .edit-mode-header.active {
+            display: flex;
+        }
+        
+        .edit-mode-title {
+            color: #ff6b35;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .exit-edit-btn {
+            background: #ff6b35;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .exit-edit-btn:hover {
+            background: #e55a2b;
+            transform: translateY(-1px);
+        }
+        
+        /* 3D-Bearbeitungsmenü */
+        .edit-tools-menu {
+            display: none;
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #444;
+        }
+        
+        .edit-tools-menu.active {
+            display: block;
+        }
+        
+        .tool-section {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #333;
+        }
+        
+        .tool-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .tool-section h4 {
+            color: #4CAF50;
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .tool-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 8px;
+        }
+        
+        .tool-btn {
+            background: #333;
+            color: #ccc;
+            border: 1px solid #555;
+            padding: 8px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            text-align: center;
+            transition: all 0.2s ease;
+            min-height: 50px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+        }
+        
+        .tool-btn:hover {
+            background: #4CAF50;
+            color: white;
+            border-color: #66BB6A;
+            transform: translateY(-1px);
+        }
+        
+        .tool-btn.active {
+            background: #4CAF50;
+            color: white;
+            border-color: #66BB6A;
+        }
+        
+        .tool-icon {
+            font-size: 16px;
+        }
+        
+        .tool-name {
+            font-size: 9px;
+            line-height: 1.1;
+        }
+        
+        /* Parameter-Eingaben */
+        .param-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .param-input {
+            background: #333;
+            border: 1px solid #555;
+            color: #ccc;
+            padding: 6px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+        
+        .param-input:focus {
+            border-color: #4CAF50;
+            color: white;
+            outline: none;
+        }
+        
+        .param-input.default-value {
+            color: #777;
+            font-style: italic;
+        }
+        
+        .param-input.user-input {
+            color: white;
+            font-style: normal;
+        }
+        
+        .param-input::placeholder {
+            color: #666;
+        }
+        
+        /* Objekteigenschaften Panel */
+        .object-properties {
+            display: none;
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #444;
+        }
+        
+        .object-properties.active {
+            display: block;
+        }
+        
+        .prop-group {
+            margin-bottom: 12px;
+        }
+        
+        .prop-label {
+            color: #4CAF50;
+            font-size: 11px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        
+        .prop-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+        }
+        
         .menu-dropdown {
             position: absolute;
             top: 100%;
@@ -397,7 +584,8 @@
     <div id="container">
         <!-- Sidebar mit vereinfachtem Menü -->
         <div id="sidebar">
-            <div class="menu-header">
+            <!-- Normaler Modus Header -->
+            <div class="menu-header" id="normal-header">
                 <h2 style="color: #4CAF50;">energyOS</h2>
                 <div class="hamburger-menu">
                     <div class="current-tab-display" id="current-tab-display" onclick="toggleMenu()">
@@ -414,10 +602,146 @@
                 </div>
             </div>
             
-            <!-- Subtabs sind jetzt die Haupttabs (nur für Gebäude sichtbar) -->
-            <div class="main-tab-container" id="gebaude-main-tabs" style="display: block;">
-                <button class="main-tab active" id="gebaude-3d-tab" onclick="showMainTab('gebaude-3d')">🏗️ 3D-Gebäude</button>
-                <button class="main-tab" id="gebaude-karte-tab" onclick="showMainTab('gebaude-karte')">🗺️ Karte</button>
+            <!-- Bearbeitungsmodus Header -->
+            <div class="edit-mode-header" id="edit-header">
+                <div class="edit-mode-title">🛠️ Bearbeitungsmodus</div>
+                <button class="exit-edit-btn" onclick="exitEditMode()">Beenden</button>
+            </div>
+            
+            <!-- 3D-Bearbeitungstools -->
+            <div class="edit-tools-menu" id="edit-tools">
+                <!-- Bauteile -->
+                <div class="tool-section">
+                    <h4>Bauteile</h4>
+                    <div class="tool-grid">
+                        <button class="tool-btn" onclick="selectTool('wall')" data-tool="wall">
+                            <div class="tool-icon">🧱</div>
+                            <div class="tool-name">Wand</div>
+                        </button>
+                        <button class="tool-btn" onclick="selectTool('window')" data-tool="window">
+                            <div class="tool-icon">🪟</div>
+                            <div class="tool-name">Fenster</div>
+                        </button>
+                        <button class="tool-btn" onclick="selectTool('door')" data-tool="door">
+                            <div class="tool-icon">🚪</div>
+                            <div class="tool-name">Tür</div>
+                        </button>
+                        <button class="tool-btn" onclick="selectTool('roof')" data-tool="roof">
+                            <div class="tool-icon">🏠</div>
+                            <div class="tool-name">Dach</div>
+                        </button>
+                        <button class="tool-btn" onclick="selectTool('floor')" data-tool="floor">
+                            <div class="tool-icon">⬜</div>
+                            <div class="tool-name">Boden</div>
+                        </button>
+                    </div>
+                    
+                    <!-- Parameter für aktives Bauteil -->
+                    <div id="component-params" style="display: none;">
+                        <div class="param-grid">
+                            <input type="number" class="param-input" id="comp-width" placeholder="Breite (m)" step="0.1" value="3.0">
+                            <input type="number" class="param-input" id="comp-height" placeholder="Höhe (m)" step="0.1" value="2.5">
+                            <input type="number" class="param-input" id="comp-thickness" placeholder="Dicke (cm)" step="1" value="24">
+                            <input type="number" class="param-input" id="comp-uvalue" placeholder="U-Wert W/(m²·K)" step="0.01" value="0.20">
+                            <input type="text" class="param-input" id="comp-material" placeholder="Material" value="Mauerwerk">
+                            <input type="number" class="param-input" id="comp-insulation" placeholder="Dämmung (cm)" step="1" value="16">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Dachformen -->
+                <div class="tool-section">
+                    <h4>Dachformen</h4>
+                    <div class="tool-grid">
+                        <button class="tool-btn" onclick="selectRoofType('flat')" data-roof="flat">
+                            <div class="tool-icon">▬</div>
+                            <div class="tool-name">Flach</div>
+                        </button>
+                        <button class="tool-btn" onclick="selectRoofType('gable')" data-roof="gable">
+                            <div class="tool-icon">△</div>
+                            <div class="tool-name">Sattel</div>
+                        </button>
+                        <button class="tool-btn" onclick="selectRoofType('hip')" data-roof="hip">
+                            <div class="tool-icon">◬</div>
+                            <div class="tool-name">Walm</div>
+                        </button>
+                        <button class="tool-btn" onclick="selectRoofType('shed')" data-roof="shed">
+                            <div class="tool-icon">◢</div>
+                            <div class="tool-name">Pult</div>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Aktionen -->
+                <div class="tool-section">
+                    <h4>Aktionen</h4>
+                    <div class="tool-grid">
+                        <button class="tool-btn" onclick="duplicateObject()">
+                            <div class="tool-icon">📋</div>
+                            <div class="tool-name">Kopie</div>
+                        </button>
+                        <button class="tool-btn" onclick="deleteObject()">
+                            <div class="tool-icon">🗑️</div>
+                            <div class="tool-name">Löschen</div>
+                        </button>
+                        <button class="tool-btn" onclick="selectObject()">
+                            <div class="tool-icon">👆</div>
+                            <div class="tool-name">Wählen</div>
+                        </button>
+                        <button class="tool-btn" onclick="moveObject()">
+                            <div class="tool-icon">✋</div>
+                            <div class="tool-name">Bewegen</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Objekteigenschaften -->
+            <div class="object-properties" id="object-props">
+                <h4 style="color: #4CAF50; margin-bottom: 10px;">Objekteigenschaften</h4>
+                
+                <div class="prop-group">
+                    <div class="prop-label">Position (m)</div>
+                    <div class="prop-row">
+                        <input type="number" class="param-input" id="obj-pos-x" placeholder="X" step="0.1">
+                        <input type="number" class="param-input" id="obj-pos-y" placeholder="Y" step="0.1">
+                        <input type="number" class="param-input" id="obj-pos-z" placeholder="Z" step="0.1">
+                    </div>
+                </div>
+                
+                <div class="prop-group">
+                    <div class="prop-label">Rotation (°)</div>
+                    <div class="prop-row">
+                        <input type="number" class="param-input" id="obj-rot-x" placeholder="X" step="1" min="0" max="360">
+                        <input type="number" class="param-input" id="obj-rot-y" placeholder="Y" step="1" min="0" max="360">
+                        <input type="number" class="param-input" id="obj-rot-z" placeholder="Z" step="1" min="0" max="360">
+                    </div>
+                </div>
+                
+                <div class="prop-group">
+                    <div class="prop-label">Abmessungen (m)</div>
+                    <div class="prop-row">
+                        <input type="number" class="param-input" id="obj-size-x" placeholder="B" step="0.1">
+                        <input type="number" class="param-input" id="obj-size-y" placeholder="H" step="0.1">
+                        <input type="number" class="param-input" id="obj-size-z" placeholder="T" step="0.01">
+                    </div>
+                </div>
+                
+                <div class="prop-group">
+                    <div class="prop-label">Eigenschaften</div>
+                    <input type="number" class="param-input" id="obj-uvalue" placeholder="U-Wert [W/(m²·K)]" step="0.01" style="width: 100%; margin-bottom: 6px;">
+                    <input type="text" class="param-input" id="obj-material" placeholder="Material" style="width: 100%; margin-bottom: 6px;">
+                    <input type="number" class="param-input" id="obj-insulation" placeholder="Dämmstärke [cm]" step="1" style="width: 100%;">
+                </div>
+                
+                <!-- Norm-Parameter -->
+                <div class="prop-group">
+                    <div class="prop-label">GEG/DIN Normen</div>
+                    <div class="norm-info" id="norm-info">
+                        <small style="color: #888;">Max. U-Wert: <span id="max-uvalue">0.20</span> W/(m²·K)</small><br>
+                        <small style="color: #888;">Min. Dämmung: <span id="min-insulation">16</span> cm</small>
+                    </div>
+                </div>
             </div>
             
             <!-- Tab Content: Gebäude -->
@@ -1078,6 +1402,41 @@
                     enableAllTabs();
                 }
                 debugLog('✏️ Bearbeitungsmodus: ' + (editModeActive ? 'Ein' : 'Aus'));
+            }
+        }
+
+        // Exit Edit Mode - separater Button für Bearbeitungsmodus beenden
+        function exitEditMode() {
+            if (building3D && building3D.isEditMode()) {
+                building3D.toggleEditMode(); // Beendet den Edit-Modus
+                
+                const btn = document.getElementById('edit-mode-btn');
+                const icon = document.getElementById('edit-mode-icon');
+                const submenu = document.getElementById('edit-submenu');
+                
+                btn.className = 'btn';
+                icon.textContent = '✏️';
+                btn.innerHTML = icon.outerHTML + ' Bearbeiten';
+                submenu.classList.remove('active');
+                removeGhostPreview();
+                clearSelection();
+                
+                // Alle Tabs wieder aktivieren
+                enableAllTabs();
+                
+                debugLog('🔒 Bearbeitungsmodus beendet');
+                
+                // Optional: Python-Prozesse beenden (falls läuft)
+                fetch('/api/kill_processes', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            debugLog('🔄 Python-Prozesse erfolgreich beendet');
+                        }
+                    })
+                    .catch(error => {
+                        console.log('Info: Keine laufenden Prozesse gefunden');
+                    });
             }
         }
 
@@ -1877,6 +2236,87 @@
                 debugLog('✏️ Edit Mode: ' + (this.editMode ? 'ON' : 'OFF'));
                 return this.editMode;
             }
+        }
+        
+        // Bearbeitungstools - Norm-konforme Standards
+        const normStandards = {
+            wall: { uValue: 0.20, thickness: 24, insulation: 16, material: "Mauerwerk" },
+            window: { uValue: 1.0, thickness: 4, insulation: 0, material: "Dreifachverglasung" },
+            door: { uValue: 1.2, thickness: 6, insulation: 5, material: "Holz gedämmt" },
+            roof: { uValue: 0.16, thickness: 24, insulation: 20, material: "Dachstuhl" },
+            floor: { uValue: 0.25, thickness: 20, insulation: 14, material: "Stahlbeton" }
+        };
+        
+        function selectTool(toolType) {
+            const toolBtns = document.querySelectorAll('.tool-btn');
+            toolBtns.forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[data-tool="${toolType}"]`).classList.add('active');
+            
+            // Parameter-Felder einblenden und mit Normwerten füllen
+            const paramDiv = document.getElementById('component-params');
+            const normInfo = document.getElementById('norm-info');
+            
+            if (paramDiv && normStandards[toolType]) {
+                paramDiv.style.display = 'block';
+                const standards = normStandards[toolType];
+                
+                // Felder mit Normwerten vorausfüllen und als Standardwerte markieren
+                const inputs = {
+                    'comp-width': '3.0',
+                    'comp-height': '2.5', 
+                    'comp-thickness': standards.thickness,
+                    'comp-uvalue': standards.uValue,
+                    'comp-material': standards.material,
+                    'comp-insulation': standards.insulation
+                };
+                
+                Object.entries(inputs).forEach(([id, value]) => {
+                    const input = document.getElementById(id);
+                    if (input) {
+                        input.value = value;
+                        input.classList.add('default-value');
+                        input.classList.remove('user-input');
+                        
+                        // Event-Listener für Benutzereingaben
+                        input.addEventListener('input', function() {
+                            this.classList.remove('default-value');
+                            this.classList.add('user-input');
+                        });
+                    }
+                });
+                
+                // Norm-Info aktualisieren
+                if (normInfo) {
+                    document.getElementById('max-uvalue').textContent = standards.uValue;
+                    document.getElementById('min-insulation').textContent = standards.insulation;
+                }
+                
+                debugLog(`🔧 Tool gewählt: ${toolType} (U-Wert: ${standards.uValue})`);
+            }
+        }
+        
+        function selectRoofType(roofType) {
+            const roofBtns = document.querySelectorAll('[data-roof]'); 
+            roofBtns.forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[data-roof="${roofType}"]`).classList.add('active');
+            
+            debugLog(`🏠 Dachform gewählt: ${roofType}`);
+        }
+        
+        function duplicateObject() {
+            debugLog('📋 Objekt duplizieren');
+        }
+        
+        function deleteObject() {
+            debugLog('🗑️ Objekt löschen');
+        }
+        
+        function selectObject() {
+            debugLog('👆 Objekt auswählen');
+        }
+        
+        function moveObject() {
+            debugLog('✋ Objekt bewegen');
         }
         
         // Initialisierung

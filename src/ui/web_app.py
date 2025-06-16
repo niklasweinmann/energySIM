@@ -1664,6 +1664,28 @@ def get_energy_analysis():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route('/api/kill_processes', methods=['POST'])
+def kill_processes():
+    """Beendet laufende Python-Prozesse (für run.py)"""
+    import subprocess
+    try:
+        # Beende laufende run.py Prozesse
+        result = subprocess.run(['pkill', '-f', 'python.*run.py'], 
+                               capture_output=True, text=True)
+        
+        return jsonify({
+            "success": True,
+            "message": "Python-Prozesse erfolgreich beendet",
+            "return_code": result.returncode
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False, 
+            "error": str(e),
+            "message": "Fehler beim Beenden der Prozesse"
+        }), 500
+
 if __name__ == '__main__':
     # Enhanced Manager wird über create_building_manager() erstellt
     app.run(host='127.0.0.1', port=8080, debug=True)

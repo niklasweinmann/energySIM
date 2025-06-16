@@ -4,9 +4,9 @@ from typing import List, Optional, Tuple
 import pandas as pd
 import numpy as np
 import logging
-from .dwd_enhanced import DWDDataManager
+from .dwd_weather import DWDDataManager
 try:
-    from .dwd_enhanced import DWDRealDataManager
+    from .dwd_weather import DWDRealDataManager
     REAL_DWD_AVAILABLE = True
 except ImportError:
     REAL_DWD_AVAILABLE = False
