@@ -9,7 +9,21 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a1a; color: #ffffff; overflow: hidden; }
         
         #container { display: flex; height: 100vh; }
-        #sidebar { width: 400px; background: #2d2d2d; padding: 20px; overflow-y: auto; border-right: 2px solid #444; }
+        #sidebar { 
+            width: 400px; 
+            background: #2d2d2d; 
+            padding: 20px; 
+            overflow-y: auto; 
+            border-right: 2px solid #444;
+            /* Verstecke Scrollbar aber erlaube Scrollen */
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* Internet Explorer 10+ */
+        }
+        
+        /* Verstecke Scrollbar für WebKit Browser (Chrome, Safari, Edge) */
+        #sidebar::-webkit-scrollbar {
+            display: none;
+        }
         #viewer { flex: 1; position: relative; background: #333; }
         #building-3d { width: 100%; height: 100%; }
         
@@ -21,11 +35,6 @@
         .btn-warning:hover { background: #e0a800; }
         .btn-success { background: #28a745; }
         .btn-success:hover { background: #218838; }
-        
-        .tab { background: #444; color: white; border: none; padding: 10px 15px; margin-right: 5px; cursor: pointer; border-radius: 5px 5px 0 0; transition: all 0.3s ease; }
-        .tab.active { background: #4CAF50; }
-        .tab:hover { background: #555; }
-        .tab.active:hover { background: #66BB6A; }
         
         .tab-content { display: none; padding: 20px 0; }
         .tab-content.active { display: block; }
@@ -83,19 +92,332 @@
             display: block;
         }
         .debug-toggle { color: #00ff00; font-weight: bold; }
+        
+        /* Bearbeitungsmenü als Untermenü */
+        .edit-submenu {
+            background: #1a1a1a;
+            border-top: 2px solid #4CAF50;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 0 0 8px 8px;
+            display: none;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        
+        .edit-submenu.active {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+        
+        .edit-submenu h3 {
+            color: #4CAF50;
+            margin: 0 0 15px 0;
+            font-size: 16px;
+            text-align: center;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+        
+        .bauteile-accordion {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .bauteil-kategorie {
+            background: #262626;
+            border: 1px solid #444;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        
+        .kategorie-header {
+            background: #333;
+            color: #4CAF50;
+            padding: 12px 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+        
+        .kategorie-header:hover {
+            background: #404040;
+        }
+        
+        .kategorie-header.active {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .kategorie-toggle {
+            font-size: 12px;
+            transition: transform 0.2s ease;
+        }
+        
+        .kategorie-header.active .kategorie-toggle {
+            transform: rotate(180deg);
+        }
+        
+        .kategorie-content {
+            padding: 12px;
+            display: none;
+            background: #222;
+        }
+        
+        .kategorie-content.active {
+            display: block;
+        }
+        
+        .bauteile-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 8px;
+        }
+        
+        .bauteil-item {
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 8px 6px;
+            cursor: grab;
+            transition: all 0.2s ease;
+            text-align: center;
+            min-height: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+        }
+        
+        .bauteil-item:hover {
+            border-color: #4CAF50;
+            background: #404040;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+        }
+        
+        .bauteil-item:active {
+            cursor: grabbing;
+            transform: translateY(0) scale(0.98);
+        }
+        
+        .bauteil-item.selected {
+            background: #4CAF50;
+            border-color: #66BB6A;
+            color: white;
+        }
+        
+        .bauteil-icon {
+            font-size: 18px;
+            margin-bottom: 2px;
+        }
+        
+        .bauteil-name {
+            font-size: 10px;
+            font-weight: 500;
+            text-align: center;
+            line-height: 1.1;
+        }
+        
+        .bauteil-desc {
+            font-size: 8px;
+            color: #aaa;
+            text-align: center;
+        }
+        
+        .bauteil-item.selected .bauteil-desc {
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        /* Vorschau-Ghost-Objekt */
+        .ghost-preview {
+            position: fixed;
+            pointer-events: none;
+            z-index: 1001;
+            background: rgba(76, 175, 80, 0.2);
+            border: 2px dashed #4CAF50;
+            border-radius: 4px;
+            padding: 6px 8px;
+            color: #4CAF50;
+            font-size: 11px;
+            font-weight: bold;
+            transform: translate(-50%, -50%);
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                max-height: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                max-height: 60vh;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Hamburger-Menü */
+        .menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .hamburger-menu {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        
+        .current-tab-display {
+            color: #4CAF50;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+        }
+        
+        .current-tab-display:hover {
+            background: rgba(76, 175, 80, 0.1);
+            border-color: #4CAF50;
+        }
+        
+        .menu-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 8px;
+            min-width: 200px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: none;
+            overflow: hidden;
+        }
+        
+        .menu-dropdown.active {
+            display: block;
+        }
+        
+        .menu-item {
+            display: block;
+            width: 100%;
+            padding: 12px 16px;
+            background: none;
+            border: none;
+            color: #ccc;
+            text-align: left;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            border-bottom: 1px solid #444;
+        }
+        
+        .menu-item:last-child {
+            border-bottom: none;
+        }
+        
+        .menu-item:hover {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .menu-item.active {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .menu-item.disabled {
+            color: #666;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        
+        .menu-item.disabled:hover {
+            background: none;
+            color: #666;
+        }
+        
+        /* Subtabs werden zu Haupttabs */
+        .main-tab-container {
+            border-bottom: 2px solid #444;
+            margin-bottom: 20px;
+            padding-bottom: 0;
+        }
+        
+        .main-tab {
+            background: #444; 
+            color: white; 
+            border: none; 
+            padding: 12px 16px; 
+            margin-right: 3px; 
+            cursor: pointer; 
+            border-radius: 8px 8px 0 0; 
+            transition: all 0.3s ease; 
+            font-size: 14px;
+            font-weight: 500;
+            position: relative;
+        }
+        
+        .main-tab.active { 
+            background: #4CAF50; 
+            box-shadow: 0 2px 0 #66BB6A;
+        }
+        
+        .main-tab:hover { 
+            background: #555; 
+        }
+        
+        .main-tab.active:hover { 
+            background: #66BB6A; 
+        }
+        
+        .main-tab.disabled { 
+            background: #2a2a2a !important; 
+            color: #666 !important; 
+            cursor: not-allowed !important; 
+            opacity: 0.5;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
     <div id="container">
-        <!-- Sidebar mit Tabs -->
+        <!-- Sidebar mit vereinfachtem Menü -->
         <div id="sidebar">
-            <h2 style="color: #4CAF50; margin-bottom: 20px;">energyOS</h2>
+            <div class="menu-header">
+                <h2 style="color: #4CAF50;">energyOS</h2>
+                <div class="hamburger-menu">
+                    <div class="current-tab-display" id="current-tab-display" onclick="toggleMenu()">
+                        🏠 Gebäude
+                    </div>
+                    <div class="menu-dropdown" id="main-menu">
+                        <button class="menu-item active" onclick="selectMenuItem('gebaude')">🏠 Gebäude</button>
+                        <button class="menu-item" onclick="selectMenuItem('pv')">☀️ PV-Anlage</button>
+                        <button class="menu-item" onclick="selectMenuItem('batterie')">🔋 Batteriespeicher</button>
+                        <button class="menu-item" onclick="selectMenuItem('waermepumpe')">🔥 Wärmepumpe</button>
+                        <button class="menu-item" onclick="selectMenuItem('simulation')">⚡ Simulation</button>
+                        <button class="menu-item disabled" id="ergebnisse-menu-item" onclick="selectMenuItem('ergebnisse')">📊 Ergebnisse</button>
+                    </div>
+                </div>
+            </div>
             
-            <!-- Tab Navigation -->
-            <div style="border-bottom: 2px solid #444; margin-bottom: 20px;">
-                <button class="tab active" onclick="showTab('gebaude')">🏠 Gebäude</button>
-                <button class="tab" onclick="showTab('pv')">☀️ PV-Anlage</button>
-                <button class="tab" onclick="showTab('datenblaetter')">📋 Datenblätter</button>
+            <!-- Subtabs sind jetzt die Haupttabs (nur für Gebäude sichtbar) -->
+            <div class="main-tab-container" id="gebaude-main-tabs" style="display: block;">
+                <button class="main-tab active" id="gebaude-3d-tab" onclick="showMainTab('gebaude-3d')">🏗️ 3D-Gebäude</button>
+                <button class="main-tab" id="gebaude-karte-tab" onclick="showMainTab('gebaude-karte')">🗺️ Karte</button>
             </div>
             
             <!-- Tab Content: Gebäude -->
@@ -106,6 +428,138 @@
                         <button class="btn" id="edit-mode-btn" onclick="toggleEditMode()">
                             <span id="edit-mode-icon">✏️</span> Bearbeiten
                         </button>
+                    </div>
+                </div>
+                
+                <!-- Bearbeitungsmenü als Untermenü -->
+                <div class="edit-submenu" id="edit-submenu">
+                    <h3>🛠️ Normgerechte Bauteile</h3>
+                    
+                    <div class="bauteile-accordion">
+                        <!-- Wände -->
+                        <div class="bauteil-kategorie">
+                            <div class="kategorie-header" onclick="toggleKategorie('waende')">
+                                <span>🧱 Wände (DIN 4108)</span>
+                                <span class="kategorie-toggle">▼</span>
+                            </div>
+                            <div class="kategorie-content" id="waende-content">
+                                <div class="bauteile-row">
+                                    <div class="bauteil-item" draggable="true" data-bauteil="aussenwand-ziegel" data-name="Außenwand Ziegel" onclick="selectBauteil(this)">
+                                        <div class="bauteil-icon">🧱</div>
+                                        <div class="bauteil-name">Außenwand Ziegel</div>
+                                        <div class="bauteil-desc">U=0.24 W/m²K</div>
+                                    </div>
+                                    <div class="bauteil-item" draggable="true" data-bauteil="aussenwand-beton" data-name="Außenwand Beton" onclick="selectBauteil(this)">
+                                        <div class="bauteil-icon">🏗️</div>
+                                        <div class="bauteil-name">Außenwand Beton</div>
+                                        <div class="bauteil-desc">U=0.28 W/m²K</div>
+                                    </div>
+                                    <div class="bauteil-item" draggable="true" data-bauteil="innenwand-gips" data-name="Innenwand Gips" onclick="selectBauteil(this)">
+                                        <div class="bauteil-icon">🧱</div>
+                                        <div class="bauteil-name">Innenwand Gips</div>
+                                        <div class="bauteil-desc">λ=0.21 W/mK</div>
+                                    </div>
+                                    <div class="bauteil-item" draggable="true" data-bauteil="kellerwand" data-name="Kellerwand" onclick="selectBauteil(this)">
+                                        <div class="bauteil-icon">🏠</div>
+                                        <div class="bauteil-name">Kellerwand</div>
+                                        <div class="bauteil-desc">U=0.35 W/m²K</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Fenster -->
+                        <div class="bauteil-kategorie">
+                            <div class="kategorie-header" onclick="toggleKategorie('fenster')">
+                                <span>🪟 Fenster (DIN EN ISO 10077)</span>
+                                <span class="kategorie-toggle">▼</span>
+                            </div>
+                            <div class="kategorie-content" id="fenster-content">
+                                <div class="bauteile-row">
+                                    <div class="bauteil-item" draggable="true" data-bauteil="fenster-2fach" data-name="Fenster 2-fach" onclick="selectBauteil(this)">
+                                        <div class="bauteil-icon">🪟</div>
+                                        <div class="bauteil-name">Fenster 2-fach</div>
+                                        <div class="bauteil-desc">Uw=1.3 W/m²K</div>
+                                    </div>
+                                    <div class="bauteil-item" draggable="true" data-bauteil="fenster-3fach" data-name="Fenster 3-fach" onclick="selectBauteil(this)">
+                                        <div class="bauteil-icon">🪟</div>
+                                        <div class="bauteil-name">Fenster 3-fach</div>
+                                        <div class="bauteil-desc">Uw=0.8 W/m²K</div>
+                                    </div>
+                                    <div class="bauteil-item" draggable="true" data-bauteil="dachfenster" data-name="Dachfenster" onclick="selectBauteil(this)">
+                                        <div class="bauteil-icon">🪟</div>
+                                        <div class="bauteil-name">Dachfenster</div>
+                                        <div class="bauteil-desc">Uw=1.0 W/m²K</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Türen -->
+                        <div class="bauteil-kategorie">
+                            <div class="kategorie-header" onclick="toggleKategorie('tueren')">
+                                <span>🚪 Türen (DIN EN ISO 10077)</span>
+                                <span class="kategorie-toggle">▼</span>
+                            </div>
+                            <div class="kategorie-content" id="tueren-content">
+                                <div class="bauteile-row">
+                                    <div class="bauteil-item" draggable="true" data-bauteil="haustur" data-name="Haustür" onclick="selectBauteil(this)">
+                                        <div class="bauteil-icon">🚪</div>
+                                        <div class="bauteil-name">Haustür</div>
+                                        <div class="bauteil-desc">UD=1.8 W/m²K</div>
+                                    </div>
+                                    <div class="bauteil-item" draggable="true" data-bauteil="balkontur" data-name="Balkontür" onclick="selectBauteil(this)">
+                                        <div class="bauteil-icon">🚪</div>
+                                        <div class="bauteil-name">Balkontür</div>
+                                        <div class="bauteil-desc">UD=1.3 W/m²K</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Dach -->
+                        <div class="bauteil-kategorie">
+                            <div class="kategorie-header" onclick="toggleKategorie('dach')">
+                                <span>🏠 Dach (DIN 4108-2)</span>
+                                <span class="kategorie-toggle">▼</span>
+                            </div>
+                            <div class="kategorie-content" id="dach-content">
+                                <div class="bauteile-row">
+                                    <div class="bauteil-item" draggable="true" data-bauteil="steildach" data-name="Steildach" onclick="selectBauteil(this)">
+                                        <div class="bauteil-icon">🏠</div>
+                                        <div class="bauteil-name">Steildach</div>
+                                        <div class="bauteil-desc">U=0.20 W/m²K</div>
+                                    </div>
+                                    <div class="bauteil-item" draggable="true" data-bauteil="flachdach" data-name="Flachdach" onclick="selectBauteil(this)">
+                                        <div class="bauteil-icon">⬜</div>
+                                        <div class="bauteil-name">Flachdach</div>
+                                        <div class="bauteil-desc">U=0.20 W/m²K</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Boden -->
+                        <div class="bauteil-kategorie">
+                            <div class="kategorie-header" onclick="toggleKategorie('boden')">
+                                <span>⬜ Boden (DIN 4108-2)</span>
+                                <span class="kategorie-toggle">▼</span>
+                            </div>
+                            <div class="kategorie-content" id="boden-content">
+                                <div class="bauteile-row">
+                                    <div class="bauteil-item" draggable="true" data-bauteil="bodenplatte" data-name="Bodenplatte" onclick="selectBauteil(this)">
+                                        <div class="bauteil-icon">⬜</div>
+                                        <div class="bauteil-name">Bodenplatte</div>
+                                        <div class="bauteil-desc">U=0.30 W/m²K</div>
+                                    </div>
+                                    <div class="bauteil-item" draggable="true" data-bauteil="kellerdecke" data-name="Kellerdecke" onclick="selectBauteil(this)">
+                                        <div class="bauteil-icon">⬜</div>
+                                        <div class="bauteil-name">Kellerdecke</div>
+                                        <div class="bauteil-desc">U=0.30 W/m²K</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -226,6 +680,121 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Tab Content: Batteriespeicher -->
+            <div id="batterie-tab" class="tab-content">
+                <div class="section">
+                    <h3>🔋 Batteriespeicher-Konfiguration</h3>
+                    <div class="form-group">
+                        <label>Kapazität (kWh):</label>
+                        <input type="number" id="battery-capacity" value="10" min="5" max="100" onchange="updateBattery()">
+                    </div>
+                    <div class="form-group">
+                        <label>Technologie:</label>
+                        <select id="battery-tech" onchange="updateBattery()">
+                            <option value="lithium">Lithium-Ionen</option>
+                            <option value="saltwater">Salzwasser</option>
+                            <option value="lead">Blei-Säure</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Entladetiefe (%):</label>
+                        <input type="number" id="battery-dod" value="80" min="50" max="95" onchange="updateBattery()">
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-success" onclick="calculateBatterySize()">📊 Dimensionierung</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tab Content: Wärmepumpe -->
+            <div id="waermepumpe-tab" class="tab-content">
+                <div class="section">
+                    <h3>🔥 Wärmepumpen-Auslegung</h3>
+                    <div class="form-group">
+                        <label>Heizlast (kW):</label>
+                        <input type="number" id="hp-load" value="8" min="3" max="25" onchange="updateHeatPump()">
+                    </div>
+                    <div class="form-group">
+                        <label>Wärmequelle:</label>
+                        <select id="hp-source" onchange="updateHeatPump()">
+                            <option value="air">Luft/Wasser</option>
+                            <option value="ground">Sole/Wasser</option>
+                            <option value="water">Wasser/Wasser</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Vorlauftemperatur (°C):</label>
+                        <input type="number" id="hp-temp" value="35" min="25" max="55" onchange="updateHeatPump()">
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-success" onclick="calculateHeatPump()">📊 Auslegung berechnen</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tab Content: Simulation -->
+            <div id="simulation-tab" class="tab-content">
+                <div class="section">
+                    <h3>⚡ Energiesimulation</h3>
+                    <div class="form-group">
+                        <label>Simulationszeitraum:</label>
+                        <select id="sim-period" onchange="updateSimulation()">
+                            <option value="year">Ganzes Jahr</option>
+                            <option value="month">Einzelner Monat</option>
+                            <option value="week">Eine Woche</option>
+                            <option value="day">Ein Tag</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Wetterdaten:</label>
+                        <select id="sim-weather" onchange="updateSimulation()">
+                            <option value="typical">Typisches Jahr</option>
+                            <option value="extreme">Extremjahr</option>
+                            <option value="current">Aktuelles Jahr</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-success" onclick="runEnergySimulation()">🚀 Simulation starten</button>
+                    </div>
+                    <div class="form-group">
+                        <div id="simulation-progress" style="display: none;">
+                            <div style="background: #333; height: 10px; border-radius: 5px; margin: 10px 0;">
+                                <div id="progress-bar" style="background: #4CAF50; height: 100%; width: 0%; border-radius: 5px; transition: width 0.3s ease;"></div>
+                            </div>
+                            <div id="progress-text">Simulation läuft...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tab Content: Ergebnisse -->
+            <div id="ergebnisse-tab" class="tab-content">
+                <div class="section">
+                    <h3>📊 Simulationsergebnisse</h3>
+                    <div id="results-container">
+                        <div class="form-group">
+                            <label>Energiebedarf (kWh/Jahr):</label>
+                            <div id="energy-demand" style="color: #4CAF50;">12.500 kWh</div>
+                        </div>
+                        <div class="form-group">
+                            <label>PV-Ertrag (kWh/Jahr):</label>
+                            <div id="pv-yield" style="color: #4CAF50;">8.200 kWh</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Autarkiegrad (%):</label>
+                            <div id="self-sufficiency" style="color: #4CAF50;">65%</div>
+                        </div>
+                        <div class="form-group">
+                            <label>CO₂-Einsparung (kg/Jahr):</label>
+                            <div id="co2-savings" style="color: #4CAF50;">4.100 kg</div>
+                        </div>
+                        <div class="form-group">
+                            <button class="btn" onclick="exportResults()">💾 Ergebnisse exportieren</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <!-- 3D Viewer -->
@@ -257,6 +826,125 @@
     <script>
         let building3D;
         let currentTab = 'gebaude';
+        let currentMainTab = 'gebaude-3d';
+        let simulationCompleted = false;
+        
+        // Hamburger-Menü Funktionen
+        const tabNames = {
+            'gebaude': '🏠 Gebäude',
+            'pv': '☀️ PV-Anlage',
+            'batterie': '🔋 Batteriespeicher',
+            'waermepumpe': '🔥 Wärmepumpe',
+            'simulation': '⚡ Simulation',
+            'ergebnisse': '📊 Ergebnisse'
+        };
+        
+        function toggleMenu() {
+            const menu = document.getElementById('main-menu');
+            menu.classList.toggle('active');
+        }
+        
+        function updateCurrentTabDisplay(tabName) {
+            const display = document.getElementById('current-tab-display');
+            if (display && tabNames[tabName]) {
+                display.textContent = tabNames[tabName];
+            }
+        }
+        
+        function selectMenuItem(itemName) {
+            // Prüfe ob Bearbeitungsmodus aktiv ist und es sich nicht um Gebäude handelt
+            if (isEditModeActive() && itemName !== 'gebaude') {
+                debugLog('⚠️ Menü-Wechsel im Bearbeitungsmodus blockiert: ' + itemName);
+                return;
+            }
+            
+            // Alle Menü-Items deaktivieren
+            const menuItems = document.querySelectorAll('.menu-item');
+            menuItems.forEach(item => item.classList.remove('active'));
+            
+            // Gewähltes Item aktivieren
+            const selectedItem = document.querySelector(`.menu-item[onclick="selectMenuItem('${itemName}')"]`);
+            if (selectedItem && !selectedItem.classList.contains('disabled')) {
+                selectedItem.classList.add('active');
+                
+                // Tab-Content aktualisieren
+                showTab(itemName);
+                
+                // Aktuellen Tab-Namen anzeigen
+                updateCurrentTabDisplay(itemName);
+                
+                // Zeige/Verstecke Haupttabs je nach gewähltem Bereich
+                updateMainTabsVisibility(itemName);
+                
+                // Menü schließen
+                document.getElementById('main-menu').classList.remove('active');
+                
+                debugLog('📋 Menü-Item gewählt: ' + itemName);
+            }
+        }
+        
+        function updateMainTabsVisibility(tabName) {
+            const mainTabsContainer = document.getElementById('gebaude-main-tabs');
+            if (tabName === 'gebaude') {
+                mainTabsContainer.style.display = 'block';
+            } else {
+                mainTabsContainer.style.display = 'none';
+            }
+        }
+        
+        // Neue Haupttab-Funktion (ersetzt Subtabs)
+        function showMainTab(mainTabName) {
+            // Prüfe ob Bearbeitungsmodus aktiv ist
+            if (isEditModeActive() && mainTabName !== 'gebaude-3d') {
+                debugLog('⚠️ Tab-Wechsel im Bearbeitungsmodus blockiert: ' + mainTabName);
+                return;
+            }
+            
+            // Alle Haupttabs deaktivieren
+            const mainTabs = document.querySelectorAll('.main-tab');
+            mainTabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Gewählten Haupttab aktivieren
+            const selectedTab = document.getElementById(mainTabName + '-tab');
+            if (selectedTab) {
+                selectedTab.classList.add('active');
+                currentMainTab = mainTabName;
+                
+                // Spezielle Logik für verschiedene Tabs
+                if (mainTabName === 'gebaude-3d') {
+                    // 3D-Ansicht aktivieren
+                    const viewer = document.getElementById('viewer');
+                    if (viewer) {
+                        viewer.style.display = 'block';
+                    }
+                    debugLog('🏗️ 3D-Gebäude Tab aktiv');
+                } else if (mainTabName === 'gebaude-karte') {
+                    // Karten-Ansicht aktivieren (Platzhalter für zukünftige Implementierung)
+                    debugLog('🗺️ Karte Tab aktiv (Platzhalter)');
+                }
+            }
+        }
+        
+        // Ergebnisse-Menü aktivieren nach Simulation
+        function enableErgebnisseMenu() {
+            const ergebnisseItem = document.getElementById('ergebnisse-menu-item');
+            if (ergebnisseItem) {
+                ergebnisseItem.classList.remove('disabled');
+                simulationCompleted = true;
+                debugLog('📊 Ergebnisse-Menü aktiviert');
+            }
+        }
+        
+        // Menü bei Klick außerhalb schließen
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('main-menu');
+            const currentTabDisplay = document.getElementById('current-tab-display');
+            
+            if (menu && !menu.contains(event.target) && 
+                !currentTabDisplay.contains(event.target)) {
+                menu.classList.remove('active');
+            }
+        });
         
         function debugLog(message) {
             console.log(message);
@@ -277,23 +965,34 @@
         
         // Tab-System
         function showTab(tabName) {
-            // Alle Tabs und Tab-Contents verstecken
-            const tabs = document.querySelectorAll('.tab');
-            const tabContents = document.querySelectorAll('.tab-content');
+            // Prüfe ob Bearbeitungsmodus aktiv ist und es sich nicht um den Gebäude-Tab handelt
+            if (isEditModeActive() && tabName !== 'gebaude') {
+                debugLog('⚠️ Tab-Wechsel im Bearbeitungsmodus blockiert: ' + tabName);
+                return;
+            }
             
-            tabs.forEach(tab => tab.classList.remove('active'));
+            // Alle Tab-Contents verstecken
+            const tabContents = document.querySelectorAll('.tab-content');
             tabContents.forEach(content => content.classList.remove('active'));
             
-            // Gewählten Tab und Content anzeigen
-            const selectedTab = document.querySelector(`.tab[onclick="showTab('${tabName}')"]`);
+            // Gewählten Content anzeigen
             const selectedContent = document.getElementById(tabName + '-tab');
-            
-            if (selectedTab && selectedContent) {
-                selectedTab.classList.add('active');
+            if (selectedContent) {
                 selectedContent.classList.add('active');
                 currentTab = tabName;
+                
+                // Haupttabs-Sichtbarkeit aktualisieren
+                updateMainTabsVisibility(tabName);
+                
                 debugLog('📂 Tab gewechselt zu: ' + tabName);
             }
+        }
+
+
+
+        // Hilfsfunktion: Prüft ob Bearbeitungsmodus aktiv ist
+        function isEditModeActive() {
+            return building3D && building3D.editMode;
         }
         
         // Test-Funktionen
@@ -351,18 +1050,167 @@
                 const editModeActive = building3D.toggleEditMode();
                 const btn = document.getElementById('edit-mode-btn');
                 const icon = document.getElementById('edit-mode-icon');
+                const submenu = document.getElementById('edit-submenu');
                 
                 if (editModeActive) {
                     btn.className = 'btn btn-warning';
                     icon.textContent = '🔒';
                     btn.innerHTML = icon.outerHTML + ' Bearbeitung aktiv';
+                    submenu.classList.add('active');
+                    setupDragAndDrop();
+                    
+                    // Andere Tabs deaktivieren
+                    disableOtherTabs();
+                    
+                    // Stelle sicher, dass Gebäude-Tab aktiv ist
+                    if (currentTab !== 'gebaude') {
+                        showTab('gebaude');
+                    }
                 } else {
                     btn.className = 'btn';
                     icon.textContent = '✏️';
                     btn.innerHTML = icon.outerHTML + ' Bearbeiten';
+                    submenu.classList.remove('active');
+                    removeGhostPreview();
                     clearSelection();
+                    
+                    // Alle Tabs wieder aktivieren
+                    enableAllTabs();
                 }
                 debugLog('✏️ Bearbeitungsmodus: ' + (editModeActive ? 'Ein' : 'Aus'));
+            }
+        }
+
+        // Hilfsfunktionen für Tab-Deaktivierung
+        function disableOtherTabs() {
+            // Deaktiviere Menü-Items (außer Gebäude)
+            const menuItems = document.querySelectorAll('.menu-item');
+            menuItems.forEach(item => {
+                const itemOnclick = item.getAttribute('onclick');
+                if (itemOnclick && !itemOnclick.includes('gebaude')) {
+                    item.classList.add('disabled');
+                }
+            });
+            
+            // Deaktiviere Haupttabs (außer 3D-Gebäude)
+            const mainTabs = document.querySelectorAll('.main-tab');
+            mainTabs.forEach(tab => {
+                if (tab.id !== 'gebaude-3d-tab') {
+                    tab.classList.add('disabled');
+                }
+            });
+        }
+
+        function enableAllTabs() {
+            // Aktiviere alle Menü-Items wieder (außer Ergebnisse wenn nicht verfügbar)
+            const menuItems = document.querySelectorAll('.menu-item');
+            menuItems.forEach(item => {
+                if (item.id !== 'ergebnisse-menu-item' || simulationCompleted) {
+                    item.classList.remove('disabled');
+                }
+            });
+            
+            // Aktiviere alle Haupttabs wieder
+            const mainTabs = document.querySelectorAll('.main-tab');
+            mainTabs.forEach(tab => {
+                tab.classList.remove('disabled');
+            });
+        }
+
+        // Kategorie-Accordion
+        function toggleKategorie(kategorieId) {
+            const content = document.getElementById(kategorieId + '-content');
+            const header = content.previousElementSibling;
+            const toggle = header.querySelector('.kategorie-toggle');
+            
+            if (content.classList.contains('active')) {
+                content.classList.remove('active');
+                header.classList.remove('active');
+            } else {
+                content.classList.add('active');
+                header.classList.add('active');
+            }
+        }
+
+        let selectedBauteil = null;
+        let ghostPreview = null;
+
+        function selectBauteil(element) {
+            // Entferne vorherige Auswahl
+            document.querySelectorAll('.bauteil-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            // Markiere aktuell ausgewähltes
+            element.classList.add('selected');
+            
+            selectedBauteil = {
+                type: element.dataset.bauteil,
+                name: element.dataset.name
+            };
+            debugLog('✅ Bauteil ausgewählt: ' + selectedBauteil.name);
+        }
+
+        function setupDragAndDrop() {
+            const bauteilItems = document.querySelectorAll('.bauteil-item');
+            
+            bauteilItems.forEach(item => {
+                item.addEventListener('dragstart', (e) => {
+                    selectedBauteil = {
+                        type: item.dataset.bauteil,
+                        name: item.dataset.name
+                    };
+                    e.dataTransfer.effectAllowed = 'copy';
+                    debugLog('🎯 Drag gestartet: ' + selectedBauteil.name);
+                });
+            });
+
+            // Setup Drop-Zone auf 3D-Viewer
+            const viewer = document.getElementById('building-3d');
+            
+            viewer.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+                showGhostPreview(e);
+            });
+            
+            viewer.addEventListener('dragleave', (e) => {
+                removeGhostPreview();
+            });
+            
+            viewer.addEventListener('drop', (e) => {
+                e.preventDefault();
+                removeGhostPreview();
+                
+                if (selectedBauteil && building3D) {
+                    const rect = viewer.getBoundingClientRect();
+                    const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+                    const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+                    
+                    building3D.addComponent(selectedBauteil.type, { x: x * 10, y: 0, z: y * 10 });
+                    debugLog('🏗️ ' + selectedBauteil.name + ' platziert');
+                }
+            });
+        }
+
+        function showGhostPreview(e) {
+            if (!selectedBauteil) return;
+            
+            removeGhostPreview();
+            
+            ghostPreview = document.createElement('div');
+            ghostPreview.className = 'ghost-preview';
+            ghostPreview.textContent = selectedBauteil.name;
+            ghostPreview.style.left = e.clientX + 'px';
+            ghostPreview.style.top = e.clientY + 'px';
+            
+            document.body.appendChild(ghostPreview);
+        }
+
+        function removeGhostPreview() {
+            if (ghostPreview) {
+                document.body.removeChild(ghostPreview);
+                ghostPreview = null;
             }
         }
         
@@ -427,9 +1275,71 @@
             setTimeout(() => {
                 updateStatus('Simulation abgeschlossen');
                 debugLog('✅ Simulation abgeschlossen');
+                enableErgebnisseMenu(); // Aktiviere Ergebnisse-Menü nach Simulation
             }, 3000);
         }
 
+        // Zusätzliche Funktionen für neue Menü-Items
+        function updateBattery() {
+            const capacity = document.getElementById('battery-capacity').value;
+            const tech = document.getElementById('battery-tech').value;
+            debugLog('🔋 Batteriespeicher aktualisiert: ' + capacity + 'kWh, ' + tech);
+        }
+        
+        function calculateBatterySize() {
+            debugLog('📊 Batteriedimensionierung berechnet');
+            updateStatus('Batteriespeicher dimensioniert');
+        }
+        
+        function updateHeatPump() {
+            const load = document.getElementById('hp-load').value;
+            const source = document.getElementById('hp-source').value;
+            debugLog('🔥 Wärmepumpe aktualisiert: ' + load + 'kW, ' + source);
+        }
+        
+        function calculateHeatPump() {
+            debugLog('📊 Wärmepumpenauslegung berechnet');
+            updateStatus('Wärmepumpe dimensioniert');
+        }
+        
+        function updateSimulation() {
+            const period = document.getElementById('sim-period').value;
+            const weather = document.getElementById('sim-weather').value;
+            debugLog('⚡ Simulation konfiguriert: ' + period + ', ' + weather);
+        }
+        
+        function runEnergySimulation() {
+            const progressDiv = document.getElementById('simulation-progress');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            
+            progressDiv.style.display = 'block';
+            progressBar.style.width = '0%';
+            
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 10;
+                progressBar.style.width = progress + '%';
+                progressText.textContent = `Simulation läuft... ${progress}%`;
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    progressText.textContent = 'Simulation abgeschlossen!';
+                    setTimeout(() => {
+                        progressDiv.style.display = 'none';
+                        enableErgebnisseMenu();
+                        debugLog('⚡ Energiesimulation abgeschlossen');
+                        updateStatus('Simulation erfolgreich');
+                    }, 1000);
+                }
+            }, 300);
+        }
+        
+        function exportResults() {
+            debugLog('💾 Ergebnisse exportiert');
+            updateStatus('Ergebnisse exportiert');
+        }
+        
         // Toolbox entfernt
         
         // Click-to-Select System

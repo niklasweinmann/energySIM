@@ -58,3 +58,6 @@ db.sqlite3
 
 # Apple
 .DS_Store
+
+# User
+zukünftige_befehle.txt
