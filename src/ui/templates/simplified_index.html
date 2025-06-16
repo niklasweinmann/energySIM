@@ -55,7 +55,7 @@
         .debug-panel { 
             position: fixed; 
             bottom: 10px; 
-            left: 10px; 
+            right: 10px; 
             background: rgba(0,0,0,0.95); 
             color: #00ff00; 
             border-radius: 8px; 
@@ -83,18 +83,6 @@
             display: block;
         }
         .debug-toggle { color: #00ff00; font-weight: bold; }
-        
-        .status-panel { 
-            position: absolute; 
-            bottom: 10px; 
-            right: 10px; 
-            background: rgba(0,0,0,0.8); 
-            color: #4CAF50; 
-            padding: 10px; 
-            border-radius: 5px; 
-            font-size: 12px; 
-            z-index: 100;
-        }
     </style>
 </head>
 <body>
@@ -258,11 +246,6 @@
         <div class="debug-content" id="debug-content">
             <div id="debug-log">Initialisierung...</div>
         </div>
-    </div>
-
-    <!-- Status Panel -->
-    <div class="status-panel">
-        <div id="status">Initialisierung...</div>
     </div>
 
     <!-- Three.js -->
