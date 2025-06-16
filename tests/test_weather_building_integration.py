@@ -84,7 +84,7 @@ def test_weather_building_integration():
         
         # Validiere und interpoliere Wetterdaten auf Stundenbasis
         hourly_index = pd.date_range(date, date + timedelta(days=1), freq='h', inclusive='left')
-        weather_data = weather_data.reindex(hourly_index).interpolate()
+        weather_data = weather_data.infer_objects(copy=False).reindex(hourly_index).interpolate()
         
         # Überprüfe, ob die Wetterdaten gültig sind
         if weather_data.isna().any().any():

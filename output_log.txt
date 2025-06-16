@@ -1,196 +1,45 @@
-2025-06-16 09:48:36,427 - root - INFO - Logging konfiguriert - Dateiausgabe nach: /Users/niklas/git/github/energyOS/output_log.txt
-2025-06-16 09:48:36,427 - root - INFO - Starte Simulation mit folgenden Parametern:
-2025-06-16 09:48:36,427 - root - INFO -   - Standort: 52.52°N, 13.41°E (Berlin)
-2025-06-16 09:48:36,427 - root - INFO -   - Gebäude: Einfamilienhaus, 150 m², Baujahr 2015
-2025-06-16 09:48:36,427 - root - INFO -   - Heizung: Wärmepumpe 9 kW
-2025-06-16 09:48:36,427 - root - INFO -   - PV: 10 kWp
-2025-06-16 09:48:36,427 - root - INFO -   - Zeitraum: 01.06.2023 - 03.06.2023
-2025-06-16 09:48:36,427 - root - INFO -   - Zeitschritt: 30 Minuten
-2025-06-16 09:48:36,429 - src.data_handlers.weather - INFO - Verwende synthetische DWD-Daten
-2025-06-16 09:48:36,431 - asyncio - DEBUG - Using selector: KqueueSelector
-2025-06-16 09:48:36,474 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/historical/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:36,484 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:36,496 - src.data_handlers.dwd_enhanced - INFO - Verwende wetterdienst API Version mit df-Attribut
-2025-06-16 09:48:36,496 - src.data_handlers.dwd_enhanced - INFO - DWD-API: Alle benötigten Spalten sind vorhanden
-2025-06-16 09:48:36,496 - src.data_handlers.dwd_enhanced - INFO - Stations DataFrame Typ: <class 'polars.dataframe.frame.DataFrame'>
-2025-06-16 09:48:36,496 - src.data_handlers.dwd_enhanced - INFO - Konvertiere Polars DataFrame zu Pandas
-2025-06-16 09:48:36,532 - src.data_handlers.dwd_enhanced - INFO - Erfolgreich 637 Stationen über API geladen
-2025-06-16 09:48:36,532 - src.data_handlers.dwd_enhanced - INFO - Erfolgreich 637 Stationen geladen
-2025-06-16 09:48:36,545 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:36,559 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:36,572 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:36,585 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:36,598 - src.data_handlers.dwd_enhanced - INFO - Verwende aktive DWD-Station: Berlin-Tempelhof (ID: 00433)
-2025-06-16 09:48:36,598 - src.data_handlers.weather - INFO - Verwende DWD-Station: Berlin-Tempelhof (ID: 00433)
-2025-06-16 09:48:36,599 - src.data_handlers.dwd_enhanced - INFO - Hole echte DWD-Daten für Station 00433 von 2023-06-01 00:00:00 bis 2023-06-02 00:00:00
-2025-06-16 09:48:36,599 - src.data_handlers.dwd_enhanced - INFO - Verwende korrekte DWD-Parameter: [('hourly', 'temperature_air', 'temperature_air_mean_2m'), ('hourly', 'solar', 'radiation_global'), ('hourly', 'wind', 'wind_speed'), ('hourly', 'precipitation', 'precipitation_height'), ('hourly', 'temperature_air', 'humidity')]
-2025-06-16 09:48:36,600 - src.data_handlers.dwd_enhanced - INFO - Verwende DWD API für Station 00433
-2025-06-16 09:48:36,603 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/historical/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:36,611 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/solar/ST_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:36,617 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/wind/historical/FF_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:36,629 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/RR_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:36,651 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/historical/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:36,658 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/solar/ST_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:36,663 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/wind/historical/FF_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:36,672 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/RR_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:36,693 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/historical/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:36,700 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/solar/ST_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:36,705 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/wind/historical/FF_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:36,714 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/RR_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:36,735 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/historical/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:36,744 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/solar/ST_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:36,748 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/wind/historical/FF_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:36,758 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/RR_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:36,774 - src.data_handlers.dwd_enhanced - INFO - Hole echte Messdaten von DWD API
-2025-06-16 09:48:36,819 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/historical/stundenwerte_TU_00433_19510101_20241231_hist.zip
-2025-06-16 09:48:37,312 - fsspec.cached - DEBUG - Copying https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/wind/historical/stundenwerte_FF_00433_19740101_20241231_hist.zip to local cache
-2025-06-16 09:48:37,312 - fsspec.http - DEBUG - https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/wind/historical/stundenwerte_FF_00433_19740101_20241231_hist.zip
-2025-06-16 09:48:39,189 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/wind/historical/stundenwerte_FF_00433_19740101_20241231_hist.zip
-2025-06-16 09:48:39,455 - fsspec.cached - DEBUG - Copying https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_00433_19950901_20241231_hist.zip to local cache
-2025-06-16 09:48:39,455 - fsspec.http - DEBUG - https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_00433_19950901_20241231_hist.zip
-2025-06-16 09:48:39,800 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_00433_19950901_20241231_hist.zip
-2025-06-16 09:48:39,980 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/historical/stundenwerte_TU_00433_19510101_20241231_hist.zip
-2025-06-16 09:48:40,385 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_17460_20240101_20241231_hist.zip
-2025-06-16 09:48:40,414 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_17487_20240101_20241231_hist.zip
-2025-06-16 09:48:40,432 - fsspec.cached - DEBUG - Copying https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_17462_20240101_20241231_hist.zip to local cache
-2025-06-16 09:48:40,432 - fsspec.http - DEBUG - https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_17462_20240101_20241231_hist.zip
-2025-06-16 09:48:40,629 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_17462_20240101_20241231_hist.zip
-2025-06-16 09:48:40,679 - fsspec.cached - DEBUG - Copying https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_17461_20240101_20241231_hist.zip to local cache
-2025-06-16 09:48:40,680 - fsspec.http - DEBUG - https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_17461_20240101_20241231_hist.zip
-2025-06-16 09:48:40,862 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_17461_20240101_20241231_hist.zip
-2025-06-16 09:48:40,936 - src.data_handlers.dwd_enhanced - INFO - Konvertiere Polars DataFrame zu Pandas für Datenverarbeitung
-2025-06-16 09:48:40,938 - src.data_handlers.dwd_enhanced - INFO - DWD-Messdaten erfolgreich abgerufen: 100 Einträge
-2025-06-16 09:48:40,938 - src.data_handlers.dwd_enhanced - INFO - DataFrame Spalten: ['station_id', 'resolution', 'dataset', 'parameter', 'date', 'value', 'quality']
-2025-06-16 09:48:40,952 - src.data_handlers.dwd_enhanced - INFO - Beispieldaten:
-  station_id resolution  ... value quality
-0      00433     hourly  ...   0.0     3.0
-1      00433     hourly  ...   0.0     3.0
-2      00433     hourly  ...   0.0     3.0
-3      00433     hourly  ...   0.0     3.0
-4      00433     hourly  ...   0.0     3.0
-
-[5 rows x 7 columns]
-2025-06-16 09:48:40,954 - src.data_handlers.dwd_enhanced - INFO - Zeitstempel erstellt: 25 Einträge
-2025-06-16 09:48:40,956 - src.data_handlers.dwd_enhanced - INFO - Parameter temperature_air_mean_2m -> temperature: 25 Werte
-2025-06-16 09:48:40,957 - src.data_handlers.dwd_enhanced - WARNING - Keine Daten für Parameter radiation_global gefunden
-2025-06-16 09:48:40,958 - src.data_handlers.dwd_enhanced - INFO - Parameter wind_speed -> wind_speed: 25 Werte
-2025-06-16 09:48:40,959 - src.data_handlers.dwd_enhanced - INFO - Parameter precipitation_height -> precipitation: 25 Werte
-2025-06-16 09:48:40,961 - src.data_handlers.dwd_enhanced - INFO - Parameter humidity -> humidity: 25 Werte
-2025-06-16 09:48:40,961 - src.data_handlers.dwd_enhanced - WARNING - Parameter solar_radiation fehlt - verwende Standardwerte
-2025-06-16 09:48:40,970 - src.data_handlers.dwd_enhanced - INFO - Echte DWD-Daten erfolgreich in /Users/niklas/git/github/energyOS/data/weather/dwd/historical/00433_20230601_20230602.csv gespeichert
-2025-06-16 09:48:41,194 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:41,205 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:41,217 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:41,228 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:41,239 - src.data_handlers.dwd_enhanced - INFO - Verwende aktive DWD-Station: Berlin-Tempelhof (ID: 00433)
-2025-06-16 09:48:41,239 - src.data_handlers.weather - INFO - Verwende DWD-Station: Berlin-Tempelhof (ID: 00433)
-2025-06-16 09:48:41,239 - src.data_handlers.dwd_enhanced - INFO - Hole echte DWD-Daten für Station 00433 von 2023-06-02 00:00:00 bis 2023-06-03 00:00:00
-2025-06-16 09:48:41,240 - src.data_handlers.dwd_enhanced - INFO - Verwende korrekte DWD-Parameter: [('hourly', 'temperature_air', 'temperature_air_mean_2m'), ('hourly', 'solar', 'radiation_global'), ('hourly', 'wind', 'wind_speed'), ('hourly', 'precipitation', 'precipitation_height'), ('hourly', 'temperature_air', 'humidity')]
-2025-06-16 09:48:41,240 - src.data_handlers.dwd_enhanced - INFO - Verwende DWD API für Station 00433
-2025-06-16 09:48:41,243 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/historical/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:41,252 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/solar/ST_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:41,257 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/wind/historical/FF_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:41,268 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/RR_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:41,289 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/historical/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:41,297 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/solar/ST_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:41,301 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/wind/historical/FF_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:41,312 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/RR_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:41,336 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/historical/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:41,347 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/solar/ST_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:41,353 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/wind/historical/FF_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:41,367 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/RR_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:41,397 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/historical/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:41,406 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/solar/ST_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:41,412 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/wind/historical/FF_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:41,423 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/RR_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:41,440 - src.data_handlers.dwd_enhanced - INFO - Hole echte Messdaten von DWD API
-2025-06-16 09:48:41,445 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/historical/stundenwerte_TU_00433_19510101_20241231_hist.zip
-2025-06-16 09:48:41,917 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/wind/historical/stundenwerte_FF_00433_19740101_20241231_hist.zip
-2025-06-16 09:48:42,213 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_00433_19950901_20241231_hist.zip
-2025-06-16 09:48:42,393 - fsspec.cached - DEBUG - Copying https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/historical/stundenwerte_TU_00433_19510101_20241231_hist.zip to local cache
-2025-06-16 09:48:42,393 - fsspec.http - DEBUG - https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/historical/stundenwerte_TU_00433_19510101_20241231_hist.zip
-2025-06-16 09:48:43,200 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/historical/stundenwerte_TU_00433_19510101_20241231_hist.zip
-2025-06-16 09:48:43,637 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_17460_20240101_20241231_hist.zip
-2025-06-16 09:48:43,666 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_17487_20240101_20241231_hist.zip
-2025-06-16 09:48:43,687 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_17462_20240101_20241231_hist.zip
-2025-06-16 09:48:43,707 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_17461_20240101_20241231_hist.zip
-2025-06-16 09:48:43,720 - src.data_handlers.dwd_enhanced - INFO - Konvertiere Polars DataFrame zu Pandas für Datenverarbeitung
-2025-06-16 09:48:43,721 - src.data_handlers.dwd_enhanced - INFO - DWD-Messdaten erfolgreich abgerufen: 100 Einträge
-2025-06-16 09:48:43,721 - src.data_handlers.dwd_enhanced - INFO - DataFrame Spalten: ['station_id', 'resolution', 'dataset', 'parameter', 'date', 'value', 'quality']
-2025-06-16 09:48:43,728 - src.data_handlers.dwd_enhanced - INFO - Beispieldaten:
-  station_id resolution  ... value quality
-0      00433     hourly  ...   0.0     3.0
-1      00433     hourly  ...   0.0     3.0
-2      00433     hourly  ...   0.0     3.0
-3      00433     hourly  ...   0.0     3.0
-4      00433     hourly  ...   0.0     3.0
-
-[5 rows x 7 columns]
-2025-06-16 09:48:43,729 - src.data_handlers.dwd_enhanced - INFO - Zeitstempel erstellt: 25 Einträge
-2025-06-16 09:48:43,730 - src.data_handlers.dwd_enhanced - INFO - Parameter temperature_air_mean_2m -> temperature: 25 Werte
-2025-06-16 09:48:43,730 - src.data_handlers.dwd_enhanced - WARNING - Keine Daten für Parameter radiation_global gefunden
-2025-06-16 09:48:43,731 - src.data_handlers.dwd_enhanced - INFO - Parameter wind_speed -> wind_speed: 25 Werte
-2025-06-16 09:48:43,732 - src.data_handlers.dwd_enhanced - INFO - Parameter precipitation_height -> precipitation: 25 Werte
-2025-06-16 09:48:43,733 - src.data_handlers.dwd_enhanced - INFO - Parameter humidity -> humidity: 25 Werte
-2025-06-16 09:48:43,733 - src.data_handlers.dwd_enhanced - WARNING - Parameter solar_radiation fehlt - verwende Standardwerte
-2025-06-16 09:48:43,738 - src.data_handlers.dwd_enhanced - INFO - Echte DWD-Daten erfolgreich in /Users/niklas/git/github/energyOS/data/weather/dwd/historical/00433_20230602_20230603.csv gespeichert
-2025-06-16 09:48:43,938 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:43,952 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:43,964 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:43,974 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:43,987 - src.data_handlers.dwd_enhanced - INFO - Verwende aktive DWD-Station: Berlin-Tempelhof (ID: 00433)
-2025-06-16 09:48:43,991 - src.data_handlers.weather - INFO - Verwende DWD-Station: Berlin-Tempelhof (ID: 00433)
-2025-06-16 09:48:43,991 - src.data_handlers.dwd_enhanced - INFO - Hole echte DWD-Daten für Station 00433 von 2023-06-03 00:00:00 bis 2023-06-04 00:00:00
-2025-06-16 09:48:43,992 - src.data_handlers.dwd_enhanced - INFO - Verwende korrekte DWD-Parameter: [('hourly', 'temperature_air', 'temperature_air_mean_2m'), ('hourly', 'solar', 'radiation_global'), ('hourly', 'wind', 'wind_speed'), ('hourly', 'precipitation', 'precipitation_height'), ('hourly', 'temperature_air', 'humidity')]
-2025-06-16 09:48:43,992 - src.data_handlers.dwd_enhanced - INFO - Verwende DWD API für Station 00433
-2025-06-16 09:48:43,996 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/historical/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:44,005 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/solar/ST_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:44,010 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/wind/historical/FF_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:44,020 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/RR_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:44,043 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/historical/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:44,049 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/solar/ST_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:44,054 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/wind/historical/FF_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:44,064 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/RR_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:44,085 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/historical/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:44,093 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/solar/ST_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:44,097 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/wind/historical/FF_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:44,107 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/RR_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:44,127 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/historical/TU_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:44,134 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/solar/ST_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:44,139 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/wind/historical/FF_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:44,149 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/RR_Stundenwerte_Beschreibung_Stationen.txt
-2025-06-16 09:48:44,166 - src.data_handlers.dwd_enhanced - INFO - Hole echte Messdaten von DWD API
-2025-06-16 09:48:44,171 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/historical/stundenwerte_TU_00433_19510101_20241231_hist.zip
-2025-06-16 09:48:44,634 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/wind/historical/stundenwerte_FF_00433_19740101_20241231_hist.zip
-2025-06-16 09:48:44,903 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_00433_19950901_20241231_hist.zip
-2025-06-16 09:48:45,082 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/historical/stundenwerte_TU_00433_19510101_20241231_hist.zip
-2025-06-16 09:48:45,527 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_17460_20240101_20241231_hist.zip
-2025-06-16 09:48:45,560 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_17487_20240101_20241231_hist.zip
-2025-06-16 09:48:45,584 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_17462_20240101_20241231_hist.zip
-2025-06-16 09:48:45,606 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/precipitation/historical/stundenwerte_RR_17461_20240101_20241231_hist.zip
-2025-06-16 09:48:45,622 - src.data_handlers.dwd_enhanced - INFO - Konvertiere Polars DataFrame zu Pandas für Datenverarbeitung
-2025-06-16 09:48:45,623 - src.data_handlers.dwd_enhanced - INFO - DWD-Messdaten erfolgreich abgerufen: 100 Einträge
-2025-06-16 09:48:45,623 - src.data_handlers.dwd_enhanced - INFO - DataFrame Spalten: ['station_id', 'resolution', 'dataset', 'parameter', 'date', 'value', 'quality']
-2025-06-16 09:48:45,632 - src.data_handlers.dwd_enhanced - INFO - Beispieldaten:
-  station_id resolution  ... value quality
-0      00433     hourly  ...   0.0     3.0
-1      00433     hourly  ...   0.0     3.0
-2      00433     hourly  ...   0.0     3.0
-3      00433     hourly  ...   0.0     3.0
-4      00433     hourly  ...   0.0     3.0
-
-[5 rows x 7 columns]
-2025-06-16 09:48:45,633 - src.data_handlers.dwd_enhanced - INFO - Zeitstempel erstellt: 25 Einträge
-2025-06-16 09:48:45,634 - src.data_handlers.dwd_enhanced - INFO - Parameter temperature_air_mean_2m -> temperature: 25 Werte
-2025-06-16 09:48:45,634 - src.data_handlers.dwd_enhanced - WARNING - Keine Daten für Parameter radiation_global gefunden
-2025-06-16 09:48:45,636 - src.data_handlers.dwd_enhanced - INFO - Parameter wind_speed -> wind_speed: 25 Werte
-2025-06-16 09:48:45,637 - src.data_handlers.dwd_enhanced - INFO - Parameter precipitation_height -> precipitation: 25 Werte
-2025-06-16 09:48:45,639 - src.data_handlers.dwd_enhanced - INFO - Parameter humidity -> humidity: 25 Werte
-2025-06-16 09:48:45,639 - src.data_handlers.dwd_enhanced - WARNING - Parameter solar_radiation fehlt - verwende Standardwerte
-2025-06-16 09:48:45,645 - src.data_handlers.dwd_enhanced - INFO - Echte DWD-Daten erfolgreich in /Users/niklas/git/github/energyOS/data/weather/dwd/historical/00433_20230603_20230604.csv gespeichert
-2025-06-16 09:48:45,660 - root - INFO - 
+2025-06-16 10:35:01,940 - root - INFO - Logging konfiguriert - Dateiausgabe nach: /Users/niklas/git/github/energyOS/output_log.txt
+2025-06-16 10:35:01,940 - root - INFO - Starte Simulation mit folgenden Parametern:
+2025-06-16 10:35:01,940 - root - INFO -   - Standort: 52.52°N, 13.41°E (Berlin)
+2025-06-16 10:35:01,940 - root - INFO -   - Gebäude: Einfamilienhaus, 150 m², Baujahr 2015
+2025-06-16 10:35:01,940 - root - INFO -   - Heizung: Wärmepumpe 9 kW
+2025-06-16 10:35:01,940 - root - INFO -   - PV: 10 kWp
+2025-06-16 10:35:01,940 - root - INFO -   - Zeitraum: 01.06.2023 - 03.06.2023
+2025-06-16 10:35:01,940 - root - INFO -   - Zeitschritt: 30 Minuten
+2025-06-16 10:35:01,943 - src.data_handlers.weather - INFO - Verwende synthetische DWD-Daten
+2025-06-16 10:35:01,944 - asyncio - DEBUG - Using selector: KqueueSelector
+2025-06-16 10:35:01,988 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/historical/TU_Stundenwerte_Beschreibung_Stationen.txt
+2025-06-16 10:35:01,999 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
+2025-06-16 10:35:02,009 - src.data_handlers.dwd_enhanced - INFO - Verwende wetterdienst API Version mit df-Attribut
+2025-06-16 10:35:02,010 - src.data_handlers.dwd_enhanced - INFO - DWD-API: Alle benötigten Spalten sind vorhanden
+2025-06-16 10:35:02,010 - src.data_handlers.dwd_enhanced - INFO - Stations DataFrame Typ: <class 'polars.dataframe.frame.DataFrame'>
+2025-06-16 10:35:02,010 - src.data_handlers.dwd_enhanced - INFO - Konvertiere Polars DataFrame zu Pandas
+2025-06-16 10:35:02,051 - src.data_handlers.dwd_enhanced - INFO - Erfolgreich 637 Stationen über API geladen
+2025-06-16 10:35:02,051 - src.data_handlers.dwd_enhanced - INFO - Erfolgreich 637 Stationen geladen
+2025-06-16 10:35:02,064 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
+2025-06-16 10:35:02,076 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
+2025-06-16 10:35:02,088 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
+2025-06-16 10:35:02,101 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
+2025-06-16 10:35:02,112 - src.data_handlers.dwd_enhanced - INFO - Verwende aktive DWD-Station: Berlin-Tempelhof (ID: 00433)
+2025-06-16 10:35:02,112 - src.data_handlers.weather - INFO - Verwende DWD-Station: Berlin-Tempelhof (ID: 00433)
+2025-06-16 10:35:02,112 - src.data_handlers.dwd_enhanced - INFO - Verwende Cache-Datei: /Users/niklas/git/github/energyOS/data/weather/dwd/historical/00433_20230601_20230602.csv
+2025-06-16 10:35:02,305 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
+2025-06-16 10:35:02,317 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
+2025-06-16 10:35:02,328 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
+2025-06-16 10:35:02,338 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
+2025-06-16 10:35:02,347 - src.data_handlers.dwd_enhanced - INFO - Verwende aktive DWD-Station: Berlin-Tempelhof (ID: 00433)
+2025-06-16 10:35:02,347 - src.data_handlers.weather - INFO - Verwende DWD-Station: Berlin-Tempelhof (ID: 00433)
+2025-06-16 10:35:02,348 - src.data_handlers.dwd_enhanced - INFO - Verwende Cache-Datei: /Users/niklas/git/github/energyOS/data/weather/dwd/historical/00433_20230602_20230603.csv
+2025-06-16 10:35:02,541 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
+2025-06-16 10:35:02,550 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
+2025-06-16 10:35:02,562 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
+2025-06-16 10:35:02,571 - fsspec.cached - DEBUG - Opening local copy of https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/recent/TU_Stundenwerte_Beschreibung_Stationen.txt
+2025-06-16 10:35:02,581 - src.data_handlers.dwd_enhanced - INFO - Verwende aktive DWD-Station: Berlin-Tempelhof (ID: 00433)
+2025-06-16 10:35:02,581 - src.data_handlers.weather - INFO - Verwende DWD-Station: Berlin-Tempelhof (ID: 00433)
+2025-06-16 10:35:02,581 - src.data_handlers.dwd_enhanced - INFO - Verwende Cache-Datei: /Users/niklas/git/github/energyOS/data/weather/dwd/historical/00433_20230603_20230604.csv
+2025-06-16 10:35:02,596 - root - INFO - 
 Simulationsergebnisse:
-2025-06-16 09:48:45,660 - root - INFO - {
+2025-06-16 10:35:02,597 - root - INFO - {
   "energy_demand": {
     "heat_demand_kWh": 1026.0,
     "heat_output_kWh": 526.8000000000011,
@@ -220,6 +69,6 @@ Simulationsergebnisse:
     "cop_avg": 5.584860088365245,
     "pv_peak_output": 0.5545376114910465
   },
-  "output_file": "/Users/niklas/git/github/energyOS/output/simulation_results_20250616_094845.csv"
+  "output_file": "/Users/niklas/git/github/energyOS/output/simulation_results_20250616_103502.csv"
 }
-2025-06-16 09:48:45,661 - root - INFO - Simulation erfolgreich abgeschlossen. Ausgaben in Datei gespeichert.
+2025-06-16 10:35:02,597 - root - INFO - Simulation erfolgreich abgeschlossen. Ausgaben in Datei gespeichert.
