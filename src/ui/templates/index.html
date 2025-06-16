@@ -83,6 +83,98 @@
             display: block;
         }
         .debug-toggle { color: #00ff00; font-weight: bold; }
+        
+        /* Toolbox Styles */
+        .toolbox {
+            position: fixed;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(45, 45, 45, 0.95);
+            border: 2px solid #4CAF50;
+            border-radius: 10px;
+            padding: 15px;
+            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            min-width: 200px;
+        }
+        
+        .toolbox-header {
+            color: #4CAF50;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+            border-bottom: 1px solid #555;
+            padding-bottom: 10px;
+        }
+        
+        .toolbox-category {
+            margin-bottom: 15px;
+        }
+        
+        .toolbox-category h4 {
+            color: #66BB6A;
+            font-size: 12px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        
+        .component-item {
+            background: #404040;
+            border: 1px solid #666;
+            border-radius: 6px;
+            padding: 8px;
+            margin-bottom: 6px;
+            cursor: grab;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .component-item:hover {
+            background: #4CAF50;
+            border-color: #66BB6A;
+            transform: translateX(5px);
+        }
+        
+        .component-item:active {
+            cursor: grabbing;
+        }
+        
+        .component-icon {
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
+        }
+        
+        .component-info {
+            flex: 1;
+        }
+        
+        .component-name {
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .component-uvalue {
+            font-size: 9px;
+            color: #aaa;
+        }
+        
+        .toolbox-toggle {
+            position: fixed;
+            left: 10px;
+            top: 20px;
+            background: #4CAF50;
+            border: none;
+            border-radius: 5px;
+            padding: 8px 12px;
+            color: white;
+            cursor: pointer;
+            z-index: 1001;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
@@ -237,10 +329,75 @@
         </div>
     </div>
 
+    <!-- Toolbox Toggle Button -->
+    <button class="toolbox-toggle" onclick="toggleToolbox()">🧰 Toolbox</button>
+
+    <!-- Toolbox -->
+    <div class="toolbox" id="toolbox" style="display: none;">
+        <div class="toolbox-header">🧰 Bauteile-Toolbox</div>
+        
+        <!-- Wände -->
+        <div class="toolbox-category">
+            <h4>🧱 Wände</h4>
+            <div class="component-item" draggable="true" data-component="wall" data-uvalue="0.20">
+                <span class="component-icon">🧱</span>
+                <div class="component-info">
+                    <div class="component-name">Außenwand</div>
+                    <div class="component-uvalue">U = 0.20 W/(m²·K)</div>
+                </div>
+            </div>
+            <div class="component-item" draggable="true" data-component="inner-wall" data-uvalue="2.50">
+                <span class="component-icon">🏢</span>
+                <div class="component-info">
+                    <div class="component-name">Innenwand</div>
+                    <div class="component-uvalue">U = 2.50 W/(m²·K)</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Fenster & Türen -->
+        <div class="toolbox-category">
+            <h4>🪟 Öffnungen</h4>
+            <div class="component-item" draggable="true" data-component="window" data-uvalue="1.10">
+                <span class="component-icon">🪟</span>
+                <div class="component-info">
+                    <div class="component-name">Fenster</div>
+                    <div class="component-uvalue">U = 1.10 W/(m²·K)</div>
+                </div>
+            </div>
+            <div class="component-item" draggable="true" data-component="door" data-uvalue="1.80">
+                <span class="component-icon">🚪</span>
+                <div class="component-info">
+                    <div class="component-name">Haustür</div>
+                    <div class="component-uvalue">U = 1.80 W/(m²·K)</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Dach & Boden -->
+        <div class="toolbox-category">
+            <h4>🏠 Hülle</h4>
+            <div class="component-item" draggable="true" data-component="roof" data-uvalue="0.15">
+                <span class="component-icon">🏠</span>
+                <div class="component-info">
+                    <div class="component-name">Dach</div>
+                    <div class="component-uvalue">U = 0.15 W/(m²·K)</div>
+                </div>
+            </div>
+            <div class="component-item" draggable="true" data-component="floor" data-uvalue="0.25">
+                <span class="component-icon">⬛</span>
+                <div class="component-info">
+                    <div class="component-name">Bodenplatte</div>
+                    <div class="component-uvalue">U = 0.25 W/(m²·K)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Debug Panel -->
     <div class="debug-panel">
         <div class="debug-header" onclick="toggleDebug()">
-            <span>🐛 Debug Log</span>
+            <span>🐛 Debug Log </span>
             <span class="debug-toggle" id="debug-toggle">▼</span>
         </div>
         <div class="debug-content" id="debug-content">
@@ -427,6 +584,173 @@
             }, 3000);
         }
 
+        // Toolbox-Funktionen
+        function toggleToolbox() {
+            const toolbox = document.getElementById('toolbox');
+            if (toolbox.style.display === 'none') {
+                toolbox.style.display = 'block';
+                debugLog('🧰 Toolbox geöffnet');
+            } else {
+                toolbox.style.display = 'none';
+                debugLog('🧰 Toolbox geschlossen');
+            }
+        }
+        
+        // Drag & Drop System
+        let draggedComponent = null;
+        
+        function initializeDragAndDrop() {
+            // Drag-Events für Toolbox-Items
+            const componentItems = document.querySelectorAll('.component-item[draggable="true"]');
+            componentItems.forEach(item => {
+                item.addEventListener('dragstart', handleDragStart);
+                item.addEventListener('dragend', handleDragEnd);
+            });
+            
+            // Drop-Events für 3D-Viewer
+            const viewer = document.getElementById('building-3d');
+            viewer.addEventListener('dragover', handleDragOver);
+            viewer.addEventListener('drop', handleDrop);
+            
+            debugLog('🎯 Drag & Drop initialisiert');
+        }
+        
+        function handleDragStart(e) {
+            draggedComponent = {
+                type: e.target.dataset.component,
+                uValue: parseFloat(e.target.dataset.uvalue),
+                name: e.target.querySelector('.component-name').textContent
+            };
+            e.target.style.opacity = '0.5';
+            debugLog('🎯 Drag gestartet: ' + draggedComponent.name);
+        }
+        
+        function handleDragEnd(e) {
+            e.target.style.opacity = '1';
+        }
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            if (draggedComponent && building3D) {
+                // Berechne Position basierend auf Mausposition
+                const rect = e.target.getBoundingClientRect();
+                const x = (e.clientX - rect.left) / rect.width;
+                const y = (e.clientY - rect.top) / rect.height;
+                
+                // Zeige Komponent-Editor
+                showComponentEditor(draggedComponent, {x, y});
+                
+                debugLog('📍 Komponente platziert: ' + draggedComponent.name + ' bei (' + x.toFixed(2) + ', ' + y.toFixed(2) + ')');
+            }
+            draggedComponent = null;
+        }
+        
+        // Komponent-Editor Modal
+        function showComponentEditor(component, position) {
+            const editor = createComponentEditor(component, position);
+            document.body.appendChild(editor);
+        }
+        
+        function createComponentEditor(component, position) {
+            const modal = document.createElement('div');
+            modal.className = 'component-editor-modal';
+            modal.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: #2d2d2d;
+                border: 2px solid #4CAF50;
+                border-radius: 10px;
+                padding: 20px;
+                z-index: 10000;
+                color: white;
+                min-width: 350px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.7);
+            `;
+            
+            modal.innerHTML = `
+                <h3 style="color: #4CAF50; margin-bottom: 15px;">
+                    ${component.type === 'wall' ? '🧱' : component.type === 'window' ? '🪟' : component.type === 'door' ? '🚪' : component.type === 'roof' ? '🏠' : '⬛'} 
+                    ${component.name} bearbeiten
+                </h3>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Name:</label>
+                    <input type="text" id="comp-name" value="${component.name}" style="width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; background: #404040; color: white;">
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">U-Wert (W/(m²·K)):</label>
+                    <input type="number" id="comp-uvalue" value="${component.uValue}" step="0.01" min="0.01" max="10" style="width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; background: #404040; color: white;">
+                    <small style="color: #aaa;">Standard: ${component.uValue} W/(m²·K)</small>
+                </div>
+                
+                ${component.type === 'window' || component.type === 'door' ? `
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Breite (m):</label>
+                        <input type="number" id="comp-width" value="${component.type === 'window' ? '1.2' : '1.0'}" step="0.1" min="0.5" max="5" style="width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; background: #404040; color: white;">
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Höhe (m):</label>
+                        <input type="number" id="comp-height" value="${component.type === 'window' ? '1.5' : '2.1'}" step="0.1" min="0.5" max="3" style="width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; background: #404040; color: white;">
+                    </div>
+                ` : ''}
+                
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button onclick="cancelComponentEditor()" style="background: #666; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+                        ❌ Abbrechen
+                    </button>
+                    <button onclick="saveComponent('${component.type}', ${position.x}, ${position.y})" style="background: #4CAF50; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer;">
+                        ✅ Hinzufügen
+                    </button>
+                </div>
+            `;
+            
+            return modal;
+        }
+        
+        function cancelComponentEditor() {
+            const modal = document.querySelector('.component-editor-modal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function saveComponent(type, x, y) {
+            const name = document.getElementById('comp-name').value;
+            const uValue = parseFloat(document.getElementById('comp-uvalue').value);
+            
+            const component = {
+                type: type,
+                name: name,
+                uValue: uValue,
+                position: { x, y }
+            };
+            
+            // Für Fenster und Türen auch Abmessungen speichern
+            if (type === 'window' || type === 'door') {
+                component.width = parseFloat(document.getElementById('comp-width').value);
+                component.height = parseFloat(document.getElementById('comp-height').value);
+                component.area = component.width * component.height;
+            }
+            
+            // Komponente zum Gebäude hinzufügen
+            if (building3D) {
+                building3D.addComponent(component);
+            }
+            
+            debugLog('✅ Komponente hinzugefügt: ' + name + ' (U=' + uValue + ')');
+            
+            // Modal schließen
+            cancelComponentEditor();
+        }
+
         // Erweiterte Building3D Klasse (wie in Schritt 2)
         class EnhancedBuilding3D {
             constructor(containerId) {
@@ -437,6 +761,8 @@
                     width: 8,
                     height: 2.5
                 };
+                this.components = []; // Array für alle Bauteile
+                this.selectedComponent = null; // Aktuell ausgewählte Komponente
                 this.init();
             }
             
@@ -556,6 +882,151 @@
                 this.controls.update();
             }
             
+            // Komponenten-Verwaltung
+            addComponent(component) {
+                // Generiere eindeutige ID
+                component.id = 'comp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                
+                // Füge zur Komponenten-Liste hinzu
+                this.components.push(component);
+                
+                // Erstelle 3D-Objekt
+                this.create3DComponent(component);
+                
+                debugLog('🔧 Komponente hinzugefügt: ' + component.name + ' (ID: ' + component.id + ')');
+                
+                // Aktualisiere UI-Liste
+                this.updateComponentsList();
+                
+                return component.id;
+            }
+            
+            create3DComponent(component) {
+                let mesh;
+                const { x, y } = component.position;
+                
+                // Konvertiere relative Position zu Weltkoordinaten
+                const worldX = (x - 0.5) * this.buildingData.length;
+                const worldZ = (y - 0.5) * this.buildingData.width;
+                
+                switch(component.type) {
+                    case 'window':
+                        mesh = this.createWindowMesh(component);
+                        mesh.position.set(worldX, component.height/2, worldZ);
+                        break;
+                        
+                    case 'door':
+                        mesh = this.createDoorMesh(component);
+                        mesh.position.set(worldX, component.height/2, worldZ);
+                        break;
+                        
+                    case 'wall':
+                        mesh = this.createWallMesh(component);
+                        mesh.position.set(worldX, this.buildingData.height/2, worldZ);
+                        break;
+                        
+                    case 'roof':
+                        mesh = this.createRoofMesh(component);
+                        mesh.position.set(worldX, this.buildingData.height + 0.1, worldZ);
+                        break;
+                        
+                    case 'floor':
+                        mesh = this.createFloorMesh(component);
+                        mesh.position.set(worldX, -0.1, worldZ);
+                        break;
+                }
+                
+                if (mesh) {
+                    mesh.userData = { componentId: component.id, component: component };
+                    this.buildingGroup.add(mesh);
+                    component.mesh = mesh;
+                }
+            }
+            
+            createWindowMesh(component) {
+                const geometry = new THREE.BoxGeometry(component.width, component.height, 0.1);
+                const material = new THREE.MeshLambertMaterial({ 
+                    color: 0x87CEEB, 
+                    transparent: true, 
+                    opacity: 0.6 
+                });
+                return new THREE.Mesh(geometry, material);
+            }
+            
+            createDoorMesh(component) {
+                const geometry = new THREE.BoxGeometry(component.width, component.height, 0.1);
+                const material = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+                return new THREE.Mesh(geometry, material);
+            }
+            
+            createWallMesh(component) {
+                const geometry = new THREE.BoxGeometry(2, this.buildingData.height, 0.2);
+                const material = new THREE.MeshLambertMaterial({ color: 0xDDDDDD });
+                return new THREE.Mesh(geometry, material);
+            }
+            
+            createRoofMesh(component) {
+                const geometry = new THREE.BoxGeometry(2, 0.2, 2);
+                const material = new THREE.MeshLambertMaterial({ color: 0x8B0000 });
+                return new THREE.Mesh(geometry, material);
+            }
+            
+            createFloorMesh(component) {
+                const geometry = new THREE.BoxGeometry(2, 0.1, 2);
+                const material = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+                return new THREE.Mesh(geometry, material);
+            }
+            
+            removeComponent(componentId) {
+                const componentIndex = this.components.findIndex(c => c.id === componentId);
+                if (componentIndex !== -1) {
+                    const component = this.components[componentIndex];
+                    
+                    // Entferne 3D-Objekt
+                    if (component.mesh) {
+                        this.buildingGroup.remove(component.mesh);
+                    }
+                    
+                    // Entferne aus Array
+                    this.components.splice(componentIndex, 1);
+                    
+                    debugLog('🗑️ Komponente entfernt: ' + component.name);
+                    this.updateComponentsList();
+                }
+            }
+            
+            updateComponentsList() {
+                // Erstelle Liste für Sidebar
+                const listHtml = this.components.map(comp => `
+                    <div class="component-list-item" data-id="${comp.id}" style="background: #404040; padding: 8px; margin: 4px 0; border-radius: 4px; cursor: pointer;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>${comp.name}</strong><br>
+                                <small>U = ${comp.uValue} W/(m²·K)</small>
+                            </div>
+                            <button onclick="building3D.removeComponent('${comp.id}')" style="background: #ff4444; border: none; color: white; padding: 4px 8px; border-radius: 3px; cursor: pointer;">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+                
+                // Aktualisiere Komponenten-Tab
+                const komponentsTab = document.getElementById('komponenten-tab');
+                let componentsList = komponentsTab.querySelector('.components-list');
+                
+                if (!componentsList) {
+                    componentsList = document.createElement('div');
+                    componentsList.className = 'components-list';
+                    componentsList.innerHTML = '<h4 style="color: #4CAF50; margin: 15px 0 10px 0;">📦 Hinzugefügte Komponenten</h4>';
+                    komponentsTab.appendChild(componentsList);
+                }
+                
+                // Ersetze den Inhalt nach dem Titel
+                const existingTitle = componentsList.querySelector('h4');
+                componentsList.innerHTML = existingTitle.outerHTML + listHtml;
+            }
+
             animate() {
                 requestAnimationFrame(() => this.animate());
                 this.controls.update();
@@ -585,6 +1056,11 @@
                 debugLog('✅ energyOS erfolgreich initialisiert!');
                 debugLog('🎮 Alle Funktionen verfügbar: Tabs, 3D-Modellierung, Tests');
                 updateStatus('energyOS bereit');
+                
+                // Drag & Drop initialisieren
+                initializeDragAndDrop();
+                debugLog('🎯 Drag & Drop System aktiviert');
+                
             } catch (error) {
                 debugLog('❌ Error: ' + error.message);
                 updateStatus('❌ Initialisierung fehlgeschlagen');
