@@ -1,8 +1,5 @@
 Mache eine Bauteil-Übersicht, in der alle Bauteile sortiert nach Bauteiltyp angezeigt und ausgewählt werden können.
 
-Beim Drücken von esc
-
-
 Ich will die größe des "verschieben" buttons verändern und rechts daneben einen zweiten button einfügen. Dieser soll die "Einrasten"-Funktion ermöglichen und standardmäßig an sein. Wenn ich ein Fenster oder eine Tür bewege, sollen diese automatisch automatisch nur in wänden platziert werden können. Wenn ich eine Wand bewege, soll diese automatische an die nächste wand nahtlos "andocken" / bzw. einrasten.
 
 Der Löschen Button im Eigenschaften-Panel funktioniert noch nicht.
