@@ -991,6 +991,112 @@
             background: #ffebee;
             border-color: #f44336;
         }
+        
+        /* Component Overview */
+        .component-overview {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+        
+        .component-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .component-group {
+            margin-bottom: 4px;
+        }
+        
+        .component-group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 8px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        
+        .component-group-header:hover {
+            background: #f5f5f5;
+            border-color: #007acc;
+        }
+        
+        .component-group-header::after {
+            content: '▼';
+            font-size: 10px;
+            color: #666;
+            transition: transform 0.2s ease;
+        }
+        
+        .component-group-header.collapsed::after {
+            transform: rotate(-90deg);
+        }
+        
+        .component-count {
+            background: #007acc;
+            color: white;
+            border-radius: 12px;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: 600;
+            min-width: 16px;
+            text-align: center;
+        }
+        
+        .component-group-content {
+            display: none;
+            padding: 4px 0 4px 12px;
+        }
+        
+        .component-group-content.expanded {
+            display: block;
+        }
+        
+        .component-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 8px;
+            margin: 2px 0;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+            transition: all 0.2s ease;
+        }
+        
+        .component-item:hover {
+            background: #f0f8ff;
+            border-color: #007acc;
+        }
+        
+        .component-item.selected {
+            background: #007acc;
+            color: white;
+            border-color: #005a9e;
+        }
+        
+        .component-item-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .component-empty {
+            padding: 8px;
+            text-align: center;
+            color: #999;
+            font-size: 10px;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -1053,7 +1159,7 @@
                         </div>
                     </div>
                     
-                    <h3>🏗️ Bauteile</h3>
+                    <h3>🏗️ Neues Bauteil</h3>
                     <div class="tool-grid">
                         <button class="tool-btn active" data-tool="select">👆 Auswählen</button>
                         <button class="tool-btn" data-tool="wall">🧱 Wand</button>
@@ -1061,6 +1167,62 @@
                         <button class="tool-btn" data-tool="window">🪟 Fenster</button>
                         <button class="tool-btn" data-tool="roof">🏠 Dach</button>
                         <button class="tool-btn" data-tool="floor">🟫 Boden</button>
+                    </div>
+                    
+                    <!-- Component Overview -->
+                    <div class="component-overview">
+                        <h3>📋 Bauteil-Übersicht</h3>
+                        <div id="component-list" class="component-list">
+                            <div class="component-group">
+                                <div class="component-group-header" onclick="toggleComponentGroup('walls')">
+                                    <span>🧱 Wände</span>
+                                    <span class="component-count" id="walls-count">0</span>
+                                </div>
+                                <div id="walls-group" class="component-group-content">
+                                    <!-- Wände werden hier dynamisch hinzugefügt -->
+                                </div>
+                            </div>
+                            
+                            <div class="component-group">
+                                <div class="component-group-header" onclick="toggleComponentGroup('doors')">
+                                    <span>🚪 Türen</span>
+                                    <span class="component-count" id="doors-count">0</span>
+                                </div>
+                                <div id="doors-group" class="component-group-content">
+                                    <!-- Türen werden hier dynamisch hinzugefügt -->
+                                </div>
+                            </div>
+                            
+                            <div class="component-group">
+                                <div class="component-group-header" onclick="toggleComponentGroup('windows')">
+                                    <span>🪟 Fenster</span>
+                                    <span class="component-count" id="windows-count">0</span>
+                                </div>
+                                <div id="windows-group" class="component-group-content">
+                                    <!-- Fenster werden hier dynamisch hinzugefügt -->
+                                </div>
+                            </div>
+                            
+                            <div class="component-group">
+                                <div class="component-group-header" onclick="toggleComponentGroup('roofs')">
+                                    <span>🏠 Dächer</span>
+                                    <span class="component-count" id="roofs-count">0</span>
+                                </div>
+                                <div id="roofs-group" class="component-group-content">
+                                    <!-- Dächer werden hier dynamisch hinzugefügt -->
+                                </div>
+                            </div>
+                            
+                            <div class="component-group">
+                                <div class="component-group-header" onclick="toggleComponentGroup('floors')">
+                                    <span>🟫 Böden</span>
+                                    <span class="component-count" id="floors-count">0</span>
+                                </div>
+                                <div id="floors-group" class="component-group-content">
+                                    <!-- Böden werden hier dynamisch hinzugefügt -->
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- Properties Panel -->
@@ -1408,6 +1570,149 @@
         function exportResults() {
             alert('Ergebnisse werden exportiert... (Funktion noch nicht implementiert)');
         }
+        
+        // Component Overview Functions
+        function toggleComponentGroup(groupType) {
+            const groupContent = document.getElementById(`${groupType}-group`);
+            const groupHeader = document.querySelector(`[onclick="toggleComponentGroup('${groupType}')"]`);
+            
+            if (groupContent && groupHeader) {
+                groupContent.classList.toggle('expanded');
+                groupHeader.classList.toggle('collapsed');
+            }
+        }
+        
+        function updateComponentOverview() {
+            if (!builder3d) {
+                // Initialize empty counts
+                const groups = ['walls', 'doors', 'windows', 'roofs', 'floors'];
+                groups.forEach(groupType => {
+                    const countElement = document.getElementById(`${groupType}-count`);
+                    const groupContent = document.getElementById(`${groupType}-group`);
+                    
+                    if (countElement) {
+                        countElement.textContent = '0';
+                    }
+                    
+                    if (groupContent) {
+                        groupContent.innerHTML = '<div class="component-empty">Keine Bauteile vorhanden</div>';
+                    }
+                });
+                return;
+            }
+            
+            // Get components from builder3d (if method exists)
+            const components = builder3d.getAllComponents ? builder3d.getAllComponents() : [];
+            const groups = {
+                walls: components.filter(c => c.type === 'wall'),
+                doors: components.filter(c => c.type === 'door'),
+                windows: components.filter(c => c.type === 'window'),
+                roofs: components.filter(c => c.type === 'roof'),
+                floors: components.filter(c => c.type === 'floor')
+            };
+            
+            // Update counts and content for each group
+            Object.keys(groups).forEach(groupType => {
+                const countElement = document.getElementById(`${groupType}-count`);
+                const groupContent = document.getElementById(`${groupType}-group`);
+                
+                if (countElement) {
+                    countElement.textContent = groups[groupType].length;
+                }
+                
+                if (groupContent) {
+                    groupContent.innerHTML = '';
+                    
+                    if (groups[groupType].length === 0) {
+                        groupContent.innerHTML = '<div class="component-empty">Keine Bauteile vorhanden</div>';
+                    } else {
+                        groups[groupType].forEach((component, index) => {
+                            const itemElement = document.createElement('div');
+                            itemElement.className = 'component-item';
+                            itemElement.onclick = () => selectComponent(component);
+                            
+                            const emoji = getComponentTypeEmoji(component.type);
+                            const typeName = getComponentTypeName(component.type);
+                            const name = component.name || `${typeName} ${index + 1}`;
+                            
+                            itemElement.innerHTML = `
+                                <span class="component-item-name">${emoji} ${name}</span>
+                            `;
+                            
+                            groupContent.appendChild(itemElement);
+                        });
+                    }
+                }
+            });
+        }
+        
+        function selectComponent(component) {
+            if (builder3d && builder3d.selectComponentById) {
+                builder3d.selectComponentById(component.id);
+                
+                // Visual feedback
+                document.querySelectorAll('.component-item').forEach(item => {
+                    item.classList.remove('selected');
+                });
+                
+                if (event && event.target) {
+                    const targetItem = event.target.closest('.component-item');
+                    if (targetItem) {
+                        targetItem.classList.add('selected');
+                    }
+                }
+            }
+        }
+        
+        function getComponentTypeEmoji(type) {
+            const emojis = {
+                wall: '🧱',
+                door: '🚪',
+                window: '🪟',
+                roof: '🏠',
+                floor: '🟫'
+            };
+            return emojis[type] || '⚪';
+        }
+        
+        function getComponentTypeName(type) {
+            const names = {
+                wall: 'Wand',
+                door: 'Tür',
+                window: 'Fenster',
+                roof: 'Dach',
+                floor: 'Boden'
+            };
+            return names[type] || type;
+        }
+        
+        // Initialize component overview on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Initializing component overview...');
+            
+            // Set initial state - all groups collapsed
+            const groups = ['walls', 'doors', 'windows', 'roofs', 'floors'];
+            groups.forEach(groupType => {
+                const groupHeader = document.querySelector(`[onclick="toggleComponentGroup('${groupType}')"]`);
+                const groupContent = document.getElementById(`${groupType}-group`);
+                
+                if (groupHeader) {
+                    groupHeader.classList.add('collapsed');
+                    console.log(`Set ${groupType} header to collapsed`);
+                }
+                
+                if (groupContent) {
+                    groupContent.classList.remove('expanded');
+                    console.log(`Set ${groupType} content to hidden`);
+                }
+            });
+            
+            // Update component overview after a short delay
+            setTimeout(() => {
+                console.log('Updating component overview...');
+                updateComponentOverview();
+            }, 100);
+        });
     </script>
 
     <!-- 3D Builder Script -->
