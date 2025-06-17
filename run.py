@@ -185,27 +185,25 @@ def main():
                 print(f"🔄 Verwende Port {port}")
     
     print("\n📋 Features:")
-    print("• Detaillierte Bauteile mit U-Werten")
-    print("• Heizkörper und Heizflächenplanung") 
-    print("• Wärmepumpenauslegung nach DIN EN 12831")
-    print("• Materialien nach DIN 4108-4")
-    print("• Normen: GEG 2020, EnEV, KfW, Passivhaus")
+    print("• Schlanker 3D-Builder")
+    print("• Optimierte Performance") 
+    print("• Debug-Logging")
+    print("• Responsive Design")
     print("=" * 50)
     
     try:
-        from src.ui.web_app import app
+        from src.ui.app import app
         
-        print("✓ Web-App geladen")
+        print("✓ Schlanke Web-App geladen")
         print("✓ 3D-Visualisierung verfügbar")
-        print("✓ Gebäudekomponenten aktiviert")
+        print("✓ Performance optimiert")
         print(f"🚀 Server startet auf http://localhost:{port}")
         print("⚡ Drücken Sie Ctrl+C zum Beenden")
         print("")
         print("📋 Bedienungshinweise:")
-        print("• Tabs: Gebäude | Bauteile | Heizung | Analyse")
-        print("• 3D-Navigation: Maus + Mausrad")
-        print("• Komponenten: Klicken zum Auswählen")
-        print("• Bearbeiten: Doppelklick auf Komponente")
+        print("• 3D-Navigation: Maus + Mausrad") 
+        print("• Tools: Sidebar links")
+        print("• Debug-Log: Button unten rechts")
         print("")
         
         # Browser automatisch öffnen

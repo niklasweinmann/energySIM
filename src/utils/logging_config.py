@@ -59,7 +59,7 @@ def configure_logging(log_file_path=None, console_level=None, file_level=None):
     wetterdienst_logger = logging.getLogger('wetterdienst')
     wetterdienst_logger.setLevel(logging.WARNING)
     
-    dwd_logger = logging.getLogger('src.data_handlers.dwd_enhanced')
+    dwd_logger = logging.getLogger('src.data_handlers.dwd_weather')
     dwd_logger.setLevel(logging.INFO)
     
     # Nachricht ausgeben, dass das Logging initialisiert wurde

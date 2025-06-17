@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
-from ..data_handlers.dwd_enhanced import DWDDataManager
+from ..data_handlers.dwd_weather import DWDDataManager
 
 class WeatherAnalyzer:
     """
