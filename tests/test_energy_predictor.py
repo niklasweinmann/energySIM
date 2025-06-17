@@ -14,7 +14,7 @@ class TestEnergyPredictor(unittest.TestCase):
         
         # Synthetische Daten erstellen
         np.random.seed(42)
-        dates = pd.date_range(start='2025-01-01', periods=1000, freq='H')
+        dates = pd.date_range(start='2025-01-01', periods=1000, freq='h')
         
         # Features erstellen
         self.data = pd.DataFrame({

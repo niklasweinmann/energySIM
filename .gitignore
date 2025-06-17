@@ -34,7 +34,7 @@ venv.bak/
 
 # IDE
 .idea/
-.vscode/
+# .vscode/ (auskommentiert - VS Code Konfiguration wird jetzt versioniert)
 *.swp
 *.swo
 
@@ -58,3 +58,5 @@ db.sqlite3
 
 # Apple
 .DS_Store
+
+# User

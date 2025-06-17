@@ -127,7 +127,8 @@ def test_building_simulation():
     
     # Temperaturplot
     ax1.plot(hours, temperatures, 'r-', label='Raumtemperatur')
-    ax1.plot(hours, weather_data['temperature'], 'b-', label='Außentemperatur')
+    # Wähle nur die ersten 24 Stunden aus
+    ax1.plot(hours, weather_data['temperature'].iloc[:24], 'b-', label='Außentemperatur')
     ax1.set_xlabel('Stunde')
     ax1.set_ylabel('Temperatur (°C)')
     ax1.legend()
@@ -136,7 +137,8 @@ def test_building_simulation():
     # Heizlastplot
     ax2.plot(hours, heating_loads, 'r-', label='Heizlast')
     ax2_twin = ax2.twinx()
-    ax2_twin.plot(hours, weather_data['solar_radiation'], 'y-', label='Solare Einstrahlung', alpha=0.5)
+    # Wähle nur die ersten 24 Stunden aus
+    ax2_twin.plot(hours, weather_data['solar_radiation'].iloc[:24], 'y-', label='Solare Einstrahlung', alpha=0.5)
     
     ax2.set_xlabel('Stunde')
     ax2.set_ylabel('Heizlast (kW)', color='r')

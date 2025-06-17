@@ -4,6 +4,7 @@ import tensorflow as tf
 from tensorflow.keras import layers, models
 import pandas as pd
 
+
 class EnergyPredictor:
     """Neuronales Netzwerk für Energiebedarfsvorhersagen."""
     
@@ -21,10 +22,12 @@ class EnergyPredictor:
             input_shape: Form der Eingabedaten (Zeitschritte, Features)
         """
         self.model = models.Sequential([
+            # Input Layer explizit definieren
+            layers.Input(shape=input_shape),
+            
             # Bidirektionales LSTM für Zeitreihenanalyse
             layers.Bidirectional(
-                layers.LSTM(64, return_sequences=True),
-                input_shape=input_shape
+                layers.LSTM(64, return_sequences=True)
             ),
             layers.Dropout(0.2),
             
@@ -139,7 +142,25 @@ class EnergyPredictor:
         # Modell evaluieren
         evaluation = self.model.evaluate(X_test, y_test, verbose=0)
         
+        # Moderne, sichere Konvertierung von TensorFlow-Tensoren zu Python-Skalaren
+        # Verwendet .numpy().item() für Eager Tensors (TensorFlow 2.16+ best practice)
+        def safe_tensor_to_scalar(value):
+            # Behandle EagerTensor explizit
+            if hasattr(value, 'numpy'):
+                # Für TensorFlow 2.16+ EagerTensors: .numpy().item() ist der empfohlene Weg
+                numpy_val = value.numpy()
+                if numpy_val.ndim == 0:  # Skalar
+                    return numpy_val.item()
+                else:
+                    return float(numpy_val)
+            # Bereits ein Python-Typ
+            elif isinstance(value, (int, float)):
+                return float(value)
+            # Fallback für andere Fälle
+            else:
+                return float(value)
+        
         return {
-            'loss': evaluation[0],
-            'mae': evaluation[1]
+            'loss': safe_tensor_to_scalar(evaluation[0]),
+            'mae': safe_tensor_to_scalar(evaluation[1])
         }

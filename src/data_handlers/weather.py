@@ -4,9 +4,9 @@ from typing import List, Optional, Tuple
 import pandas as pd
 import numpy as np
 import logging
-from .dwd_enhanced import DWDDataManager
+from .dwd_weather import DWDDataManager
 try:
-    from .dwd_enhanced import DWDRealDataManager
+    from .dwd_weather import DWDRealDataManager
     REAL_DWD_AVAILABLE = True
 except ImportError:
     REAL_DWD_AVAILABLE = False
@@ -81,8 +81,8 @@ class WeatherDataHandler:
                 logger.error("Keine DWD-Station in der Nähe gefunden")
                 raise ValueError("Keine DWD-Station in der Nähe gefunden")
             
+            # Station in Log ausgeben, keine print-Ausgabe mehr
             logger.info(f"Verwende DWD-Station: {nearest_station['name']} (ID: {nearest_station['id']})")
-            print(f"Verwende DWD-Station: {nearest_station['name']} (ID: {nearest_station['id']})")
             
             # Lade Daten für die Station
             data = self.dwd_manager.get_historical_data(
@@ -93,7 +93,6 @@ class WeatherDataHandler:
             
             # Cache aktualisieren
             self.cached_data = data
-            
             return data
         else:
             # Fallback auf synthetische Daten
@@ -168,7 +167,8 @@ class WeatherDataHandler:
             'wind_speed': wind_speed,
             'humidity': humidity,
             'cloud_cover': cloud_cover,
-            'precipitation': precipitation
+            'precipitation': precipitation,
+            'station_id': ['synthetic'] * len(timestamps)  # Füge station_id hinzu
         })
         
         # Aktualisiere Cache
@@ -194,4 +194,5 @@ class WeatherDataHandler:
         end_date = start_date + timedelta(hours=hours)
         
         # Verwende das gleiche System wie für historische Daten
+        logger.info(f"Erzeuge Wettervorhersage für {hours} Stunden")
         return self.get_historical_data(location, start_date, end_date)

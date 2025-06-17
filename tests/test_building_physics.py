@@ -162,7 +162,10 @@ def test_building_physics():
     print(f"U-Wert Dach: {building.u_values['roof']:.3f} W/(m²·K)")
     print(f"Wärmebrückenzuschlag: {building.thermal_bridges:.3f} W/(m²·K)")
     print(f"Effektive thermische Masse: {building.effective_thermal_mass:.0f} Wh/K")
-    print(f"Mittlere Heizlast: {np.mean(building.heat_demand_history):.1f} kW")
+    if len(building.heat_demand_history) > 0:
+        print(f"Mittlere Heizlast: {np.mean(building.heat_demand_history):.1f} kW")
+    else:
+        print("Mittlere Heizlast: Keine Daten verfügbar (0.0 kW)")
 
 if __name__ == "__main__":
     test_building_physics()

@@ -1,0 +1,1737 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>energyOS - 3D-Gebäudemodellierung</title>
+    
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r127/three.min.js"></script>
+    <script>
+        // OrbitControls inline definition for compatibility
+        (function() {
+            THREE.OrbitControls = function(object, domElement) {
+                this.object = object;
+                this.domElement = (domElement !== undefined) ? domElement : document;
+                
+                // API
+                this.enabled = true;
+                this.target = new THREE.Vector3();
+                this.enableDamping = false;
+                this.target = new THREE.Vector3();
+                this.enableDamping = false;
+                this.dampingFactor = 0.25;
+                this.enableZoom = true;
+                this.zoomSpeed = 1.0;
+                this.enableRotate = true;
+                this.rotateSpeed = 1.0;
+                this.enablePan = true;
+                this.panSpeed = 1.0;
+                this.screenSpacePanning = false;
+                this.keyPanSpeed = 7.0;
+                this.autoRotate = false;
+                this.autoRotateSpeed = 2.0;
+                this.enableKeys = true;
+                this.keys = { LEFT: 37, UP: 38, RIGHT: 39, BOTTOM: 40 };
+                this.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+                this.target0 = this.target.clone();
+                this.position0 = this.object.position.clone();
+                this.zoom0 = this.object.zoom;
+                
+                // Internals
+                var scope = this;
+                var changeEvent = { type: 'change' };
+                var startEvent = { type: 'start' };
+                var endEvent = { type: 'end' };
+                var STATE = { NONE: -1, ROTATE: 0, DOLLY: 1, PAN: 2, TOUCH_ROTATE: 3, TOUCH_DOLLY_PAN: 4 };
+                var state = STATE.NONE;
+                
+                var EPS = 0.000001;
+                var spherical = new THREE.Spherical();
+                var sphericalDelta = new THREE.Spherical();
+                var scale = 1;
+                var panOffset = new THREE.Vector3();
+                var zoomChanged = false;
+                var rotateStart = new THREE.Vector2();
+                var rotateEnd = new THREE.Vector2();
+                var rotateDelta = new THREE.Vector2();
+                var panStart = new THREE.Vector2();
+                var panEnd = new THREE.Vector2();
+                var panDelta = new THREE.Vector2();
+                var dollyStart = new THREE.Vector2();
+                var dollyEnd = new THREE.Vector2();
+                var dollyDelta = new THREE.Vector2();
+                
+                function getAutoRotationAngle() {
+                    return 2 * Math.PI / 60 / 60 * scope.autoRotateSpeed;
+                }
+                
+                function getZoomScale() {
+                    return Math.pow(0.95, scope.zoomSpeed);
+                }
+                
+                function rotateLeft(angle) {
+                    sphericalDelta.theta -= angle;
+                }
+                
+                function rotateUp(angle) {
+                    sphericalDelta.phi -= angle;
+                }
+                
+                var panLeft = function() {
+                    var v = new THREE.Vector3();
+                    return function panLeft(distance, objectMatrix) {
+                        v.setFromMatrixColumn(objectMatrix, 0);
+                        v.multiplyScalar(-distance);
+                        panOffset.add(v);
+                    };
+                }();
+                
+                var panUp = function() {
+                    var v = new THREE.Vector3();
+                    return function panUp(distance, objectMatrix) {
+                        if (scope.screenSpacePanning === true) {
+                            v.setFromMatrixColumn(objectMatrix, 1);
+                        } else {
+                            v.setFromMatrixColumn(objectMatrix, 0);
+                            v.crossVectors(scope.object.up, v);
+                        }
+                        v.multiplyScalar(distance);
+                        panOffset.add(v);
+                    };
+                }();
+                
+                var pan = function() {
+                    var offset = new THREE.Vector3();
+                    return function pan(deltaX, deltaY) {
+                        var element = scope.domElement === document ? scope.domElement.body : scope.domElement;
+                        if (scope.object.isPerspectiveCamera) {
+                            var position = scope.object.position;
+                            offset.copy(position).sub(scope.target);
+                            var targetDistance = offset.length();
+                            targetDistance *= Math.tan((scope.object.fov / 2) * Math.PI / 180.0);
+                            panLeft(2 * deltaX * targetDistance / element.clientHeight, scope.object.matrix);
+                            panUp(2 * deltaY * targetDistance / element.clientHeight, scope.object.matrix);
+                        } else if (scope.object.isOrthographicCamera) {
+                            panLeft(deltaX * (scope.object.right - scope.object.left) / scope.object.zoom / element.clientWidth, scope.object.matrix);
+                            panUp(deltaY * (scope.object.top - scope.object.bottom) / scope.object.zoom / element.clientHeight, scope.object.matrix);
+                        } else {
+                            console.warn('WARNING: OrbitControls.js encountered an unknown camera type - pan disabled.');
+                            scope.enablePan = false;
+                        }
+                    };
+                }();
+                
+                function dollyIn(dollyScale) {
+                    if (scope.object.isPerspectiveCamera) {
+                        scale /= dollyScale;
+                    } else if (scope.object.isOrthographicCamera) {
+                        scope.object.zoom = Math.max(scope.minZoom, Math.min(scope.maxZoom, scope.object.zoom * dollyScale));
+                        scope.object.updateProjectionMatrix();
+                        zoomChanged = true;
+                    } else {
+                        console.warn('WARNING: OrbitControls.js encountered an unknown camera type - dolly/zoom disabled.');
+                        scope.enableZoom = false;
+                    }
+                }
+                
+                function dollyOut(dollyScale) {
+                    if (scope.object.isPerspectiveCamera) {
+                        scale *= dollyScale;
+                    } else if (scope.object.isOrthographicCamera) {
+                        scope.object.zoom = Math.max(scope.minZoom, Math.min(scope.maxZoom, scope.object.zoom / dollyScale));
+                        scope.object.updateProjectionMatrix();
+                        zoomChanged = true;
+                    } else {
+                        console.warn('WARNING: OrbitControls.js encountered an unknown camera type - dolly/zoom disabled.');
+                        scope.enableZoom = false;
+                    }
+                }
+                
+                function handleMouseDownRotate(event) {
+                    rotateStart.set(event.clientX, event.clientY);
+                }
+                
+                function handleMouseDownDolly(event) {
+                    dollyStart.set(event.clientX, event.clientY);
+                }
+                
+                function handleMouseDownPan(event) {
+                    panStart.set(event.clientX, event.clientY);
+                }
+                
+                function handleMouseMoveRotate(event) {
+                    rotateEnd.set(event.clientX, event.clientY);
+                    rotateDelta.subVectors(rotateEnd, rotateStart).multiplyScalar(scope.rotateSpeed);
+                    var element = scope.domElement === document ? scope.domElement.body : scope.domElement;
+                    rotateLeft(2 * Math.PI * rotateDelta.x / element.clientHeight);
+                    rotateUp(2 * Math.PI * rotateDelta.y / element.clientHeight);
+                    rotateStart.copy(rotateEnd);
+                    scope.update();
+                }
+                
+                function handleMouseMoveDolly(event) {
+                    dollyEnd.set(event.clientX, event.clientY);
+                    dollyDelta.subVectors(dollyEnd, dollyStart);
+                    if (dollyDelta.y > 0) {
+                        dollyIn(getZoomScale());
+                    } else if (dollyDelta.y < 0) {
+                        dollyOut(getZoomScale());
+                    }
+                    dollyStart.copy(dollyEnd);
+                    scope.update();
+                }
+                
+                function handleMouseMovePan(event) {
+                    panEnd.set(event.clientX, event.clientY);
+                    panDelta.subVectors(panEnd, panStart).multiplyScalar(scope.panSpeed);
+                    pan(panDelta.x, panDelta.y);
+                    panStart.copy(panEnd);
+                    scope.update();
+                }
+                
+                function handleMouseWheel(event) {
+                    if (event.deltaY < 0) {
+                        dollyOut(getZoomScale());
+                    } else if (event.deltaY > 0) {
+                        dollyIn(getZoomScale());
+                    }
+                    scope.update();
+                }
+                
+                function onMouseDown(event) {
+                    if (scope.enabled === false) return;
+                    event.preventDefault();
+                    
+                    switch (event.button) {
+                        case 0:
+                            if (event.ctrlKey || event.metaKey || event.shiftKey) {
+                                if (scope.enablePan === false) return;
+                                handleMouseDownPan(event);
+                                state = STATE.PAN;
+                            } else {
+                                if (scope.enableRotate === false) return;
+                                handleMouseDownRotate(event);
+                                state = STATE.ROTATE;
+                            }
+                            break;
+                        case 1:
+                            if (scope.enableZoom === false) return;
+                            handleMouseDownDolly(event);
+                            state = STATE.DOLLY;
+                            break;
+                        case 2:
+                            if (scope.enablePan === false) return;
+                            handleMouseDownPan(event);
+                            state = STATE.PAN;
+                            break;
+                    }
+                    
+                    if (state !== STATE.NONE) {
+                        document.addEventListener('mousemove', onMouseMove, false);
+                        document.addEventListener('mouseup', onMouseUp, false);
+                        scope.dispatchEvent(startEvent);
+                    }
+                }
+                
+                function onMouseMove(event) {
+                    if (scope.enabled === false) return;
+                    event.preventDefault();
+                    
+                    switch (state) {
+                        case STATE.ROTATE:
+                            if (scope.enableRotate === false) return;
+                            handleMouseMoveRotate(event);
+                            break;
+                        case STATE.DOLLY:
+                            if (scope.enableZoom === false) return;
+                            handleMouseMoveDolly(event);
+                            break;
+                        case STATE.PAN:
+                            if (scope.enablePan === false) return;
+                            handleMouseMovePan(event);
+                            break;
+                    }
+                }
+                
+                function onMouseUp(event) {
+                    if (scope.enabled === false) return;
+                    document.removeEventListener('mousemove', onMouseMove, false);
+                    document.removeEventListener('mouseup', onMouseUp, false);
+                    scope.dispatchEvent(endEvent);
+                    state = STATE.NONE;
+                }
+                
+                function onMouseWheel(event) {
+                    if (scope.enabled === false || scope.enableZoom === false || (state !== STATE.NONE && state !== STATE.ROTATE)) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    scope.dispatchEvent(startEvent);
+                    handleMouseWheel(event);
+                    scope.dispatchEvent(endEvent);
+                }
+                
+                this.update = function() {
+                    var offset = new THREE.Vector3();
+                    var quat = new THREE.Quaternion().setFromUnitVectors(object.up, new THREE.Vector3(0, 1, 0));
+                    var quatInverse = quat.clone().inverse();
+                    var lastPosition = new THREE.Vector3();
+                    var lastQuaternion = new THREE.Quaternion();
+                    
+                    return function update() {
+                        var position = scope.object.position;
+                        offset.copy(position).sub(scope.target);
+                        offset.applyQuaternion(quat);
+                        spherical.setFromVector3(offset);
+                        
+                        if (scope.autoRotate && state === STATE.NONE) {
+                            rotateLeft(getAutoRotationAngle());
+                        }
+                        
+                        spherical.theta += sphericalDelta.theta;
+                        spherical.phi += sphericalDelta.phi;
+                        spherical.theta = Math.max(scope.minAzimuthAngle, Math.min(scope.maxAzimuthAngle, spherical.theta));
+                        spherical.phi = Math.max(scope.minPolarAngle, Math.min(scope.maxPolarAngle, spherical.phi));
+                        spherical.makeSafe();
+                        spherical.radius *= scale;
+                        spherical.radius = Math.max(scope.minDistance, Math.min(scope.maxDistance, spherical.radius));
+                        
+                        scope.target.add(panOffset);
+                        offset.setFromSpherical(spherical);
+                        offset.applyQuaternion(quatInverse);
+                        position.copy(scope.target).add(offset);
+                        scope.object.lookAt(scope.target);
+                        
+                        if (scope.enableDamping === true) {
+                            sphericalDelta.theta *= (1 - scope.dampingFactor);
+                            sphericalDelta.phi *= (1 - scope.dampingFactor);
+                            panOffset.multiplyScalar(1 - scope.dampingFactor);
+                        } else {
+                            sphericalDelta.set(0, 0, 0);
+                            panOffset.set(0, 0, 0);
+                        }
+                        
+                        scale = 1;
+                        
+                        if (zoomChanged ||
+                            lastPosition.distanceToSquared(scope.object.position) > EPS ||
+                            8 * (1 - lastQuaternion.dot(scope.object.quaternion)) > EPS) {
+                            scope.dispatchEvent(changeEvent);
+                            lastPosition.copy(scope.object.position);
+                            lastQuaternion.copy(scope.object.quaternion);
+                            zoomChanged = false;
+                            return true;
+                        }
+                        
+                        return false;
+                    };
+                }();
+                
+                this.dispose = function() {
+                    scope.domElement.removeEventListener('mousedown', onMouseDown, false);
+                    scope.domElement.removeEventListener('wheel', onMouseWheel, false);
+                };
+                
+                this.minDistance = 0;
+                this.maxDistance = Infinity;
+                this.minZoom = 0;
+                this.maxZoom = Infinity;
+                this.minPolarAngle = 0;
+                this.maxPolarAngle = Math.PI;
+                this.minAzimuthAngle = -Infinity;
+                this.maxAzimuthAngle = Infinity;
+                
+                scope.domElement.addEventListener('mousedown', onMouseDown, false);
+                scope.domElement.addEventListener('wheel', onMouseWheel, false);
+                scope.domElement.addEventListener('contextmenu', function(event) { event.preventDefault(); }, false);
+                
+                this.update();
+            };
+            
+            THREE.OrbitControls.prototype = Object.create(THREE.EventDispatcher.prototype);
+            THREE.OrbitControls.prototype.constructor = THREE.OrbitControls;
+        })();
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            overflow: hidden;
+        }
+        
+        #app-container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 300px;
+            background: white;
+            border-right: 1px solid #ddd;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .sidebar-header {
+            background: #2c3e50;
+            padding: 15px 20px;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #34495e;
+        }
+        
+        .sidebar-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ecf0f1;
+        }
+        
+        .hamburger-menu {
+            position: relative;
+        }
+        
+        .hamburger-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 3px;
+            transition: background-color 0.3s;
+        }
+        
+        .hamburger-btn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .hamburger-menu-content {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            width: 200px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: none;
+        }
+        
+        .hamburger-menu-content.show {
+            display: block;
+        }
+        
+        .tab-item {
+            padding: 12px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.3s;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .tab-item:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .tab-item.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .tab-item:last-child {
+            border-bottom: none;
+        }
+        
+        .sidebar-content {
+            padding: 20px;
+            flex: 1;
+        }
+        
+        .sidebar-content h3 {
+            margin-bottom: 20px;
+            color: #4CAF50;
+            font-size: 16px;
+        }
+        
+        /* Edit Mode */
+        .edit-mode-section {
+            margin-bottom: 6px;
+        }
+        
+        .edit-btn {
+            width: 100%;
+            background: white;
+            color: #333;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 6px 8px;
+            cursor: pointer;
+            font-size: 11px;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+        
+        .edit-btn:hover {
+            background: #f5f5f5;
+            border-color: #007acc;
+        }
+        
+        .edit-btn.active {
+            background: #ffeb3b;
+            color: #333;
+            border-color: #ffc107;
+        }
+        
+        /* Tab Content */
+        .tab-content {
+            height: 100%;
+        }
+        
+        .tab-content label {
+            display: block;
+            margin: 10px 0 5px 0;
+            font-weight: bold;
+            color: #333;
+            font-size: 13px;
+        }
+        
+        .tab-content input,
+        .tab-content select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+        
+        .tab-content input[type="range"] {
+            width: calc(100% - 50px);
+            display: inline-block;
+        }
+        
+        .tab-content input[type="range"] + span {
+            margin-left: 10px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        /* Configuration sections */
+        .pv-config,
+        .inverter-config,
+        .battery-config,
+        .simulation-config {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+        
+        /* Result cards */
+        .results-display {
+            margin-top: 15px;
+        }
+        
+        .result-card {
+            background: #f0f8ff;
+            border: 1px solid #d1e7dd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .result-card h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .result-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        /* Button styles */
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px 0;
+            width: 100%;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #45a049;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .tool-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+        
+        .tool-btn {
+            background: white;
+            color: #333;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 6px 8px;
+            cursor: pointer;
+            font-size: 11px;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+        
+        .tool-btn:hover:not(.disabled) {
+            background: #f5f5f5;
+            border-color: #007acc;
+        }
+        
+        .tool-btn.active {
+            background: #007acc;
+            color: white;
+            border-color: #005a9e;
+        }
+        
+        .tool-btn.disabled {
+            background: #f5f5f5;
+            color: #999;
+            border-color: #e0e0e0;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
+        #building-3d {
+            flex: 1;
+            background: #f0f0f0;
+            position: relative;
+        }
+        
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 24px;
+            background: #2d2d30;
+            color: #cccccc;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            font-size: 11px;
+            z-index: 1000;
+        }
+        
+        /* Debug-Panel */
+        .debug-panel {
+            position: fixed;
+            bottom: 24px;
+            left: 0;
+            right: 0;
+            height: 200px;
+            background: #1e1e1e;
+            border-top: 1px solid #333;
+            z-index: 900;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .debug-panel.open {
+            transform: translateY(0);
+        }
+        
+        .debug-header {
+            background: #2d2d30;
+            color: #cccccc;
+            padding: 4px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            min-height: 24px;
+        }
+        
+        .debug-controls {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .debug-btn {
+            background: transparent;
+            border: none;
+            color: #cccccc;
+            cursor: pointer;
+            padding: 2px 6px;
+            font-size: 10px;
+            border-radius: 2px;
+        }
+        
+        .debug-btn:hover {
+            background: #3e3e42;
+        }
+        
+        .debug-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 12px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 11px;
+            line-height: 1.3;
+            color: #cccccc;
+        }
+        
+        .debug-log-entry {
+            margin: 1px 0;
+            word-wrap: break-word;
+        }
+        
+        .debug-log-entry.info { color: #4fc1ff; }
+        .debug-log-entry.warn { color: #ffcc02; }
+        .debug-log-entry.error { color: #f48771; }
+        .debug-log-entry.success { color: #73c991; }
+        
+        .debug-toggle {
+            position: fixed;
+            bottom: 32px;
+            right: 12px;
+            background: #007acc;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 10px;
+            z-index: 1001;
+        }
+        
+        .debug-toggle:hover {
+            background: #005a9e;
+        }
+        
+        /* Properties Panel */
+        .properties-panel {
+            position: fixed;
+            top: 24px;
+            right: 0;
+            width: 300px;
+            max-width: 80%;
+            height: calc(100% - 24px);
+            background: #fff;
+            border-left: 1px solid #ddd;
+            box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .properties-panel.open {
+            transform: translateX(0);
+        }
+        
+        .properties-header {
+            background: #f7f7f9;
+            padding: 8px 12px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .properties-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .properties-close {
+            background: transparent;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .properties-close:hover {
+            color: #333;
+        }
+        
+        .properties-content {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+            font-size: 13px;
+            color: #333;
+        }
+        
+        .property-group {
+            margin-bottom: 16px;
+        }
+        
+        .property-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        .property-label {
+            font-size: 12px;
+            color: #777;
+            margin-bottom: 4px;
+        }
+        
+        .property-value {
+            font-size: 14px;
+            color: #333;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #f9f9f9;
+        }
+        
+        .property-value:hover {
+            border-color: #4CAF50;
+        }
+        
+        .properties-content {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        
+        .properties-content h4 {
+            margin: 0 0 15px 0;
+            color: #4CAF50;
+            font-size: 14px;
+        }
+        
+        .property-group {
+            margin-bottom: 12px;
+        }
+        
+        .property-label {
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .property-input {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 12px;
+            background: white;
+        }
+        
+        .property-input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        
+        .property-input.default {
+            background: #f5f5f5;
+            color: #999;
+        }
+        
+        .property-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 4px;
+        }
+        
+        .property-row.two-col {
+            grid-template-columns: 1fr 1fr;
+        }
+        
+        .move-btn {
+            width: 100%;
+            background: #007acc;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            margin-top: 8px;
+            transition: all 0.2s ease;
+        }
+        
+        .move-btn:hover {
+            background: #005a9e;
+        }
+        
+        .move-btn.active {
+            background: #28a745;
+        }
+        
+        .delete-btn {
+            width: 100%;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 8px;
+            cursor: pointer;
+            font-size: 11px;
+            margin-top: 8px;
+            transition: all 0.2s ease;
+        }
+        
+        .delete-btn:hover {
+            background: #c82333;
+        }
+        
+        .property-actions {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        /* Edit Mode Button */
+        .edit-btn {
+            width: 100%;
+            background: white;
+            color: #333;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+        
+        .edit-btn:hover {
+            background: #f5f5f5;
+        }
+        
+        .edit-btn.active {
+            background: #ffeb3b;
+            color: #333;
+            border-color: #ffc107;
+        }
+        
+        .edit-mode-section {
+            margin-bottom: 16px;
+        }
+        
+        /* Building Management */
+        .building-management {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .building-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .building-btn {
+            width: 100%;
+            background: white;
+            color: #333;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 6px 8px;
+            cursor: pointer;
+            font-size: 11px;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+        
+        .building-btn:hover {
+            background: #f5f5f5;
+            border-color: #007acc;
+        }
+        
+        .building-btn.delete-btn {
+            background: #fff5f5;
+            border-color: #ffcccb;
+            color: #d32f2f;
+        }
+        
+        .building-btn.delete-btn:hover {
+            background: #ffebee;
+            border-color: #f44336;
+        }
+        
+        /* Component Overview */
+        .component-overview {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+        
+        .component-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .component-group {
+            margin-bottom: 4px;
+        }
+        
+        .component-group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 8px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        
+        .component-group-header:hover {
+            background: #f5f5f5;
+            border-color: #007acc;
+        }
+        
+        .component-group-header::after {
+            content: '▼';
+            font-size: 10px;
+            color: #666;
+            transition: transform 0.2s ease;
+        }
+        
+        .component-group-header.collapsed::after {
+            transform: rotate(-90deg);
+        }
+        
+        .component-count {
+            background: #007acc;
+            color: white;
+            border-radius: 12px;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: 600;
+            min-width: 16px;
+            text-align: center;
+        }
+        
+        .component-group-content {
+            display: none;
+            padding: 4px 0 4px 12px;
+        }
+        
+        .component-group-content.expanded {
+            display: block;
+        }
+        
+        .component-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 8px;
+            margin: 2px 0;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+            transition: all 0.2s ease;
+        }
+        
+        .component-item:hover {
+            background: #f0f8ff;
+            border-color: #007acc;
+        }
+        
+        .component-item.selected {
+            background: #007acc;
+            color: white;
+            border-color: #005a9e;
+        }
+        
+        .component-item-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .component-empty {
+            padding: 8px;
+            text-align: center;
+            color: #999;
+            font-size: 10px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Sidebar Header -->
+            <div class="sidebar-header">
+                <div class="sidebar-title">energySIM</div>
+                <div class="hamburger-menu">
+                    <button class="hamburger-btn" onclick="toggleHamburgerMenu()">
+                        ☰
+                    </button>
+                    <div id="hamburger-menu-content" class="hamburger-menu-content">
+                        <div class="tab-item active" data-tab="building" onclick="switchTab('building')">
+                            🏠 Gebäude
+                        </div>
+                        <div class="tab-item" data-tab="pv" onclick="switchTab('pv')">
+                            ☀️ PV-Anlage
+                        </div>
+                        <div class="tab-item" data-tab="inverter" onclick="switchTab('inverter')">
+                            🔌 Wechselrichter
+                        </div>
+                        <div class="tab-item" data-tab="battery" onclick="switchTab('battery')">
+                            🔋 Batteriespeicher
+                        </div>
+                        <div class="tab-item" data-tab="simulation" onclick="switchTab('simulation')">
+                            ⚡ Simulation
+                        </div>
+                        <div class="tab-item" data-tab="results" onclick="switchTab('results')">
+                            📊 Ergebnisse
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sidebar Content -->
+            <div class="sidebar-content">
+                <!-- Building Tab Content (Default) -->
+                <div id="tab-building" class="tab-content">                   
+                    <!-- Building Management -->
+                    <div class="building-management">
+                        <h3>📁 Gebäude</h3>
+                        <!-- Edit Mode Button -->
+                        <div class="edit-mode-section">
+                            <button id="edit-mode-btn" class="edit-btn" onclick="toggleEditMode()">
+                                ✏️ Bearbeiten aktivieren
+                            </button>
+                        </div>
+                        <div class="building-buttons">
+                            <button class="building-btn" onclick="importBuilding()">
+                                📥 Importieren
+                            </button>
+                            <button class="building-btn" onclick="exportBuilding()">
+                                📤 Exportieren
+                            </button>
+                            <button class="building-btn delete-btn" onclick="clearBuilding()">
+                                🗑️ Gebäude löschen
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <h3>🏗️ Neues Bauteil</h3>
+                    <div class="tool-grid">
+                        <button class="tool-btn active" data-tool="select">👆 Auswählen</button>
+                        <button class="tool-btn" data-tool="wall">🧱 Wand</button>
+                        <button class="tool-btn" data-tool="door">🚪 Tür</button>
+                        <button class="tool-btn" data-tool="window">🪟 Fenster</button>
+                        <button class="tool-btn" data-tool="roof">🏠 Dach</button>
+                        <button class="tool-btn" data-tool="floor">🟫 Boden</button>
+                    </div>
+                    
+                    <!-- Component Overview -->
+                    <div class="component-overview">
+                        <h3>📋 Bauteil-Übersicht</h3>
+                        <div id="component-list" class="component-list">
+                            <div class="component-group">
+                                <div class="component-group-header" onclick="toggleComponentGroup('walls')">
+                                    <span>🧱 Wände</span>
+                                    <span class="component-count" id="walls-count">0</span>
+                                </div>
+                                <div id="walls-group" class="component-group-content">
+                                    <!-- Wände werden hier dynamisch hinzugefügt -->
+                                </div>
+                            </div>
+                            
+                            <div class="component-group">
+                                <div class="component-group-header" onclick="toggleComponentGroup('doors')">
+                                    <span>🚪 Türen</span>
+                                    <span class="component-count" id="doors-count">0</span>
+                                </div>
+                                <div id="doors-group" class="component-group-content">
+                                    <!-- Türen werden hier dynamisch hinzugefügt -->
+                                </div>
+                            </div>
+                            
+                            <div class="component-group">
+                                <div class="component-group-header" onclick="toggleComponentGroup('windows')">
+                                    <span>🪟 Fenster</span>
+                                    <span class="component-count" id="windows-count">0</span>
+                                </div>
+                                <div id="windows-group" class="component-group-content">
+                                    <!-- Fenster werden hier dynamisch hinzugefügt -->
+                                </div>
+                            </div>
+                            
+                            <div class="component-group">
+                                <div class="component-group-header" onclick="toggleComponentGroup('roofs')">
+                                    <span>🏠 Dächer</span>
+                                    <span class="component-count" id="roofs-count">0</span>
+                                </div>
+                                <div id="roofs-group" class="component-group-content">
+                                    <!-- Dächer werden hier dynamisch hinzugefügt -->
+                                </div>
+                            </div>
+                            
+                            <div class="component-group">
+                                <div class="component-group-header" onclick="toggleComponentGroup('floors')">
+                                    <span>🟫 Böden</span>
+                                    <span class="component-count" id="floors-count">0</span>
+                                </div>
+                                <div id="floors-group" class="component-group-content">
+                                    <!-- Böden werden hier dynamisch hinzugefügt -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Properties Panel -->
+                    <div id="properties-panel" class="properties-panel">
+                        <div class="properties-header">
+                            <span>🔧 Eigenschaften</span>
+                            <button class="close-btn" onclick="closePropertiesPanel()">×</button>
+                        </div>
+                        <div id="properties-content" class="properties-content"></div>
+                    </div>
+                </div>
+                
+                <!-- PV Tab Content -->
+                <div id="tab-pv" class="tab-content" style="display: none;">
+                    <h3>☀️ PV-Anlage</h3>
+                    <p>PV-Modul-Konfiguration und Platzierung auf dem Dach</p>
+                    <div class="pv-config">
+                        <label>PV-Modul Typ:</label>
+                        <select id="pv-module-type">
+                            <option value="standard">Standard (300W)</option>
+                            <option value="high-efficiency">Hocheffizient (400W)</option>
+                            <option value="bifacial">Bifacial (350W)</option>
+                        </select>
+                        
+                        <label>Anzahl Module:</label>
+                        <input type="number" id="pv-module-count" value="20" min="1" max="100">
+                        
+                        <label>Ausrichtung:</label>
+                        <select id="pv-orientation">
+                            <option value="south">Süd</option>
+                            <option value="southeast">Südost</option>
+                            <option value="southwest">Südwest</option>
+                            <option value="east">Ost</option>
+                            <option value="west">West</option>
+                        </select>
+                        
+                        <label>Neigungswinkel:</label>
+                        <input type="range" id="pv-tilt" min="0" max="60" value="30">
+                        <span id="pv-tilt-value">30°</span>
+                    </div>
+                </div>
+                
+                <!-- Inverter Tab Content -->
+                <div id="tab-inverter" class="tab-content" style="display: none;">
+                    <h3>🔌 Wechselrichter</h3>
+                    <p>Wechselrichter-Konfiguration</p>
+                    <div class="inverter-config">
+                        <label>Wechselrichter Typ:</label>
+                        <select id="inverter-type">
+                            <option value="string">String-Wechselrichter</option>
+                            <option value="power-optimizer">Power Optimizer</option>
+                            <option value="micro">Mikro-Wechselrichter</option>
+                        </select>
+                        
+                        <label>Nennleistung:</label>
+                        <input type="number" id="inverter-power" value="5000" min="1000" max="20000" step="500">
+                        <span>W</span>
+                        
+                        <label>Effizienz:</label>
+                        <input type="range" id="inverter-efficiency" min="90" max="99" value="96">
+                        <span id="inverter-efficiency-value">96%</span>
+                    </div>
+                </div>
+                
+                <!-- Battery Tab Content -->
+                <div id="tab-battery" class="tab-content" style="display: none;">
+                    <h3>🔋 Batteriespeicher</h3>
+                    <p>Batteriespeicher-Konfiguration</p>
+                    <div class="battery-config">
+                        <label>Batterie Typ:</label>
+                        <select id="battery-type">
+                            <option value="lithium-ion">Lithium-Ion</option>
+                            <option value="lifepo4">LiFePO4</option>
+                            <option value="lead-acid">Blei-Säure</option>
+                        </select>
+                        
+                        <label>Kapazität:</label>
+                        <input type="number" id="battery-capacity" value="10" min="1" max="100" step="0.5">
+                        <span>kWh</span>
+                        
+                        <label>Lade-/Entladeleistung:</label>
+                        <input type="number" id="battery-power" value="5000" min="1000" max="15000" step="500">
+                        <span>W</span>
+                        
+                        <label>Entladetiefe:</label>
+                        <input type="range" id="battery-dod" min="80" max="95" value="90">
+                        <span id="battery-dod-value">90%</span>
+                    </div>
+                </div>
+                
+                <!-- Simulation Tab Content -->
+                <div id="tab-simulation" class="tab-content" style="display: none;">
+                    <h3>⚡ Simulation</h3>
+                    <p>Simulationsparameter und -ausführung</p>
+                    <div class="simulation-config">
+                        <label>Standort:</label>
+                        <select id="location">
+                            <option value="berlin">Berlin</option>
+                            <option value="munich">München</option>
+                            <option value="hamburg">Hamburg</option>
+                            <option value="cologne">Köln</option>
+                            <option value="frankfurt">Frankfurt</option>
+                        </select>
+                        
+                        <label>Simulationszeitraum:</label>
+                        <select id="simulation-period">
+                            <option value="day">1 Tag</option>
+                            <option value="week">1 Woche</option>
+                            <option value="month">1 Monat</option>
+                            <option value="year">1 Jahr</option>
+                        </select>
+                        
+                        <label>Verbrauchsprofil:</label>
+                        <select id="consumption-profile">
+                            <option value="standard">Standard-Haushalt</option>
+                            <option value="high">Hoher Verbrauch</option>
+                            <option value="low">Niedriger Verbrauch</option>
+                            <option value="business">Gewerbe</option>
+                        </select>
+                        
+                        <button class="btn btn-primary" onclick="runSimulation()">
+                            ▶️ Simulation starten
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Results Tab Content -->
+                <div id="tab-results" class="tab-content" style="display: none;">
+                    <h3>📊 Ergebnisse</h3>
+                    <p>Simulationsergebnisse und Analysen</p>
+                    <div class="results-display">
+                        <div class="result-card">
+                            <h4>Energieertrag</h4>
+                            <div class="result-value" id="energy-yield">-- kWh/Jahr</div>
+                        </div>
+                        
+                        <div class="result-card">
+                            <h4>Eigenverbrauch</h4>
+                            <div class="result-value" id="self-consumption">-- %</div>
+                        </div>
+                        
+                        <div class="result-card">
+                            <h4>Autarkiegrad</h4>
+                            <div class="result-value" id="self-sufficiency">-- %</div>
+                        </div>
+                        
+                        <div class="result-card">
+                            <h4>CO₂-Einsparung</h4>
+                            <div class="result-value" id="co2-savings">-- kg/Jahr</div>
+                        </div>
+                        
+                        <button class="btn btn-secondary" onclick="exportResults()">
+                            💾 Ergebnisse exportieren
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 3D View -->
+        <div id="building-3d"></div>
+    </div>
+    
+    <!-- Debug Panel -->
+    <div id="debug-panel" class="debug-panel">
+        <div class="debug-header">
+            <span>Debug-Log</span>
+            <div class="debug-controls">
+                <button class="debug-btn" onclick="clearDebugLog()">Clear</button>
+                <button class="debug-btn" onclick="toggleDebugPanel()">×</button>
+            </div>
+        </div>
+        <div id="debug-content" class="debug-content"></div>
+    </div>
+    
+    <!-- Debug Toggle -->
+    <button id="debug-toggle" class="debug-toggle" onclick="toggleDebugPanel()">Debug-Log</button>
+    
+    <!-- Status Bar -->
+    <div class="status-bar">
+        energyOS 3D-Builder | Bereit
+    </div>
+    
+    <!-- Sidebar JavaScript -->
+    <script>
+        let currentTab = 'building';
+        
+        function toggleHamburgerMenu() {
+            const menu = document.getElementById('hamburger-menu-content');
+            menu.classList.toggle('show');
+        }
+        
+        function switchTab(tabName) {
+            // Deactivate edit mode when switching tabs
+            if (typeof editMode !== 'undefined' && editMode) {
+                toggleEditMode();
+            }
+            
+            // Update edit button visual state
+            const editBtn = document.getElementById('edit-mode-btn');
+            if (editBtn) {
+                editBtn.classList.remove('active');
+                editBtn.textContent = '✏️ Bearbeiten aktivieren';
+            }
+            
+            // Hide current tab content
+            const currentTabContent = document.getElementById(`tab-${currentTab}`);
+            if (currentTabContent) {
+                currentTabContent.style.display = 'none';
+            }
+            
+            // Remove active class from current tab item
+            const currentTabItem = document.querySelector(`.tab-item[data-tab="${currentTab}"]`);
+            if (currentTabItem) {
+                currentTabItem.classList.remove('active');
+            }
+            
+            // Show new tab content
+            const newTabContent = document.getElementById(`tab-${tabName}`);
+            if (newTabContent) {
+                newTabContent.style.display = 'block';
+            }
+            
+            // Add active class to new tab item
+            const newTabItem = document.querySelector(`.tab-item[data-tab="${tabName}"]`);
+            if (newTabItem) {
+                newTabItem.classList.add('active');
+            }
+            
+            // Update current tab
+            currentTab = tabName;
+            
+            // Hide hamburger menu
+            const menu = document.getElementById('hamburger-menu-content');
+            menu.classList.remove('show');
+            
+            // Update status bar
+            const statusBar = document.querySelector('.status-bar');
+            const tabNames = {
+                'building': 'Gebäude',
+                'pv': 'PV-Anlage',
+                'inverter': 'Wechselrichter',
+                'battery': 'Batteriespeicher',
+                'simulation': 'Simulation',
+                'results': 'Ergebnisse'
+            };
+            statusBar.textContent = `energySIM | ${tabNames[tabName]}`;
+        }
+        
+        // Close hamburger menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('hamburger-menu-content');
+            const hamburgerBtn = document.querySelector('.hamburger-btn');
+            
+            if (!menu.contains(event.target) && !hamburgerBtn.contains(event.target)) {
+                menu.classList.remove('show');
+            }
+        });
+        
+        // Update range input displays
+        document.addEventListener('DOMContentLoaded', function() {
+            // PV tilt angle
+            const pvTilt = document.getElementById('pv-tilt');
+            const pvTiltValue = document.getElementById('pv-tilt-value');
+            if (pvTilt && pvTiltValue) {
+                pvTilt.addEventListener('input', function() {
+                    pvTiltValue.textContent = this.value + '°';
+                });
+            }
+            
+            // Inverter efficiency
+            const inverterEff = document.getElementById('inverter-efficiency');
+            const inverterEffValue = document.getElementById('inverter-efficiency-value');
+            if (inverterEff && inverterEffValue) {
+                inverterEff.addEventListener('input', function() {
+                    inverterEffValue.textContent = this.value + '%';
+                });
+            }
+            
+            // Battery depth of discharge
+            const batteryDod = document.getElementById('battery-dod');
+            const batteryDodValue = document.getElementById('battery-dod-value');
+            if (batteryDod && batteryDodValue) {
+                batteryDod.addEventListener('input', function() {
+                    batteryDodValue.textContent = this.value + '%';
+                });
+            }
+        });
+        
+        // Building Management Functions
+        function importBuilding() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const buildingData = JSON.parse(e.target.result);
+                            if (builder3d) {
+                                builder3d.importBuilding(buildingData);
+                                alert('Gebäude erfolgreich importiert!');
+                            }
+                        } catch (error) {
+                            alert('Fehler beim Importieren: ' + error.message);
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            input.click();
+        }
+        
+        function exportBuilding() {
+            if (builder3d) {
+                const buildingData = builder3d.exportBuilding();
+                const dataStr = JSON.stringify(buildingData, null, 2);
+                const dataBlob = new Blob([dataStr], {type: 'application/json'});
+                
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(dataBlob);
+                link.download = `building_${new Date().toISOString().slice(0,10)}.json`;
+                link.click();
+                
+                alert('Gebäude erfolgreich exportiert!');
+            }
+        }
+        
+        function clearBuilding() {
+            if (confirm('Möchten Sie wirklich das gesamte Gebäude löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+                if (builder3d) {
+                    builder3d.clearAll();
+                    alert('Gebäude wurde gelöscht.');
+                }
+            }
+        }
+
+        // Placeholder functions for simulation and export
+        function runSimulation() {
+            alert('Simulation wird gestartet... (Funktion noch nicht implementiert)');
+        }
+        
+        function exportResults() {
+            alert('Ergebnisse werden exportiert... (Funktion noch nicht implementiert)');
+        }
+        
+        // Component Overview Functions
+        function toggleComponentGroup(groupType) {
+            const groupContent = document.getElementById(`${groupType}-group`);
+            const groupHeader = document.querySelector(`[onclick="toggleComponentGroup('${groupType}')"]`);
+            
+            if (groupContent && groupHeader) {
+                groupContent.classList.toggle('expanded');
+                groupHeader.classList.toggle('collapsed');
+            }
+        }
+        
+        function updateComponentOverview() {
+            if (!builder3d) {
+                // Initialize empty counts
+                const groups = ['walls', 'doors', 'windows', 'roofs', 'floors'];
+                groups.forEach(groupType => {
+                    const countElement = document.getElementById(`${groupType}-count`);
+                    const groupContent = document.getElementById(`${groupType}-group`);
+                    
+                    if (countElement) {
+                        countElement.textContent = '0';
+                    }
+                    
+                    if (groupContent) {
+                        groupContent.innerHTML = '<div class="component-empty">Keine Bauteile vorhanden</div>';
+                    }
+                });
+                return;
+            }
+            
+            // Get components from builder3d (if method exists)
+            const components = builder3d.getAllComponents ? builder3d.getAllComponents() : [];
+            const groups = {
+                walls: components.filter(c => c.userData && c.userData.type === 'wall'),
+                doors: components.filter(c => c.userData && c.userData.type === 'door'),
+                windows: components.filter(c => c.userData && c.userData.type === 'window'),
+                roofs: components.filter(c => c.userData && c.userData.type === 'roof'),
+                floors: components.filter(c => c.userData && c.userData.type === 'floor')
+            };
+            
+            // Update counts and content for each group
+            Object.keys(groups).forEach(groupType => {
+                const countElement = document.getElementById(`${groupType}-count`);
+                const groupContent = document.getElementById(`${groupType}-group`);
+                
+                if (countElement) {
+                    countElement.textContent = groups[groupType].length;
+                }
+                
+                if (groupContent) {
+                    groupContent.innerHTML = '';
+                    
+                    if (groups[groupType].length === 0) {
+                        groupContent.innerHTML = '<div class="component-empty">Keine Bauteile vorhanden</div>';
+                    } else {
+                        groups[groupType].forEach((component, index) => {
+                            const itemElement = document.createElement('div');
+                            itemElement.className = 'component-item';
+                            itemElement.onclick = () => selectComponent(component);
+                            
+                            const componentType = component.userData ? component.userData.type : 'unknown';
+                            const emoji = getComponentTypeEmoji(componentType);
+                            const typeName = getComponentTypeName(componentType);
+                            const name = (component.userData && component.userData.name) || `${typeName} ${index + 1}`;
+                            
+                            itemElement.innerHTML = `
+                                <span class="component-item-name">${emoji} ${name}</span>
+                            `;
+                            
+                            groupContent.appendChild(itemElement);
+                        });
+                    }
+                }
+            });
+        }
+        
+        function selectComponent(component) {
+            if (builder3d && builder3d.selectComponentById) {
+                builder3d.selectComponentById(component.id);
+                
+                // Visual feedback
+                document.querySelectorAll('.component-item').forEach(item => {
+                    item.classList.remove('selected');
+                });
+                
+                if (event && event.target) {
+                    const targetItem = event.target.closest('.component-item');
+                    if (targetItem) {
+                        targetItem.classList.add('selected');
+                    }
+                }
+            } else if (builder3d && builder3d.selectObject) {
+                // Fallback: direkte Objektauswahl
+                builder3d.selectObject(component);
+                
+                // Visual feedback
+                document.querySelectorAll('.component-item').forEach(item => {
+                    item.classList.remove('selected');
+                });
+                
+                if (event && event.target) {
+                    const targetItem = event.target.closest('.component-item');
+                    if (targetItem) {
+                        targetItem.classList.add('selected');
+                    }
+                }
+            }
+        }
+        
+        function getComponentTypeEmoji(type) {
+            const emojis = {
+                wall: '🧱',
+                door: '🚪',
+                window: '🪟',
+                roof: '🏠',
+                floor: '🟫'
+            };
+            return emojis[type] || '⚪';
+        }
+        
+        function getComponentTypeName(type) {
+            const names = {
+                wall: 'Wand',
+                door: 'Tür',
+                window: 'Fenster',
+                roof: 'Dach',
+                floor: 'Boden'
+            };
+            return names[type] || type;
+        }
+        
+        // Initialize component overview on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Initializing component overview...');
+            
+            // Set initial state - all groups collapsed
+            const groups = ['walls', 'doors', 'windows', 'roofs', 'floors'];
+            groups.forEach(groupType => {
+                const groupHeader = document.querySelector(`[onclick="toggleComponentGroup('${groupType}')"]`);
+                const groupContent = document.getElementById(`${groupType}-group`);
+                
+                if (groupHeader) {
+                    groupHeader.classList.add('collapsed');
+                    console.log(`Set ${groupType} header to collapsed`);
+                }
+                
+                if (groupContent) {
+                    groupContent.classList.remove('expanded');
+                    console.log(`Set ${groupType} content to hidden`);
+                }
+            });
+            
+            // Update component overview after a short delay
+            setTimeout(() => {
+                console.log('Updating component overview...');
+                updateComponentOverview();
+            }, 100);
+        });
+    </script>
+
+    <!-- 3D Builder Script -->
+    <script src="{{ url_for('static', filename='3d_builder.js') }}"></script>
+</body>
+</html>

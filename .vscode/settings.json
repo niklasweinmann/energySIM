@@ -1,0 +1,114 @@
+{
+  // Performance-Optimierungen für große Repositories
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    "**/.coverage": true,
+    "**/output/**": true,
+    "**/*.pyc": true,
+    "**/*.pyo": true,
+    "**/*.pyd": true,
+    "**/output_log.txt": true,
+    "**/pylint_report.txt": true,
+    "**/pytest_results.txt": true,
+    "**/.DS_Store": true,
+    "**/.venv": true,
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules": true
+  },
+  
+  "search.exclude": {
+    "**/output": true,
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    "**/.venv": true,
+    "**/.git": true,
+    "**/docs": true,
+    "**/*.csv": true,
+    "**/*.png": true,
+    "**/*.jpg": true,
+    "**/*.jpeg": true
+  },
+  
+  "files.watcherExclude": {
+    "**/output/**": true,
+    "**/__pycache__/**": true,
+    "**/.pytest_cache/**": true,
+    "**/.venv/**": true,
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/data/weather/**": true,
+    "**/*.csv": true,
+    "**/node_modules": true,
+    "**/expo": true 
+
+  },
+  
+  // Python-spezifische Performance-Optimierungen
+  "python.analysis.indexing": false,
+  "python.analysis.autoSearchPaths": false,
+  "python.analysis.autoImportCompletions": false,
+  "python.analysis.packageIndexDepths": [
+    {
+      "name": "",
+      "depth": 2
+    }
+  ],
+  "python.analysis.exclude": [
+    "**/output/**",
+    "**/__pycache__/**",
+    "**/.pytest_cache/**",
+    "**/.venv/**"
+  ],
+  
+  // Git-Performance optimieren
+  "git.enabled": true,
+  "git.scanRepositories": [],
+  "git.autoRepositoryDetection": false,
+  "git.decorations.enabled": false,
+  "git.autorefresh": false,
+  
+  // Allgemeine Editor-Performance
+  "editor.semanticHighlighting.enabled": false,
+  "editor.foldingHighlight": false,
+  "editor.occurrencesHighlight": "off",
+  "editor.selectionHighlight": false,
+  "editor.codeLens": false,
+  "editor.hover.delay": 1000,
+  "editor.quickSuggestions": {
+    "other": false,
+    "comments": false,
+    "strings": false
+  },
+  
+  // Breadcrumbs deaktivieren
+  "breadcrumbs.enabled": false,
+  
+  // Minimap für große Dateien deaktivieren
+  "editor.minimap.enabled": false,
+  
+  // Datei-Watcher reduzieren
+  "files.hotExit": "off",
+  "files.autoSave": "off",
+  
+  // Extensions-Performance
+  "extensions.autoCheckUpdates": false,
+  "extensions.autoUpdate": false,
+  
+  // Terminal-Performance
+  "terminal.integrated.rendererType": "canvas",
+  
+  // Telemetrie deaktivieren
+  "telemetry.telemetryLevel": "off",
+  
+  // Spezifische Dateitypen ausschließen
+  "files.associations": {
+    "*.csv": "plaintext",
+    "*.log": "plaintext"
+  },
+  
+  // IntelliSense für große Projekte optimieren
+  "typescript.suggest.enabled": false,
+  "javascript.suggest.enabled": false
+}

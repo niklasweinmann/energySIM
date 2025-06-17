@@ -1,0 +1,76 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.13, pytest-8.4.0, pluggy-1.6.0 -- /opt/miniconda3/envs/energyos/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/niklas/git/github/energyOS
+plugins: cov-6.2.1, dash-3.0.4
+collecting ... collected 17 items
+
+tests/test_basic_simulation.py::test_basic_simulation PASSED             [  5%]
+tests/test_building_physics.py::test_building_physics PASSED             [ 11%]
+tests/test_building_simulation.py::test_building_simulation PASSED       [ 17%]
+tests/test_dwd_weather.py::test_dwd_integration PASSED                   [ 23%]
+tests/test_energy_optimization.py::test_energy_optimization PASSED       [ 29%]
+tests/test_energy_predictor.py::TestEnergyPredictor::test_model_building PASSED [ 35%]
+tests/test_energy_predictor.py::TestEnergyPredictor::test_prediction PASSED [ 41%]
+tests/test_energy_predictor.py::TestEnergyPredictor::test_sequence_preparation PASSED [ 47%]
+tests/test_energy_predictor.py::TestEnergyPredictor::test_training PASSED [ 52%]
+tests/test_heat_pump.py::TestHeatPump::test_cop_calculation PASSED       [ 58%]
+tests/test_heat_pump.py::TestHeatPump::test_defrost_operation PASSED     [ 64%]
+tests/test_heat_pump.py::TestHeatPump::test_flow_temperature PASSED      [ 70%]
+tests/test_heat_pump.py::TestHeatPump::test_operating_limits PASSED      [ 76%]
+tests/test_heat_pump.py::TestHeatPump::test_power_output PASSED          [ 82%]
+tests/test_pv_system.py::test_pv_system PASSED                           [ 88%]
+tests/test_solar_thermal.py::test_solar_thermal_system PASSED            [ 94%]
+tests/test_weather_building_integration.py::test_weather_building_integration PASSED [100%]
+
+=============================== warnings summary ===============================
+tests/test_building_physics.py::test_building_physics
+  /opt/miniconda3/envs/energyos/lib/python3.11/site-packages/numpy/core/fromnumeric.py:3504: RuntimeWarning: Mean of empty slice.
+    return _methods._mean(a, axis=axis, dtype=dtype,
+
+tests/test_building_physics.py::test_building_physics
+  /opt/miniconda3/envs/energyos/lib/python3.11/site-packages/numpy/core/_methods.py:129: RuntimeWarning: invalid value encountered in scalar divide
+    ret = ret.dtype.type(ret / rcount)
+
+tests/test_energy_predictor.py::TestEnergyPredictor::test_model_building
+tests/test_energy_predictor.py::TestEnergyPredictor::test_prediction
+tests/test_energy_predictor.py::TestEnergyPredictor::test_sequence_preparation
+tests/test_energy_predictor.py::TestEnergyPredictor::test_training
+  /Users/niklas/git/github/energyOS/tests/test_energy_predictor.py:17: FutureWarning: 'H' is deprecated and will be removed in a future version, please use 'h' instead.
+    dates = pd.date_range(start='2025-01-01', periods=1000, freq='H')
+
+tests/test_energy_predictor.py::TestEnergyPredictor::test_model_building
+tests/test_energy_predictor.py::TestEnergyPredictor::test_prediction
+tests/test_energy_predictor.py::TestEnergyPredictor::test_training
+  /opt/miniconda3/envs/energyos/lib/python3.11/site-packages/keras/src/layers/rnn/bidirectional.py:107: UserWarning: Do not pass an `input_shape`/`input_dim` argument to a layer. When using Sequential models, prefer using an `Input(shape)` object as the first layer in the model instead.
+    super().__init__(**kwargs)
+
+tests/test_energy_predictor.py::TestEnergyPredictor::test_prediction
+  /opt/miniconda3/envs/energyos/lib/python3.11/site-packages/tensorflow/python/framework/ops.py:307: DeprecationWarning: Conversion of an array with ndim > 0 to a scalar is deprecated, and will error in future. Ensure you extract a single element from your array before performing this operation. (Deprecated NumPy 1.25.)
+    return float(self._numpy())
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+______________ coverage: platform darwin, python 3.11.13-final-0 _______________
+
+Name                                Stmts   Miss  Cover
+-------------------------------------------------------
+src/__init__.py                         0      0   100%
+src/core/__init__.py                    0      0   100%
+src/core/building.py                  134      0   100%
+src/core/standards.py                 274    124    55%
+src/data_handlers/__init__.py           0      0   100%
+src/data_handlers/components.py        82      4    95%
+src/data_handlers/dwd_enhanced.py     174    102    41%
+src/data_handlers/dwd_weather.py        0      0   100%
+src/data_handlers/weather.py           88     46    48%
+src/main.py                           281    281     0%
+src/models/energy_optimizer.py         78      8    90%
+src/models/energy_predictor.py         38      4    89%
+src/simulation/__init__.py              0      0   100%
+src/simulation/heat_pump.py            96     12    88%
+src/simulation/pv_system.py           102      6    94%
+src/simulation/solar_thermal.py        73      4    95%
+-------------------------------------------------------
+TOTAL                                1420    591    58%
+======================= 17 passed, 10 warnings in 56.14s =======================
