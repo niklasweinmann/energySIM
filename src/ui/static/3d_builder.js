@@ -45,7 +45,7 @@ class Simple3DBuilder {
         this.isAnimating = false;
         
         // Bearbeitungsmodus
-        this.editMode = false;
+        this.editMode = true; // Standardmäßig aktiviert für bessere UX
         this.selectedObject = null;
         this.ghostObject = null;
         this.isDragging = false;
@@ -79,6 +79,7 @@ class Simple3DBuilder {
             this.setupLighting();
             this.setupEventListeners();
             this.startRenderLoop();
+            this.updateInitialUI();
             
             debugLog('3D-Builder erfolgreich initialisiert', 'success');
         } catch (error) {
@@ -194,6 +195,26 @@ class Simple3DBuilder {
         debugLog(`Fenstergröße geändert: ${width}x${height}`, 'info');
     }
     
+    updateInitialUI() {
+        // UI-Elemente entsprechend dem initialen editMode aktualisieren
+        const btn = document.getElementById('edit-mode-btn');
+        const info = document.getElementById('edit-mode-info');
+        
+        if (this.editMode) {
+            if (btn) {
+                btn.classList.add('active');
+                btn.textContent = '✏️ Bearbeitung AUS';
+            }
+            if (info) info.style.display = 'block';
+        } else {
+            if (btn) {
+                btn.classList.remove('active');
+                btn.textContent = '✏️ Bearbeitung AN';
+            }
+            if (info) info.style.display = 'none';
+        }
+    }
+
     // Bearbeitungsmodus Funktionen
     toggleEditMode() {
         this.editMode = !this.editMode;
@@ -224,6 +245,13 @@ class Simple3DBuilder {
         
         if (this.editMode && toolType !== 'select') {
             this.createGhost(toolType);
+            // Zeige Properties-Panel für Ghost-Objekt
+            this.showPropertiesPanel('ghost', toolType);
+        } else if (toolType === 'select') {
+            // Bei "select" Tool Properties Panel nur anzeigen wenn Objekt ausgewählt
+            if (!this.selectedObject) {
+                this.hidePropertiesPanel();
+            }
         }
         
         this.updateToolButtons();
@@ -378,12 +406,17 @@ class Simple3DBuilder {
         const material = new THREE.MeshLambertMaterial({ color });
         const component = new THREE.Mesh(geometry, material);
         
+        // Name aus Properties-Panel übernehmen, falls vorhanden
+        const nameInput = document.getElementById('prop-name');
+        const componentName = nameInput ? nameInput.value : '';
+        
         component.position.copy(position);
         component.userData = {
             isComponent: true,
             type: type,
             originalColor: color,
             properties: {
+                name: componentName,
                 width: defaults.width,
                 height: defaults.height,
                 depth: defaults.depth,
@@ -415,7 +448,7 @@ class Simple3DBuilder {
         }
         
         this.updateToolButtons();
-        this.showPropertiesPanel();
+        this.showPropertiesPanel('placed');
         this.needsRender = true;
         
         debugLog(`${object.userData.type} ausgewählt - Properties-Panel sollte angezeigt werden`, 'info');
@@ -481,22 +514,58 @@ class Simple3DBuilder {
         debugLog('3D-Builder entsorgt', 'info');
     }
     
-    showPropertiesPanel() {
-        if (!this.selectedObject) return;
-        
+    showPropertiesPanel(mode = 'placed', toolType = null) {
         const panel = document.getElementById('properties-panel');
         const content = document.getElementById('properties-content');
         
         if (!panel || !content) return;
         
-        const props = this.selectedObject.userData.properties;
-        const type = this.selectedObject.userData.type;
-        const defaults = this.componentDefaults[type];
+        let props, type, defaults, isGhost = false;
+        
+        if (mode === 'ghost' && toolType) {
+            // Ghost-Modus
+            isGhost = true;
+            type = toolType;
+            defaults = this.componentDefaults[toolType];
+            props = {
+                name: '',
+                width: defaults.width,
+                height: defaults.height,
+                depth: defaults.depth,
+                uValue: defaults.uValue,
+                position: { x: 0, y: 0, z: 0 },
+                rotation: { x: 0, y: 0, z: 0 }
+            };
+        } else if (this.selectedObject) {
+            // Platziertes Objekt
+            props = this.selectedObject.userData.properties;
+            type = this.selectedObject.userData.type;
+            defaults = this.componentDefaults[type];
+        } else {
+            return;
+        }
+        
+        // Deutsche Typnamen
+        const typeNames = {
+            wall: 'Wand',
+            door: 'Tür', 
+            window: 'Fenster',
+            roof: 'Dach',
+            floor: 'Boden'
+        };
+        
+        const displayType = typeNames[type] || type.toUpperCase();
+        const nameValue = props.name || '';
         
         content.innerHTML = `
             <div class="property-group">
+                <div class="property-label">Name</div>
+                <input type="text" class="property-input" id="prop-name" value="${nameValue}" placeholder="Bauteil-Name eingeben">
+            </div>
+            
+            <div class="property-group">
                 <div class="property-label">Typ</div>
-                <div style="font-weight: 500; color: #333;">${type.toUpperCase()}</div>
+                <div style="font-weight: 500; color: #333; padding: 6px 8px; background: #f9f9f9; border-radius: 3px;">${displayType}</div>
             </div>
             
             <div class="property-group">
@@ -513,6 +582,7 @@ class Simple3DBuilder {
                 <input type="number" class="property-input" id="prop-uvalue" value="${props.uValue}" step="0.01" placeholder="U-Wert">
             </div>
             
+            ${!isGhost ? `
             <div class="property-group">
                 <div class="property-label">Position (cm)</div>
                 <div class="property-row">
@@ -528,25 +598,30 @@ class Simple3DBuilder {
             <div class="property-group">
                 <div class="property-label">Rotation (Grad)</div>
                 <div class="property-row">
-                    <input type="number" class="property-input" id="prop-rot-x" value="0" placeholder="X">
-                    <input type="number" class="property-input" id="prop-rot-y" value="0" placeholder="Y">
-                    <input type="number" class="property-input" id="prop-rot-z" value="0" placeholder="Z">
+                    <input type="number" class="property-input" id="prop-rot-x" value="${Math.round(props.rotation.x)}" placeholder="X">
+                    <input type="number" class="property-input" id="prop-rot-y" value="${Math.round(props.rotation.y)}" placeholder="Y">
+                    <input type="number" class="property-input" id="prop-rot-z" value="${Math.round(props.rotation.z)}" placeholder="Z">
                 </div>
             </div>
             
             <div class="property-actions">
                 <button class="delete-btn" onclick="deleteSelectedComponent()">🗑️ Löschen</button>
             </div>
+            ` : `
+            <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #eee; font-size: 11px; color: #666;">
+                💡 Klicken Sie in die 3D-Ansicht um das Bauteil zu platzieren
+            </div>
+            `}
         `;
         
         // Standardwerte-Styling setzen
         this.setDefaultStyles(defaults);
         
         // Auto-Update Events hinzufügen
-        this.setupAutoUpdate();
+        this.setupAutoUpdate(isGhost, toolType);
         
         panel.classList.add('open');
-        debugLog('Properties-Panel angezeigt', 'success');
+        debugLog(`Properties-Panel angezeigt (${isGhost ? 'Ghost' : 'Platziert'})`, 'success');
     }
     
     hidePropertiesPanel() {
@@ -568,17 +643,23 @@ class Simple3DBuilder {
         });
     }
     
-    setupAutoUpdate() {
-        const inputs = ['prop-width', 'prop-height', 'prop-depth', 'prop-uvalue', 
-                       'prop-pos-x', 'prop-pos-y', 'prop-pos-z',
-                       'prop-rot-x', 'prop-rot-y', 'prop-rot-z'];
+    setupAutoUpdate(isGhost = false, toolType = null) {
+        const inputs = ['prop-name', 'prop-width', 'prop-height', 'prop-depth', 'prop-uvalue'];
+        
+        if (!isGhost) {
+            inputs.push('prop-pos-x', 'prop-pos-y', 'prop-pos-z', 'prop-rot-x', 'prop-rot-y', 'prop-rot-z');
+        }
         
         inputs.forEach(id => {
             const input = document.getElementById(id);
             if (input) {
                 input.addEventListener('input', () => {
                     input.classList.remove('default');
-                    this.applyPropertiesAuto();
+                    if (isGhost && toolType) {
+                        this.updateGhostFromInputs(toolType);
+                    } else {
+                        this.applyPropertiesAuto();
+                    }
                 });
             }
         });
@@ -588,6 +669,9 @@ class Simple3DBuilder {
         if (!this.selectedObject) return;
         
         const props = this.selectedObject.userData.properties;
+        
+        // Name
+        const name = document.getElementById('prop-name')?.value || '';
         
         // Abmessungen
         const width = parseFloat(document.getElementById('prop-width')?.value) || props.width;
@@ -619,6 +703,7 @@ class Simple3DBuilder {
         this.selectedObject.rotation.set(rotX, rotY, rotZ);
         
         // Properties aktualisieren
+        props.name = name;
         props.width = width;
         props.height = height;
         props.depth = depth;
@@ -660,75 +745,17 @@ class Simple3DBuilder {
         if (rotZ) rotZ.value = props.rotation.z;
     }
     
-    showGhostPropertiesPanel(toolType) {
-        const panel = document.getElementById('properties-panel');
-        const content = document.getElementById('properties-content');
-        
-        if (!panel || !content) return;
-        
-        const defaults = this.componentDefaults[toolType];
-        
-        content.innerHTML = `
-            <div class="property-group">
-                <div class="property-label">Neues ${toolType.toUpperCase()}</div>
-                <div style="font-size: 11px; color: #666; margin-bottom: 12px;">
-                    Eigenschaften für neues Bauteil
-                </div>
-            </div>
-            
-            <div class="property-group">
-                <div class="property-label">Abmessungen (cm)</div>
-                <div class="property-row">
-                    <input type="number" class="property-input default" id="ghost-width" value="${defaults.width}" placeholder="Breite">
-                    <input type="number" class="property-input default" id="ghost-height" value="${defaults.height}" placeholder="Höhe">
-                    <input type="number" class="property-input default" id="ghost-depth" value="${defaults.depth}" placeholder="Tiefe">
-                </div>
-            </div>
-            
-            <div class="property-group">
-                <div class="property-label">U-Wert (W/m²K)</div>
-                <input type="number" class="property-input default" id="ghost-uvalue" value="${defaults.uValue}" step="0.01" placeholder="U-Wert">
-            </div>
-            
-            <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #eee; font-size: 11px; color: #666;">
-                💡 Klicken Sie in die 3D-Ansicht um das Bauteil zu platzieren
-            </div>
-        `;
-        
-        panel.classList.add('open');
-        
-        // Auto-Update für Ghost-Properties
-        this.setupGhostAutoUpdate(toolType);
-        
-        debugLog(`Eigenschaften-Panel für ${toolType} angezeigt`, 'info');
-    }
-    
     setupGhostAutoUpdate(toolType) {
-        const inputs = ['ghost-width', 'ghost-height', 'ghost-depth', 'ghost-uvalue'];
-        
-        inputs.forEach(inputId => {
-            const input = document.getElementById(inputId);
-            if (input) {
-                // Entferne default-Klasse bei Eingabe
-                input.addEventListener('input', () => {
-                    input.classList.remove('default');
-                    this.updateGhostFromInputs(toolType);
-                });
-                
-                // Focus/Blur Events für bessere UX
-                input.addEventListener('focus', () => {
-                    input.classList.remove('default');
-                });
-            }
-        });
+        // Diese Funktion wird nicht mehr benötigt - alles läuft über setupAutoUpdate
+        debugLog(`Legacy setupGhostAutoUpdate für ${toolType} übersprungen`, 'info');
     }
     
     updateGhostFromInputs(toolType) {
         if (!this.ghostObject) return;
         
-        const width = parseFloat(document.getElementById('ghost-width').value) || this.componentDefaults[toolType].width;
-        const height = parseFloat(document.getElementById('ghost-height').value) || this.componentDefaults[toolType].height;
-        const depth = parseFloat(document.getElementById('ghost-depth').value) || this.componentDefaults[toolType].depth;
+        const width = parseFloat(document.getElementById('prop-width')?.value) || this.componentDefaults[toolType].width;
+        const height = parseFloat(document.getElementById('prop-height')?.value) || this.componentDefaults[toolType].height;
+        const depth = parseFloat(document.getElementById('prop-depth')?.value) || this.componentDefaults[toolType].depth;
         
         // Ghost-Geometrie aktualisieren
         const newGeometry = new THREE.BoxGeometry(width, height, depth);
@@ -740,7 +767,7 @@ class Simple3DBuilder {
         this.componentDefaults[toolType].height = height;
         this.componentDefaults[toolType].depth = depth;
         
-        const uValue = parseFloat(document.getElementById('ghost-uvalue').value);
+        const uValue = parseFloat(document.getElementById('prop-uvalue')?.value);
         if (uValue) {
             this.componentDefaults[toolType].uValue = uValue;
         }
@@ -809,18 +836,18 @@ function setupToolButtons() {
                 
                 // Eigenschaften-Panel für Ghost-Objekt anzeigen wenn Bauteil-Tool gewählt
                 if (tool !== 'select') {
-                    builder3d.showGhostPropertiesPanel(tool);
+                    builder3d.showPropertiesPanel('ghost', tool);
                 } else {
                     // Bei "select" Tool Properties Panel nur anzeigen wenn Objekt ausgewählt
                     if (!builder3d.selectedObject) {
                         builder3d.hidePropertiesPanel();
+                    } else {
+                        builder3d.showPropertiesPanel('placed');
                     }
                 }
                 
                 // Spezielle Aktionen
-                if (tool === 'wall') {
-                    builder3d.addCube(0, 0, 0);
-                } else if (tool === 'clear') {
+                if (tool === 'clear') {
                     builder3d.clearScene();
                 }
             }
@@ -884,13 +911,6 @@ function toggleEditMode() {
 window.toggleEditMode = toggleEditMode;
 
 // Globale Funktionen für Properties-Panel
-// Globale Funktionen
-function toggleEditMode() {
-    if (builder3d) {
-        builder3d.toggleEditMode();
-    }
-}
-
 function toggleMoveMode() {
     if (builder3d && builder3d.selectedObject) {
         builder3d.toggleMoveMode();
@@ -912,7 +932,6 @@ function closePropertiesPanel() {
 }
 
 // Globale Funktionen verfügbar machen
-window.toggleEditMode = toggleEditMode;
 window.toggleMoveMode = toggleMoveMode;
 window.deleteSelectedComponent = deleteSelectedComponent;
 window.closePropertiesPanel = closePropertiesPanel;
