@@ -382,6 +382,7 @@ class Simple3DBuilder {
         component.userData = {
             isComponent: true,
             type: type,
+            originalColor: color,
             properties: {
                 width: defaults.width,
                 height: defaults.height,
@@ -440,10 +441,10 @@ class Simple3DBuilder {
         if (btn) {
             if (this.moveMode) {
                 btn.classList.add('active');
-                btn.textContent = 'Stopp';
+                btn.innerHTML = '🔒 Stopp';
             } else {
                 btn.classList.remove('active');
-                btn.textContent = 'Verschieben';
+                btn.innerHTML = '📍 Verschieben';
             }
         }
     }
@@ -614,7 +615,7 @@ class Simple3DBuilder {
         }
         
         // Position und Rotation setzen
-        this.selectedObject.position.set(posX, posY, posZ);
+        this.selectedObject.position.set(posX, posY + height/2, posZ);
         this.selectedObject.rotation.set(rotX, rotY, rotZ);
         
         // Properties aktualisieren
@@ -622,43 +623,130 @@ class Simple3DBuilder {
         props.height = height;
         props.depth = depth;
         props.position = { x: posX, y: posY, z: posZ };
-        props.rotation = { x: rotX, y: rotY, z: rotZ };
+        props.rotation = { x: rotX * 180 / Math.PI, y: rotY * 180 / Math.PI, z: rotZ * 180 / Math.PI };
         props.uValue = uValue;
         
         this.needsRender = true;
     }
     
-    toggleMoveMode() {
+    updatePropertiesPanel() {
         if (!this.selectedObject) return;
         
-        this.moveMode = !this.moveMode;
-        const btn = document.getElementById('move-btn');
+        const props = this.selectedObject.userData.properties;
         
-        if (this.moveMode) {
-            btn.classList.add('active');
-            btn.textContent = '✋ Stopp';
-            debugLog('Verschieben-Modus aktiviert', 'info');
-        } else {
-            btn.classList.remove('active');
-            btn.textContent = '📍 Verschieben';
-            debugLog('Verschieben-Modus deaktiviert', 'info');
-        }
+        // Position aus 3D-Objekt aktualisieren
+        props.position.x = Math.round(this.selectedObject.position.x);
+        props.position.y = Math.round(this.selectedObject.position.y - props.height/2);
+        props.position.z = Math.round(this.selectedObject.position.z);
+        
+        // Rotation aus 3D-Objekt aktualisieren
+        props.rotation.x = Math.round(this.selectedObject.rotation.x * 180 / Math.PI);
+        props.rotation.y = Math.round(this.selectedObject.rotation.y * 180 / Math.PI);
+        props.rotation.z = Math.round(this.selectedObject.rotation.z * 180 / Math.PI);
+        
+        // Input-Felder aktualisieren
+        const posX = document.getElementById('prop-pos-x');
+        const posY = document.getElementById('prop-pos-y');
+        const posZ = document.getElementById('prop-pos-z');
+        const rotX = document.getElementById('prop-rot-x');
+        const rotY = document.getElementById('prop-rot-y');
+        const rotZ = document.getElementById('prop-rot-z');
+        
+        if (posX) posX.value = props.position.x;
+        if (posY) posY.value = props.position.y;
+        if (posZ) posZ.value = props.position.z;
+        if (rotX) rotX.value = props.rotation.x;
+        if (rotY) rotY.value = props.rotation.y;
+        if (rotZ) rotZ.value = props.rotation.z;
     }
     
-    deleteSelected() {
-        if (this.selectedObject) {
-            const type = this.selectedObject.userData.type;
-            this.scene.remove(this.selectedObject);
+    showGhostPropertiesPanel(toolType) {
+        const panel = document.getElementById('properties-panel');
+        const content = document.getElementById('properties-content');
+        
+        if (!panel || !content) return;
+        
+        const defaults = this.componentDefaults[toolType];
+        
+        content.innerHTML = `
+            <div class="property-group">
+                <div class="property-label">Neues ${toolType.toUpperCase()}</div>
+                <div style="font-size: 11px; color: #666; margin-bottom: 12px;">
+                    Eigenschaften für neues Bauteil
+                </div>
+            </div>
             
-            if (this.selectedObject.geometry) this.selectedObject.geometry.dispose();
-            if (this.selectedObject.material) this.selectedObject.material.dispose();
+            <div class="property-group">
+                <div class="property-label">Abmessungen (cm)</div>
+                <div class="property-row">
+                    <input type="number" class="property-input default" id="ghost-width" value="${defaults.width}" placeholder="Breite">
+                    <input type="number" class="property-input default" id="ghost-height" value="${defaults.height}" placeholder="Höhe">
+                    <input type="number" class="property-input default" id="ghost-depth" value="${defaults.depth}" placeholder="Tiefe">
+                </div>
+            </div>
             
-            this.selectedObject = null;
-            this.hidePropertiesPanel();
-            this.needsRender = true;
+            <div class="property-group">
+                <div class="property-label">U-Wert (W/m²K)</div>
+                <input type="number" class="property-input default" id="ghost-uvalue" value="${defaults.uValue}" step="0.01" placeholder="U-Wert">
+            </div>
             
-            debugLog(`${type} gelöscht`, 'info');
+            <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #eee; font-size: 11px; color: #666;">
+                💡 Klicken Sie in die 3D-Ansicht um das Bauteil zu platzieren
+            </div>
+        `;
+        
+        panel.classList.add('open');
+        
+        // Auto-Update für Ghost-Properties
+        this.setupGhostAutoUpdate(toolType);
+        
+        debugLog(`Eigenschaften-Panel für ${toolType} angezeigt`, 'info');
+    }
+    
+    setupGhostAutoUpdate(toolType) {
+        const inputs = ['ghost-width', 'ghost-height', 'ghost-depth', 'ghost-uvalue'];
+        
+        inputs.forEach(inputId => {
+            const input = document.getElementById(inputId);
+            if (input) {
+                // Entferne default-Klasse bei Eingabe
+                input.addEventListener('input', () => {
+                    input.classList.remove('default');
+                    this.updateGhostFromInputs(toolType);
+                });
+                
+                // Focus/Blur Events für bessere UX
+                input.addEventListener('focus', () => {
+                    input.classList.remove('default');
+                });
+            }
+        });
+    }
+    
+    updateGhostFromInputs(toolType) {
+        if (!this.ghostObject) return;
+        
+        const width = parseFloat(document.getElementById('ghost-width').value) || this.componentDefaults[toolType].width;
+        const height = parseFloat(document.getElementById('ghost-height').value) || this.componentDefaults[toolType].height;
+        const depth = parseFloat(document.getElementById('ghost-depth').value) || this.componentDefaults[toolType].depth;
+        
+        // Ghost-Geometrie aktualisieren
+        const newGeometry = new THREE.BoxGeometry(width, height, depth);
+        this.ghostObject.geometry.dispose();
+        this.ghostObject.geometry = newGeometry;
+        
+        // Defaults für spätere Platzierung aktualisieren
+        this.componentDefaults[toolType].width = width;
+        this.componentDefaults[toolType].height = height;
+        this.componentDefaults[toolType].depth = depth;
+        
+        const uValue = parseFloat(document.getElementById('ghost-uvalue').value);
+        if (uValue) {
+            this.componentDefaults[toolType].uValue = uValue;
         }
+        
+        this.needsRender = true;
+        debugLog(`Ghost ${toolType} Eigenschaften aktualisiert`, 'info');
     }
 }
 
@@ -718,6 +806,16 @@ function setupToolButtons() {
                 
                 // Tool setzen
                 builder3d.setTool(tool);
+                
+                // Eigenschaften-Panel für Ghost-Objekt anzeigen wenn Bauteil-Tool gewählt
+                if (tool !== 'select') {
+                    builder3d.showGhostPropertiesPanel(tool);
+                } else {
+                    // Bei "select" Tool Properties Panel nur anzeigen wenn Objekt ausgewählt
+                    if (!builder3d.selectedObject) {
+                        builder3d.hidePropertiesPanel();
+                    }
+                }
                 
                 // Spezielle Aktionen
                 if (tool === 'wall') {
