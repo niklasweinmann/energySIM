@@ -50,6 +50,8 @@ class Simple3DBuilder {
         this.ghostObject = null;
         this.isDragging = false;
         this.moveMode = false;
+        this.snapMode = true; // Standardmäßig aktiviert
+        this.snapDistance = 50; // Snap-Distanz in cm (erhöht für bessere Erkennbarkeit)
         this.mouse = new THREE.Vector2();
         this.raycaster = new THREE.Raycaster();
         this.dragStart = new THREE.Vector2();
@@ -209,13 +211,14 @@ class Simple3DBuilder {
         
         if (this.editMode) {
             btn.classList.add('active');
-            btn.textContent = '✏️ Bearbeiten deaktivieren';
         } else {
             btn.classList.remove('active');
-            btn.textContent = '✏️ Bearbeiten aktivieren';
             this.clearSelection();
             this.clearGhost();
         }
+        
+        // Text bleibt konstant
+        btn.textContent = '✏️ Bearbeiten';
         
         // Tool-Buttons aktivieren/deaktivieren
         this.updateToolButtons();
@@ -324,7 +327,14 @@ class Simple3DBuilder {
             const intersection = new THREE.Vector3();
             
             if (this.raycaster.ray.intersectPlane(plane, intersection)) {
-                this.ghostObject.position.copy(intersection);
+                let finalPosition = intersection;
+                
+                // Nur bei aktiviertem Snap-Modus anwenden
+                if (this.snapMode) {
+                    finalPosition = this.snapToNearestWall(intersection, this.currentTool);
+                }
+                
+                this.ghostObject.position.copy(finalPosition);
                 this.ghostObject.position.y += this.componentDefaults[this.currentTool].height / 2;
                 this.ghostObject.visible = true;
                 this.needsRender = true;
@@ -338,8 +348,16 @@ class Simple3DBuilder {
             const intersection = new THREE.Vector3();
             
             if (this.raycaster.ray.intersectPlane(plane, intersection)) {
-                this.selectedObject.position.x = intersection.x;
-                this.selectedObject.position.z = intersection.z;
+                let finalPosition = intersection;
+                
+                // Nur bei aktiviertem Snap-Modus anwenden
+                if (this.snapMode) {
+                    const componentType = this.selectedObject.userData.type;
+                    finalPosition = this.snapToNearestWall(intersection, componentType);
+                }
+                
+                this.selectedObject.position.x = finalPosition.x;
+                this.selectedObject.position.z = finalPosition.z;
                 this.updatePropertiesPanel();
                 this.needsRender = true;
             }
@@ -470,11 +488,27 @@ class Simple3DBuilder {
         if (btn) {
             if (this.moveMode) {
                 btn.classList.add('active');
-                btn.innerHTML = '🔒 Stopp';
             } else {
                 btn.classList.remove('active');
-                btn.innerHTML = '📍 Verschieben';
             }
+            // Text bleibt konstant
+            btn.innerHTML = '📍 Verschieben';
+        }
+    }
+    
+    toggleSnapMode() {
+        this.snapMode = !this.snapMode;
+        debugLog(`Einrasten-Modus: ${this.snapMode ? 'AN' : 'AUS'}`, 'info');
+        
+        const btn = document.getElementById('snap-btn');
+        if (btn) {
+            if (this.snapMode) {
+                btn.classList.remove('inactive');
+            } else {
+                btn.classList.add('inactive');
+            }
+            // Text bleibt konstant
+            btn.innerHTML = '🧲 Einrasten';
         }
     }
     
@@ -497,6 +531,172 @@ class Simple3DBuilder {
         
         this.needsRender = true;
         debugLog('Szene geleert', 'info');
+    }
+    
+    // Snap-Funktionalität für realistische Bauplatzierung
+    snapToNearestWall(position, componentType) {
+        if (!this.snapMode) {
+            return position;
+        }
+        
+        const snappedPosition = position.clone();
+        const snapDistance = 80; // 80cm Snap-Reichweite
+        const allComponents = this.getAllComponents();
+        
+        // FENSTER & TÜREN: Erstellen Öffnungen in Wänden
+        if (componentType === 'window' || componentType === 'door') {
+            const walls = allComponents.filter(obj => obj.userData.type === 'wall');
+            let bestWall = null;
+            let minDistance = Infinity;
+            
+            walls.forEach(wall => {
+                const wallPos = wall.position;
+                const wallWidth = wall.userData.width || this.componentDefaults.wall.width;
+                const wallDepth = wall.userData.depth || this.componentDefaults.wall.depth;
+                const wallHeight = wall.userData.height || this.componentDefaults.wall.height;
+                
+                // Prüfe alle 4 Wandseiten für Snap-Möglichkeiten
+                const snapSides = [
+                    { // Vorderseite
+                        center: { x: wallPos.x, z: wallPos.z + wallDepth/2 },
+                        normal: { x: 0, z: 1 },
+                        snapPos: { x: wallPos.x, z: wallPos.z + wallDepth/2, y: wallPos.y }
+                    },
+                    { // Rückseite  
+                        center: { x: wallPos.x, z: wallPos.z - wallDepth/2 },
+                        normal: { x: 0, z: -1 },
+                        snapPos: { x: wallPos.x, z: wallPos.z - wallDepth/2, y: wallPos.y }
+                    },
+                    { // Rechte Seite
+                        center: { x: wallPos.x + wallWidth/2, z: wallPos.z },
+                        normal: { x: 1, z: 0 },
+                        snapPos: { x: wallPos.x + wallWidth/2, z: wallPos.z, y: wallPos.y }
+                    },
+                    { // Linke Seite
+                        center: { x: wallPos.x - wallWidth/2, z: wallPos.z },
+                        normal: { x: -1, z: 0 },
+                        snapPos: { x: wallPos.x - wallWidth/2, z: wallPos.z, y: wallPos.y }
+                    }
+                ];
+                
+                snapSides.forEach(side => {
+                    const distance = Math.sqrt(
+                        Math.pow(position.x - side.center.x, 2) + 
+                        Math.pow(position.z - side.center.z, 2)
+                    );
+                    
+                    if (distance < minDistance && distance < snapDistance) {
+                        minDistance = distance;
+                        bestWall = {
+                            snapPos: side.snapPos,
+                            wall: wall,
+                            wallHeight: wallHeight
+                        };
+                    }
+                });
+            });
+            
+            if (bestWall) {
+                snappedPosition.copy(bestWall.snapPos);
+                // Fenster auf mittlerer Höhe, Türen am Boden
+                if (componentType === 'window') {
+                    snappedPosition.y = bestWall.snapPos.y + bestWall.wallHeight * 0.2;
+                } else { // door
+                    snappedPosition.y = bestWall.snapPos.y - bestWall.wallHeight * 0.4;
+                }
+                debugLog(`${componentType} in Wand eingerastet`, 'success');
+            }
+        }
+        
+        // DÄCHER: Auf Wände setzen (oberhalb)
+        else if (componentType === 'roof') {
+            const walls = allComponents.filter(obj => obj.userData.type === 'wall');
+            if (walls.length > 0) {
+                // Finde zentrale Position aller Wände
+                let centerX = 0, centerZ = 0, maxY = -Infinity;
+                walls.forEach(wall => {
+                    centerX += wall.position.x;
+                    centerZ += wall.position.z;
+                    const wallTop = wall.position.y + (wall.userData.height || this.componentDefaults.wall.height) / 2;
+                    if (wallTop > maxY) maxY = wallTop;
+                });
+                
+                centerX /= walls.length;
+                centerZ /= walls.length;
+                
+                snappedPosition.set(
+                    centerX, 
+                    maxY + (this.componentDefaults.roof.height || 20) / 2, 
+                    centerZ
+                );
+                debugLog('Dach auf Wände aufgesetzt', 'success');
+            }
+        }
+        
+        // BÖDEN: An Wand-Basis andocken
+        else if (componentType === 'floor') {
+            const walls = allComponents.filter(obj => obj.userData.type === 'wall');
+            if (walls.length > 0) {
+                // Finde niedrigste Wand-Basis
+                let centerX = 0, centerZ = 0, minY = Infinity;
+                walls.forEach(wall => {
+                    centerX += wall.position.x;
+                    centerZ += wall.position.z;
+                    const wallBottom = wall.position.y - (wall.userData.height || this.componentDefaults.wall.height) / 2;
+                    if (wallBottom < minY) minY = wallBottom;
+                });
+                
+                centerX /= walls.length;
+                centerZ /= walls.length;
+                
+                snappedPosition.set(
+                    centerX, 
+                    minY - (this.componentDefaults.floor.height || 20) / 2, 
+                    centerZ
+                );
+                debugLog('Boden an Wand-Basis angedockt', 'success');
+            }
+        }
+        
+        // WÄNDE: Nahtlos an andere Wände andocken
+        else if (componentType === 'wall') {
+            const otherWalls = allComponents.filter(obj => obj.userData.type === 'wall' && obj !== this.selectedObject);
+            let bestConnection = null;
+            let minDistance = Infinity;
+            
+            otherWalls.forEach(wall => {
+                const wallPos = wall.position;
+                const wallWidth = wall.userData.width || this.componentDefaults.wall.width;
+                const wallDepth = wall.userData.depth || this.componentDefaults.wall.depth;
+                
+                // Alle Verbindungspunkte der Wand
+                const connectionPoints = [
+                    { x: wallPos.x + wallWidth/2, z: wallPos.z, y: wallPos.y }, // Rechtes Ende
+                    { x: wallPos.x - wallWidth/2, z: wallPos.z, y: wallPos.y }, // Linkes Ende
+                    { x: wallPos.x, z: wallPos.z + wallDepth/2, y: wallPos.y }, // Vorderes Ende
+                    { x: wallPos.x, z: wallPos.z - wallDepth/2, y: wallPos.y }  // Hinteres Ende
+                ];
+                
+                connectionPoints.forEach(point => {
+                    const distance = Math.sqrt(
+                        Math.pow(position.x - point.x, 2) + 
+                        Math.pow(position.z - point.z, 2)
+                    );
+                    
+                    if (distance < minDistance && distance < snapDistance) {
+                        minDistance = distance;
+                        bestConnection = point;
+                    }
+                });
+            });
+            
+            if (bestConnection) {
+                snappedPosition.copy(bestConnection);
+                debugLog('Wand nahtlos angedockt', 'success');
+            }
+        }
+        
+        return snappedPosition;
     }
     
     dispose() {
@@ -558,9 +758,14 @@ class Simple3DBuilder {
                     <input type="number" class="property-input" id="prop-pos-y" value="${Math.round(props.position.y)}" placeholder="Y">
                     <input type="number" class="property-input" id="prop-pos-z" value="${Math.round(props.position.z)}" placeholder="Z">
                 </div>
-                <button class="move-btn" id="move-btn" onclick="toggleMoveMode()">
-                    📍 Verschieben
-                </button>
+                <div class="position-controls">
+                    <button class="move-btn" id="move-btn" onclick="toggleMoveMode()">
+                        📍 Verschieben
+                    </button>
+                    <button class="snap-btn" id="snap-btn" onclick="toggleSnapMode()">
+                        🧲 Einrasten
+                    </button>
+                </div>
             </div>
             
             <div class="property-group">
@@ -860,20 +1065,42 @@ class Simple3DBuilder {
         // UI-Elemente entsprechend dem initialen editMode aktualisieren
         const btn = document.getElementById('edit-mode-btn');
         
-        if (this.editMode) {
-            if (btn) {
+        if (btn) {
+            if (this.editMode) {
                 btn.classList.add('active');
-                btn.textContent = '✏️ Bearbeiten deaktivieren';
-            }
-        } else {
-            if (btn) {
+            } else {
                 btn.classList.remove('active');
-                btn.textContent = '✏️ Bearbeiten aktivieren';
             }
+            // Text bleibt konstant
+            btn.textContent = '✏️ Bearbeiten';
         }
         
         // Tool-Buttons initial aktualisieren
         this.updateToolButtons();
+        
+        // Snap-Button initial konfigurieren (standardmäßig AN)
+        const snapBtn = document.getElementById('snap-btn');
+        if (snapBtn) {
+            if (this.snapMode) {
+                snapBtn.classList.remove('inactive');
+            } else {
+                snapBtn.classList.add('inactive');
+            }
+            // Text bleibt konstant
+            snapBtn.innerHTML = '🧲 Einrasten';
+        }
+        
+        // Move-Button initial konfigurieren
+        const moveBtn = document.getElementById('move-btn');
+        if (moveBtn) {
+            if (this.moveMode) {
+                moveBtn.classList.add('active');
+            } else {
+                moveBtn.classList.remove('active');
+            }
+            // Text bleibt konstant
+            moveBtn.innerHTML = '� Verschieben';
+        }
     }
     
     getComponentTypeName(type) {
@@ -1038,6 +1265,12 @@ function deleteSelectedComponent() {
     }
 }
 
+function toggleSnapMode() {
+    if (builder3d) {
+        builder3d.toggleSnapMode();
+    }
+}
+
 // Close Properties Panel
 function closePropertiesPanel() {
     if (builder3d) {
@@ -1049,5 +1282,6 @@ function closePropertiesPanel() {
 // Globale Funktionen verfügbar machen
 window.toggleEditMode = toggleEditMode;
 window.toggleMoveMode = toggleMoveMode;
+window.toggleSnapMode = toggleSnapMode;
 window.deleteSelectedComponent = deleteSelectedComponent;
 window.closePropertiesPanel = closePropertiesPanel;

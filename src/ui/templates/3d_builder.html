@@ -401,20 +401,7 @@
             position: relative;
         }
         
-        .hamburger-btn {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-            padding: 5px;
-            border-radius: 3px;
-            transition: background-color 0.3s;
-        }
-        
-        .hamburger-btn:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-        }
+
         
         .hamburger-menu-content {
             position: absolute;
@@ -471,29 +458,7 @@
             margin-bottom: 6px;
         }
         
-        .edit-btn {
-            width: 100%;
-            background: white;
-            color: #333;
-            border: 1px solid #ddd;
-            border-radius: 3px;
-            padding: 6px 8px;
-            cursor: pointer;
-            font-size: 11px;
-            text-align: center;
-            transition: all 0.2s ease;
-        }
-        
-        .edit-btn:hover {
-            background: #f5f5f5;
-            border-color: #007acc;
-        }
-        
-        .edit-btn.active {
-            background: #ffeb3b;
-            color: #333;
-            border-color: #ffc107;
-        }
+
         
         /* Tab Content */
         .tab-content {
@@ -567,70 +532,198 @@
         }
         
         /* Button styles */
-        .btn {
-            padding: 10px 15px;
-            border: none;
+        /* ===== EINHEITLICHES BUTTON-DESIGN-SYSTEM ===== */
+        
+        /* Base Button Style */
+        .btn, .tool-btn, .move-btn, .snap-btn, .delete-btn, .building-btn, .debug-btn, .close-btn, .hamburger-btn, .edit-btn {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-size: 11px;
+            font-weight: 500;
+            border: 1px solid #ddd;
             border-radius: 4px;
+            padding: 8px 12px;
             cursor: pointer;
-            font-size: 14px;
-            margin: 5px 0;
-            width: 100%;
-            transition: all 0.3s;
+            transition: all 0.2s ease;
+            text-align: center;
+            line-height: 1.2;
+            user-select: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            min-height: 32px;
+            box-sizing: border-box;
         }
         
-        .btn-primary {
-            background: #4CAF50;
+        /* Primary Buttons (Hauptaktionen) */
+        .btn-primary, .tool-btn.active {
+            background: #007acc;
             color: white;
+            border-color: #005a9e;
         }
         
-        .btn-primary:hover {
-            background: #45a049;
+        .btn-primary:hover, .tool-btn.active:hover {
+            background: #005a9e;
+            border-color: #004080;
         }
         
-        .btn-secondary {
-            background: #6c757d;
+        /* AKTIVE TOGGLE-BUTTONS (GELB = AN) */
+        .edit-btn.active, .move-btn.active, .snap-btn:not(.inactive) {
+            background: #ffc107 !important;
+            color: #212529 !important;
+            border-color: #ffca2c !important;
+        }
+        
+        .edit-btn.active:hover, .move-btn.active:hover, .snap-btn:not(.inactive):hover {
+            background: #e0a800 !important;
+            border-color: #d39e00 !important;
+        }
+        
+        /* INAKTIVE TOGGLE-BUTTONS (HELLGRAU = AUS) */
+        .edit-btn:not(.active), .move-btn:not(.active), .snap-btn.inactive {
+            background: #e9ecef !important;
+            color: #6c757d !important;
+            border-color: #dee2e6 !important;
+        }
+        
+        .edit-btn:not(.active):hover, .move-btn:not(.active):hover, .snap-btn.inactive:hover {
+            background: #dae0e5 !important;
+            border-color: #c6d0d7 !important;
+        }
+        
+        /* Secondary Buttons (Standard-Aktionen) */
+        .btn-secondary, .tool-btn, .move-btn, .building-btn {
+            background: white;
+            color: #333;
+            border-color: #ddd;
+        }
+        
+        .btn-secondary:hover, .tool-btn:hover:not(.disabled), .move-btn:hover:not(.active), .building-btn:hover {
+            background: #f8f9fa;
+            border-color: #007acc;
+            color: #007acc;
+        }
+        
+        /* Success Buttons (Positive Aktionen) */
+        .btn-success, .snap-btn:not(.inactive) {
+            background: #28a745;
             color: white;
+            border-color: #1e7e34;
         }
         
-        .btn-secondary:hover {
-            background: #5a6268;
+        .btn-success:hover, .snap-btn:not(.inactive):hover {
+            background: #1e7e34;
+            border-color: #155724;
         }
         
+        /* Danger Buttons (Lösch-Aktionen) - Helleres Rot */
+        .btn-danger, .delete-btn, .building-btn.delete-btn {
+            background: #f8d7da;
+            color: #721c24;
+            border-color: #f1aeb5;
+        }
+        
+        .btn-danger:hover, .delete-btn:hover, .building-btn.delete-btn:hover {
+            background: #f5c6cb;
+            border-color: #ed969e;
+        }
+        
+        /* Warning/Inactive Buttons (entfernt, da durch neues System ersetzt) */
+        
+        /* Disabled Buttons */
+        .tool-btn.disabled, .btn:disabled, button:disabled {
+            background: #f8f9fa !important;
+            color: #6c757d !important;
+            border-color: #dee2e6 !important;
+            cursor: not-allowed !important;
+            opacity: 0.65;
+        }
+        
+        /* Spezielle Button-Layouts */
         .tool-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 6px;
         }
         
-        .tool-btn {
-            background: white;
-            color: #333;
-            border: 1px solid #ddd;
-            border-radius: 3px;
-            padding: 6px 8px;
-            cursor: pointer;
-            font-size: 11px;
-            text-align: center;
-            transition: all 0.2s ease;
+        .position-controls {
+            display: flex;
+            justify-content: space-between;
+            gap: 4px;
         }
         
-        .tool-btn:hover:not(.disabled) {
-            background: #f5f5f5;
-            border-color: #007acc;
+        .position-controls .move-btn,
+        .position-controls .snap-btn {
+            flex: 1;
+            margin: 0;
         }
         
-        .tool-btn.active {
-            background: #007acc;
+        .building-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        /* Spezielle Button-Anpassungen */
+        .hamburger-btn {
+            background: transparent;
+            border: none;
+            padding: 8px;
+            min-height: auto;
             color: white;
-            border-color: #005a9e;
+            font-size: 18px;
         }
         
-        .tool-btn.disabled {
-            background: #f5f5f5;
-            color: #999;
-            border-color: #e0e0e0;
-            cursor: not-allowed;
-            opacity: 0.6;
+        .hamburger-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+        }
+        
+        .close-btn {
+            background: transparent;
+            border: none;
+            color: #666;
+            padding: 4px 8px;
+            min-height: auto;
+            font-size: 16px;
+        }
+        
+        .close-btn:hover {
+            background: rgba(0, 0, 0, 0.05);
+            color: #333;
+            border: none;
+        }
+        
+        .debug-btn {
+            background: transparent;
+            border: none;
+            color: #cccccc;
+            padding: 4px 8px;
+            min-height: auto;
+            font-size: 10px;
+        }
+        
+        .debug-btn:hover {
+            background: #3e3e42;
+            border: none;
+        }
+        
+        /* Button-Größenvarianten */
+        .btn-sm, .tool-btn {
+            font-size: 11px;
+            padding: 6px 10px;
+            min-height: 28px;
+        }
+        
+        .btn-lg {
+            font-size: 14px;
+            padding: 12px 16px;
+            min-height: 40px;
+        }
+        
+        /* Full-width Buttons */
+        .btn-block, .delete-btn, .building-btn {
+            width: 100%;
         }
         
         #building-3d {
@@ -690,19 +783,7 @@
             gap: 8px;
         }
         
-        .debug-btn {
-            background: transparent;
-            border: none;
-            color: #cccccc;
-            cursor: pointer;
-            padding: 2px 6px;
-            font-size: 10px;
-            border-radius: 2px;
-        }
-        
-        .debug-btn:hover {
-            background: #3e3e42;
-        }
+        /* Debug-Panel Styles */
         
         .debug-content {
             flex: 1;
@@ -879,43 +960,7 @@
             grid-template-columns: 1fr 1fr;
         }
         
-        .move-btn {
-            width: 100%;
-            background: #007acc;
-            color: white;
-            border: none;
-            border-radius: 3px;
-            padding: 6px;
-            cursor: pointer;
-            font-size: 11px;
-            margin-top: 8px;
-            transition: all 0.2s ease;
-        }
-        
-        .move-btn:hover {
-            background: #005a9e;
-        }
-        
-        .move-btn.active {
-            background: #28a745;
-        }
-        
-        .delete-btn {
-            width: 100%;
-            background: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 3px;
-            padding: 8px;
-            cursor: pointer;
-            font-size: 11px;
-            margin-top: 8px;
-            transition: all 0.2s ease;
-        }
-        
-        .delete-btn:hover {
-            background: #c82333;
-        }
+
         
         .property-actions {
             margin-top: 15px;
@@ -923,28 +968,7 @@
             border-top: 1px solid #e9ecef;
         }
         
-        /* Edit Mode Button */
-        .edit-btn {
-            width: 100%;
-            background: white;
-            color: #333;
-            border: 1px solid #ddd;
-            border-radius: 3px;
-            padding: 8px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.2s ease;
-        }
-        
-        .edit-btn:hover {
-            background: #f5f5f5;
-        }
-        
-        .edit-btn.active {
-            background: #ffeb3b;
-            color: #333;
-            border-color: #ffc107;
-        }
+        /* Edit Mode Button (übergeordnet durch einheitliches Design-System) */
         
         .edit-mode-section {
             margin-bottom: 16px;
@@ -963,34 +987,7 @@
             gap: 6px;
         }
         
-        .building-btn {
-            width: 100%;
-            background: white;
-            color: #333;
-            border: 1px solid #ddd;
-            border-radius: 3px;
-            padding: 6px 8px;
-            cursor: pointer;
-            font-size: 11px;
-            text-align: center;
-            transition: all 0.2s ease;
-        }
-        
-        .building-btn:hover {
-            background: #f5f5f5;
-            border-color: #007acc;
-        }
-        
-        .building-btn.delete-btn {
-            background: #fff5f5;
-            border-color: #ffcccb;
-            color: #d32f2f;
-        }
-        
-        .building-btn.delete-btn:hover {
-            background: #ffebee;
-            border-color: #f44336;
-        }
+
         
         /* Component Overview */
         .component-overview {

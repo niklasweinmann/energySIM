@@ -1,13 +1,17 @@
-Der Benutzer soll den Bauteilen Namen geben (ganz oben bei Eigenschaften). Dieser Name soll dann auch in der Bauteil-Übersicht auftauchen.
+Mache alle Buttons im gleichen Design und Stil (ich denke du hattest das schonmal versucht)
 
-Es soll einen neuen Button "Neues Gebäude" direkt über dem Import-Button geben. Hier soll es die Möglichkeit geben, eine Länge, Breite, Geschosshöhe und Geschosszahl einzugeben, und bei 
+Mach die Kameraführung sanfter, am besten auf Standardeinstellungen falls es das gibt.
+
+Ich will den Werkstoff von einem Bauteil auswählen können. Dabei greife ich auf die 
 
 Ich will die größe des "verschieben" buttons verändern und rechts daneben einen zweiten button einfügen. Dieser soll die "Einrasten"-Funktion ermöglichen und standardmäßig an sein. Wenn ich ein Fenster oder eine Tür bewege, sollen diese automatisch automatisch nur in wänden platziert werden können. Wenn ich eine Wand bewege, soll diese automatische an die nächste wand nahtlos "andocken" / bzw. einrasten.
+
+Es soll einen neuen Button "Neues Gebäude" direkt über dem Import-Button geben. Hier soll es die Möglichkeit geben, eine Länge, Breite, Geschosshöhe und Geschosszahl einzugeben, und bei 
 
 Der Löschen Button im Eigenschaften-Panel funktioniert noch nicht.
 
 
-
+------------------------------------------------------------------------------------
 
 Schaue dir nochmal die standards.py-Datei an. Mache eine Eingabe der für die Norm wichtigen Parameter. Eventuell werden diese auch schon in der simulation angegeben Möglichkeit 
 
