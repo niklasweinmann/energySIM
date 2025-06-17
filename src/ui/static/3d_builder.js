@@ -80,6 +80,11 @@ class Simple3DBuilder {
             this.setupEventListeners();
             this.startRenderLoop();
             
+            // UI-Elemente initial konfigurieren
+            setTimeout(() => {
+                this.updateInitialUI();
+            }, 100);
+            
             debugLog('3D-Builder erfolgreich initialisiert', 'success');
         } catch (error) {
             debugLog(`Fehler bei Initialisierung: ${error.message}`, 'error');
@@ -201,19 +206,19 @@ class Simple3DBuilder {
         
         // UI aktualisieren
         const btn = document.getElementById('edit-mode-btn');
-        const info = document.getElementById('edit-mode-info');
         
         if (this.editMode) {
             btn.classList.add('active');
-            btn.textContent = '✏️ Bearbeitung AUS';
-            if (info) info.style.display = 'block';
+            btn.textContent = '✏️ Bearbeiten deaktivieren';
         } else {
             btn.classList.remove('active');
-            btn.textContent = '✏️ Bearbeitung AN';
-            if (info) info.style.display = 'none';
+            btn.textContent = '✏️ Bearbeiten aktivieren';
             this.clearSelection();
             this.clearGhost();
         }
+        
+        // Tool-Buttons aktivieren/deaktivieren
+        this.updateToolButtons();
         
         this.needsRender = true;
     }
@@ -235,6 +240,21 @@ class Simple3DBuilder {
         const toolButtons = document.querySelectorAll('.tool-btn');
         toolButtons.forEach(btn => {
             btn.classList.remove('active', 'selected');
+            
+            // Aktiviere/Deaktiviere Buttons basierend auf Edit-Modus
+            if (this.editMode) {
+                btn.classList.remove('disabled');
+                btn.disabled = false;
+            } else {
+                // Alle Buttons außer "select" deaktivieren
+                if (btn.dataset.tool !== 'select') {
+                    btn.classList.add('disabled');
+                    btn.disabled = true;
+                } else {
+                    btn.classList.remove('disabled');
+                    btn.disabled = false;
+                }
+            }
             
             if (btn.dataset.tool === this.currentTool) {
                 btn.classList.add('active');
@@ -801,6 +821,26 @@ class Simple3DBuilder {
             this.selectObject(component);
         }
     }
+
+    updateInitialUI() {
+        // UI-Elemente entsprechend dem initialen editMode aktualisieren
+        const btn = document.getElementById('edit-mode-btn');
+        
+        if (this.editMode) {
+            if (btn) {
+                btn.classList.add('active');
+                btn.textContent = '✏️ Bearbeiten deaktivieren';
+            }
+        } else {
+            if (btn) {
+                btn.classList.remove('active');
+                btn.textContent = '✏️ Bearbeiten aktivieren';
+            }
+        }
+        
+        // Tool-Buttons initial aktualisieren
+        this.updateToolButtons();
+    }
 }
 
 // Globale Variablen
@@ -920,16 +960,13 @@ function toggleEditMode() {
         builder3d.toggleEditMode();
         
         const btn = document.getElementById('edit-mode-btn');
-        const info = document.getElementById('edit-mode-info');
         
         if (builder3d.editMode) {
             btn.classList.add('active');
-            btn.textContent = '✏️ Bearbeitung AUS';
-            info.style.display = 'block';
+            btn.textContent = '✏️ Bearbeiten deaktivieren';
         } else {
             btn.classList.remove('active');
-            btn.textContent = '✏️ Bearbeitung AN';
-            info.style.display = 'none';
+            btn.textContent = '✏️ Bearbeiten aktivieren';
         }
     }
 }
