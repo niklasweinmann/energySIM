@@ -1604,11 +1604,11 @@
             // Get components from builder3d (if method exists)
             const components = builder3d.getAllComponents ? builder3d.getAllComponents() : [];
             const groups = {
-                walls: components.filter(c => c.type === 'wall'),
-                doors: components.filter(c => c.type === 'door'),
-                windows: components.filter(c => c.type === 'window'),
-                roofs: components.filter(c => c.type === 'roof'),
-                floors: components.filter(c => c.type === 'floor')
+                walls: components.filter(c => c.userData && c.userData.type === 'wall'),
+                doors: components.filter(c => c.userData && c.userData.type === 'door'),
+                windows: components.filter(c => c.userData && c.userData.type === 'window'),
+                roofs: components.filter(c => c.userData && c.userData.type === 'roof'),
+                floors: components.filter(c => c.userData && c.userData.type === 'floor')
             };
             
             // Update counts and content for each group
@@ -1631,9 +1631,10 @@
                             itemElement.className = 'component-item';
                             itemElement.onclick = () => selectComponent(component);
                             
-                            const emoji = getComponentTypeEmoji(component.type);
-                            const typeName = getComponentTypeName(component.type);
-                            const name = component.name || `${typeName} ${index + 1}`;
+                            const componentType = component.userData ? component.userData.type : 'unknown';
+                            const emoji = getComponentTypeEmoji(componentType);
+                            const typeName = getComponentTypeName(componentType);
+                            const name = (component.userData && component.userData.name) || `${typeName} ${index + 1}`;
                             
                             itemElement.innerHTML = `
                                 <span class="component-item-name">${emoji} ${name}</span>
@@ -1649,6 +1650,21 @@
         function selectComponent(component) {
             if (builder3d && builder3d.selectComponentById) {
                 builder3d.selectComponentById(component.id);
+                
+                // Visual feedback
+                document.querySelectorAll('.component-item').forEach(item => {
+                    item.classList.remove('selected');
+                });
+                
+                if (event && event.target) {
+                    const targetItem = event.target.closest('.component-item');
+                    if (targetItem) {
+                        targetItem.classList.add('selected');
+                    }
+                }
+            } else if (builder3d && builder3d.selectObject) {
+                // Fallback: direkte Objektauswahl
+                builder3d.selectObject(component);
                 
                 // Visual feedback
                 document.querySelectorAll('.component-item').forEach(item => {
