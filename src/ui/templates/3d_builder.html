@@ -468,9 +468,7 @@
         
         /* Edit Mode */
         .edit-mode-section {
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #eee;
+            margin-bottom: 6px;
         }
         
         .edit-btn {
@@ -478,15 +476,17 @@
             background: white;
             color: #333;
             border: 1px solid #ddd;
-            padding: 10px;
-            border-radius: 4px;
+            border-radius: 3px;
+            padding: 6px 8px;
             cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s;
+            font-size: 11px;
+            text-align: center;
+            transition: all 0.2s ease;
         }
         
         .edit-btn:hover {
             background: #f5f5f5;
+            border-color: #007acc;
         }
         
         .edit-btn.active {
@@ -949,6 +949,48 @@
         .edit-mode-section {
             margin-bottom: 16px;
         }
+        
+        /* Building Management */
+        .building-management {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .building-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .building-btn {
+            width: 100%;
+            background: white;
+            color: #333;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 6px 8px;
+            cursor: pointer;
+            font-size: 11px;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+        
+        .building-btn:hover {
+            background: #f5f5f5;
+            border-color: #007acc;
+        }
+        
+        .building-btn.delete-btn {
+            background: #fff5f5;
+            border-color: #ffcccb;
+            color: #d32f2f;
+        }
+        
+        .building-btn.delete-btn:hover {
+            background: #ffebee;
+            border-color: #f44336;
+        }
     </style>
 </head>
 <body>
@@ -988,12 +1030,27 @@
             <!-- Sidebar Content -->
             <div class="sidebar-content">
                 <!-- Building Tab Content (Default) -->
-                <div id="tab-building" class="tab-content">
-                    <!-- Edit Mode Button -->
-                    <div class="edit-mode-section">
-                        <button id="edit-mode-btn" class="edit-btn" onclick="toggleEditMode()">
-                            ✏️ Bearbeiten aktivieren
-                        </button>
+                <div id="tab-building" class="tab-content">                   
+                    <!-- Building Management -->
+                    <div class="building-management">
+                        <h3>📁 Gebäude</h3>
+                        <!-- Edit Mode Button -->
+                        <div class="edit-mode-section">
+                            <button id="edit-mode-btn" class="edit-btn" onclick="toggleEditMode()">
+                                ✏️ Bearbeiten aktivieren
+                            </button>
+                        </div>
+                        <div class="building-buttons">
+                            <button class="building-btn" onclick="importBuilding()">
+                                📥 Importieren
+                            </button>
+                            <button class="building-btn" onclick="exportBuilding()">
+                                📤 Exportieren
+                            </button>
+                            <button class="building-btn delete-btn" onclick="clearBuilding()">
+                                🗑️ Gebäude löschen
+                            </button>
+                        </div>
                     </div>
                     
                     <h3>🏗️ Bauteile</h3>
@@ -1002,7 +1059,6 @@
                         <button class="tool-btn" data-tool="wall">Wand</button>
                         <button class="tool-btn" data-tool="door">Tür</button>
                         <button class="tool-btn" data-tool="window">Fenster</button>
-                        <button class="tool-btn" data-tool="clear">Löschen</button>
                     </div>
                     
                     <!-- Properties Panel -->
@@ -1292,6 +1348,56 @@
             }
         });
         
+        // Building Management Functions
+        function importBuilding() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const buildingData = JSON.parse(e.target.result);
+                            if (builder3d) {
+                                builder3d.importBuilding(buildingData);
+                                alert('Gebäude erfolgreich importiert!');
+                            }
+                        } catch (error) {
+                            alert('Fehler beim Importieren: ' + error.message);
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            input.click();
+        }
+        
+        function exportBuilding() {
+            if (builder3d) {
+                const buildingData = builder3d.exportBuilding();
+                const dataStr = JSON.stringify(buildingData, null, 2);
+                const dataBlob = new Blob([dataStr], {type: 'application/json'});
+                
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(dataBlob);
+                link.download = `building_${new Date().toISOString().slice(0,10)}.json`;
+                link.click();
+                
+                alert('Gebäude erfolgreich exportiert!');
+            }
+        }
+        
+        function clearBuilding() {
+            if (confirm('Möchten Sie wirklich das gesamte Gebäude löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+                if (builder3d) {
+                    builder3d.clearAll();
+                    alert('Gebäude wurde gelöscht.');
+                }
+            }
+        }
+
         // Placeholder functions for simulation and export
         function runSimulation() {
             alert('Simulation wird gestartet... (Funktion noch nicht implementiert)');

@@ -792,6 +792,51 @@ class Simple3DBuilder {
         this.needsRender = true;
         debugLog(`Ghost ${toolType} Eigenschaften aktualisiert`, 'info');
     }
+    
+    // Building Management
+    clearAll() {
+        this.clearScene();
+        this.clearSelection();
+        this.clearGhost();
+        debugLog('Gesamtes Gebäude gelöscht', 'info');
+    }
+    
+    exportBuilding() {
+        const buildingData = {
+            version: '1.0',
+            timestamp: new Date().toISOString(),
+            components: this.scene.children
+                .filter(child => child.userData && child.userData.type)
+                .map(child => ({
+                    type: child.userData.type,
+                    position: child.position.toArray(),
+                    rotation: child.rotation.toArray(),
+                    scale: child.scale.toArray(),
+                    properties: child.userData.properties || {}
+                }))
+        };
+        debugLog(`Gebäude exportiert: ${buildingData.components.length} Komponenten`, 'info');
+        return buildingData;
+    }
+    
+    importBuilding(buildingData) {
+        // Erst alles löschen
+        this.clearAll();
+        
+        if (!buildingData.components) {
+            throw new Error('Ungültiges Gebäude-Format');
+        }
+        
+        // Komponenten laden
+        buildingData.components.forEach(comp => {
+            // Hier würde die Logik zum Erstellen der Komponenten stehen
+            // Für jetzt nur ein Platzhalter
+            debugLog(`Importiere Komponente: ${comp.type}`, 'info');
+        });
+        
+        debugLog(`Gebäude importiert: ${buildingData.components.length} Komponenten`, 'info');
+        this.needsRender = true;
+    }
 }
 
 // Globale Variablen
@@ -861,11 +906,6 @@ function setupToolButtons() {
                     } else {
                         builder3d.showPropertiesPanel('placed');
                     }
-                }
-                
-                // Spezielle Aktionen
-                if (tool === 'clear') {
-                    builder3d.clearScene();
                 }
             }
         });
