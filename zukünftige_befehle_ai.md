@@ -1,4 +1,10 @@
-mache ein komplett neues bearbeitungsmenü. Hier kommt statt oben rechts "Gebäude" ein bearbeitungsmodus beenden. hier werden die tabs nicht angezeigt. hier kommen jetzt alle notwendigen funktionen zur 3D-Bearbeitung rein. mit kleinen, kompakten Bezeichnungen. Alle Bauteilgrößen und U-Werte sollen Manuell eingegeben werden können, wobei bei erstellung eines neuen bauteils immer bereits standardzahlen grau voreingetragen sind. diese werden dann durch nutzereingaben weiss. wenn ein bauteil aktiviert ist, kann wenn man über den 3d-editor geht, eine vorschau des ausgewählten bauteils in transparent angezeigt werden. mit einem klick wird es dann platziert. wenn bauteile ausgewählt werden, können dessen eigenschaften und position verändert werden. die absolute postition kann auch manuell eingegeben werden, sowie eine drehung in x,y und z richtung. Es soll verschiedene Dachformen geben, die bereits zur vorauswahl stehen 
+Ich will die größe des "verschieben" buttons verändern und rechts daneben einen zweiten button einfügen. Dieser soll die "Einrasten"-Funktion ermöglichen und standardmäßig an sein. Wenn ich ein Fenster oder eine Tür bewege, sollen diese automatisch automatisch nur in wänden platziert werden können. Wenn ich eine Wand bewege, soll diese automatische an die nächste wand nahtlos "andocken" / bzw. einrasten. so entstehen keine lücken.
+
+Der Löschen Button im Eigenschaften-Panel funktioniert noch nicht.
+
+
+
+
 
 Schaue dir nochmal die standards.py-Datei an. Mache eine Eingabe der für die Norm wichtigen Parameter. Eventuell werden diese auch schon in der simulation angegeben Möglichkeit 
 

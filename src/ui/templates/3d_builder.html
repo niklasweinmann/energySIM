@@ -373,14 +373,94 @@
         }
         
         .sidebar {
-            width: 200px;
+            width: 300px;
             background: white;
             border-right: 1px solid #ddd;
-            padding: 20px;
             overflow-y: auto;
+            display: flex;
+            flex-direction: column;
         }
         
-        .sidebar h3 {
+        .sidebar-header {
+            background: #2c3e50;
+            padding: 15px 20px;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #34495e;
+        }
+        
+        .sidebar-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #ecf0f1;
+        }
+        
+        .hamburger-menu {
+            position: relative;
+        }
+        
+        .hamburger-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 3px;
+            transition: background-color 0.3s;
+        }
+        
+        .hamburger-btn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .hamburger-menu-content {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            width: 200px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: none;
+        }
+        
+        .hamburger-menu-content.show {
+            display: block;
+        }
+        
+        .tab-item {
+            padding: 12px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.3s;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .tab-item:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .tab-item.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .tab-item:last-child {
+            border-bottom: none;
+        }
+        
+        .sidebar-content {
+            padding: 20px;
+            flex: 1;
+        }
+        
+        .sidebar-content h3 {
             margin-bottom: 20px;
             color: #4CAF50;
             font-size: 16px;
@@ -398,25 +478,120 @@
             background: #007acc;
             color: white;
             border: none;
+            padding: 10px;
             border-radius: 4px;
-            padding: 12px;
             cursor: pointer;
-            font-size: 12px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-        
-        .edit-btn.active {
-            background: #28a745;
+            font-size: 14px;
+            transition: background-color 0.3s;
         }
         
         .edit-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(0, 122, 204, 0.3);
+            background: #005fa3;
         }
         
-        .edit-btn.active:hover {
-            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+        .edit-btn.active {
+            background: #4CAF50;
+        }
+        
+        /* Tab Content */
+        .tab-content {
+            height: 100%;
+        }
+        
+        .tab-content label {
+            display: block;
+            margin: 10px 0 5px 0;
+            font-weight: bold;
+            color: #333;
+            font-size: 13px;
+        }
+        
+        .tab-content input,
+        .tab-content select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+        
+        .tab-content input[type="range"] {
+            width: calc(100% - 50px);
+            display: inline-block;
+        }
+        
+        .tab-content input[type="range"] + span {
+            margin-left: 10px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        /* Configuration sections */
+        .pv-config,
+        .inverter-config,
+        .battery-config,
+        .simulation-config {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+        
+        /* Result cards */
+        .results-display {
+            margin-top: 15px;
+        }
+        
+        .result-card {
+            background: #f0f8ff;
+            border: 1px solid #d1e7dd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .result-card h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .result-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        /* Button styles */
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px 0;
+            width: 100%;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #45a049;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
         }
         
         .tool-grid {
@@ -763,32 +938,213 @@
     <div id="app-container">
         <!-- Sidebar -->
         <div class="sidebar">
-            <!-- Edit Mode Button -->
-            <div class="edit-mode-section">
-                <button id="edit-mode-btn" class="edit-btn" onclick="toggleEditMode()">
-                    ✏️ Bearbeitung AN
-                </button>
-                <div id="edit-mode-info" style="display: none; color: #4CAF50; font-size: 12px; margin-top: 8px;">
-                    ✓ Bearbeitungsmodus aktiv
+            <!-- Sidebar Header -->
+            <div class="sidebar-header">
+                <div class="sidebar-title">energySIM</div>
+                <div class="hamburger-menu">
+                    <button class="hamburger-btn" onclick="toggleHamburgerMenu()">
+                        ☰
+                    </button>
+                    <div id="hamburger-menu-content" class="hamburger-menu-content">
+                        <div class="tab-item active" data-tab="building" onclick="switchTab('building')">
+                            🏠 Gebäude
+                        </div>
+                        <div class="tab-item" data-tab="pv" onclick="switchTab('pv')">
+                            ☀️ PV-Anlage
+                        </div>
+                        <div class="tab-item" data-tab="inverter" onclick="switchTab('inverter')">
+                            🔌 Wechselrichter
+                        </div>
+                        <div class="tab-item" data-tab="battery" onclick="switchTab('battery')">
+                            🔋 Batteriespeicher
+                        </div>
+                        <div class="tab-item" data-tab="simulation" onclick="switchTab('simulation')">
+                            ⚡ Simulation
+                        </div>
+                        <div class="tab-item" data-tab="results" onclick="switchTab('results')">
+                            📊 Ergebnisse
+                        </div>
+                    </div>
                 </div>
             </div>
             
-            <h3>🛠️ Tools</h3>
-            <div class="tool-grid">
-                <button class="tool-btn active" data-tool="select">Auswählen</button>
-                <button class="tool-btn" data-tool="wall">Wand</button>
-                <button class="tool-btn" data-tool="door">Tür</button>
-                <button class="tool-btn" data-tool="window">Fenster</button>
-                <button class="tool-btn" data-tool="clear">Löschen</button>
-            </div>
-            
-            <!-- Properties Panel -->
-            <div id="properties-panel" class="properties-panel">
-                <div class="properties-header">
-                    <span>🔧 Eigenschaften</span>
-                    <button class="close-btn" onclick="closePropertiesPanel()">×</button>
+            <!-- Sidebar Content -->
+            <div class="sidebar-content">
+                <!-- Building Tab Content (Default) -->
+                <div id="tab-building" class="tab-content">
+                    <!-- Edit Mode Button -->
+                    <div class="edit-mode-section">
+                        <button id="edit-mode-btn" class="edit-btn" onclick="toggleEditMode()">
+                            ✏️ Bearbeitung AN
+                        </button>
+                        <div id="edit-mode-info" style="display: none; color: #4CAF50; font-size: 12px; margin-top: 8px;">
+                            ✓ Bearbeitungsmodus aktiv
+                        </div>
+                    </div>
+                    
+                    <h3>🛠️ Tools</h3>
+                    <div class="tool-grid">
+                        <button class="tool-btn active" data-tool="select">Auswählen</button>
+                        <button class="tool-btn" data-tool="wall">Wand</button>
+                        <button class="tool-btn" data-tool="door">Tür</button>
+                        <button class="tool-btn" data-tool="window">Fenster</button>
+                        <button class="tool-btn" data-tool="clear">Löschen</button>
+                    </div>
+                    
+                    <!-- Properties Panel -->
+                    <div id="properties-panel" class="properties-panel">
+                        <div class="properties-header">
+                            <span>🔧 Eigenschaften</span>
+                            <button class="close-btn" onclick="closePropertiesPanel()">×</button>
+                        </div>
+                        <div id="properties-content" class="properties-content"></div>
+                    </div>
                 </div>
-                <div id="properties-content" class="properties-content"></div>
+                
+                <!-- PV Tab Content -->
+                <div id="tab-pv" class="tab-content" style="display: none;">
+                    <h3>☀️ PV-Anlage</h3>
+                    <p>PV-Modul-Konfiguration und Platzierung auf dem Dach</p>
+                    <div class="pv-config">
+                        <label>PV-Modul Typ:</label>
+                        <select id="pv-module-type">
+                            <option value="standard">Standard (300W)</option>
+                            <option value="high-efficiency">Hocheffizient (400W)</option>
+                            <option value="bifacial">Bifacial (350W)</option>
+                        </select>
+                        
+                        <label>Anzahl Module:</label>
+                        <input type="number" id="pv-module-count" value="20" min="1" max="100">
+                        
+                        <label>Ausrichtung:</label>
+                        <select id="pv-orientation">
+                            <option value="south">Süd</option>
+                            <option value="southeast">Südost</option>
+                            <option value="southwest">Südwest</option>
+                            <option value="east">Ost</option>
+                            <option value="west">West</option>
+                        </select>
+                        
+                        <label>Neigungswinkel:</label>
+                        <input type="range" id="pv-tilt" min="0" max="60" value="30">
+                        <span id="pv-tilt-value">30°</span>
+                    </div>
+                </div>
+                
+                <!-- Inverter Tab Content -->
+                <div id="tab-inverter" class="tab-content" style="display: none;">
+                    <h3>🔌 Wechselrichter</h3>
+                    <p>Wechselrichter-Konfiguration</p>
+                    <div class="inverter-config">
+                        <label>Wechselrichter Typ:</label>
+                        <select id="inverter-type">
+                            <option value="string">String-Wechselrichter</option>
+                            <option value="power-optimizer">Power Optimizer</option>
+                            <option value="micro">Mikro-Wechselrichter</option>
+                        </select>
+                        
+                        <label>Nennleistung:</label>
+                        <input type="number" id="inverter-power" value="5000" min="1000" max="20000" step="500">
+                        <span>W</span>
+                        
+                        <label>Effizienz:</label>
+                        <input type="range" id="inverter-efficiency" min="90" max="99" value="96">
+                        <span id="inverter-efficiency-value">96%</span>
+                    </div>
+                </div>
+                
+                <!-- Battery Tab Content -->
+                <div id="tab-battery" class="tab-content" style="display: none;">
+                    <h3>🔋 Batteriespeicher</h3>
+                    <p>Batteriespeicher-Konfiguration</p>
+                    <div class="battery-config">
+                        <label>Batterie Typ:</label>
+                        <select id="battery-type">
+                            <option value="lithium-ion">Lithium-Ion</option>
+                            <option value="lifepo4">LiFePO4</option>
+                            <option value="lead-acid">Blei-Säure</option>
+                        </select>
+                        
+                        <label>Kapazität:</label>
+                        <input type="number" id="battery-capacity" value="10" min="1" max="100" step="0.5">
+                        <span>kWh</span>
+                        
+                        <label>Lade-/Entladeleistung:</label>
+                        <input type="number" id="battery-power" value="5000" min="1000" max="15000" step="500">
+                        <span>W</span>
+                        
+                        <label>Entladetiefe:</label>
+                        <input type="range" id="battery-dod" min="80" max="95" value="90">
+                        <span id="battery-dod-value">90%</span>
+                    </div>
+                </div>
+                
+                <!-- Simulation Tab Content -->
+                <div id="tab-simulation" class="tab-content" style="display: none;">
+                    <h3>⚡ Simulation</h3>
+                    <p>Simulationsparameter und -ausführung</p>
+                    <div class="simulation-config">
+                        <label>Standort:</label>
+                        <select id="location">
+                            <option value="berlin">Berlin</option>
+                            <option value="munich">München</option>
+                            <option value="hamburg">Hamburg</option>
+                            <option value="cologne">Köln</option>
+                            <option value="frankfurt">Frankfurt</option>
+                        </select>
+                        
+                        <label>Simulationszeitraum:</label>
+                        <select id="simulation-period">
+                            <option value="day">1 Tag</option>
+                            <option value="week">1 Woche</option>
+                            <option value="month">1 Monat</option>
+                            <option value="year">1 Jahr</option>
+                        </select>
+                        
+                        <label>Verbrauchsprofil:</label>
+                        <select id="consumption-profile">
+                            <option value="standard">Standard-Haushalt</option>
+                            <option value="high">Hoher Verbrauch</option>
+                            <option value="low">Niedriger Verbrauch</option>
+                            <option value="business">Gewerbe</option>
+                        </select>
+                        
+                        <button class="btn btn-primary" onclick="runSimulation()">
+                            ▶️ Simulation starten
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Results Tab Content -->
+                <div id="tab-results" class="tab-content" style="display: none;">
+                    <h3>📊 Ergebnisse</h3>
+                    <p>Simulationsergebnisse und Analysen</p>
+                    <div class="results-display">
+                        <div class="result-card">
+                            <h4>Energieertrag</h4>
+                            <div class="result-value" id="energy-yield">-- kWh/Jahr</div>
+                        </div>
+                        
+                        <div class="result-card">
+                            <h4>Eigenverbrauch</h4>
+                            <div class="result-value" id="self-consumption">-- %</div>
+                        </div>
+                        
+                        <div class="result-card">
+                            <h4>Autarkiegrad</h4>
+                            <div class="result-value" id="self-sufficiency">-- %</div>
+                        </div>
+                        
+                        <div class="result-card">
+                            <h4>CO₂-Einsparung</h4>
+                            <div class="result-value" id="co2-savings">-- kg/Jahr</div>
+                        </div>
+                        
+                        <button class="btn btn-secondary" onclick="exportResults()">
+                            💾 Ergebnisse exportieren
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -816,6 +1172,110 @@
         energyOS 3D-Builder | Bereit
     </div>
     
+    <!-- Sidebar JavaScript -->
+    <script>
+        let currentTab = 'building';
+        
+        function toggleHamburgerMenu() {
+            const menu = document.getElementById('hamburger-menu-content');
+            menu.classList.toggle('show');
+        }
+        
+        function switchTab(tabName) {
+            // Hide current tab content
+            const currentTabContent = document.getElementById(`tab-${currentTab}`);
+            if (currentTabContent) {
+                currentTabContent.style.display = 'none';
+            }
+            
+            // Remove active class from current tab item
+            const currentTabItem = document.querySelector(`.tab-item[data-tab="${currentTab}"]`);
+            if (currentTabItem) {
+                currentTabItem.classList.remove('active');
+            }
+            
+            // Show new tab content
+            const newTabContent = document.getElementById(`tab-${tabName}`);
+            if (newTabContent) {
+                newTabContent.style.display = 'block';
+            }
+            
+            // Add active class to new tab item
+            const newTabItem = document.querySelector(`.tab-item[data-tab="${tabName}"]`);
+            if (newTabItem) {
+                newTabItem.classList.add('active');
+            }
+            
+            // Update current tab
+            currentTab = tabName;
+            
+            // Hide hamburger menu
+            const menu = document.getElementById('hamburger-menu-content');
+            menu.classList.remove('show');
+            
+            // Update status bar
+            const statusBar = document.querySelector('.status-bar');
+            const tabNames = {
+                'building': 'Gebäude',
+                'pv': 'PV-Anlage',
+                'inverter': 'Wechselrichter',
+                'battery': 'Batteriespeicher',
+                'simulation': 'Simulation',
+                'results': 'Ergebnisse'
+            };
+            statusBar.textContent = `energySIM | ${tabNames[tabName]}`;
+        }
+        
+        // Close hamburger menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('hamburger-menu-content');
+            const hamburgerBtn = document.querySelector('.hamburger-btn');
+            
+            if (!menu.contains(event.target) && !hamburgerBtn.contains(event.target)) {
+                menu.classList.remove('show');
+            }
+        });
+        
+        // Update range input displays
+        document.addEventListener('DOMContentLoaded', function() {
+            // PV tilt angle
+            const pvTilt = document.getElementById('pv-tilt');
+            const pvTiltValue = document.getElementById('pv-tilt-value');
+            if (pvTilt && pvTiltValue) {
+                pvTilt.addEventListener('input', function() {
+                    pvTiltValue.textContent = this.value + '°';
+                });
+            }
+            
+            // Inverter efficiency
+            const inverterEff = document.getElementById('inverter-efficiency');
+            const inverterEffValue = document.getElementById('inverter-efficiency-value');
+            if (inverterEff && inverterEffValue) {
+                inverterEff.addEventListener('input', function() {
+                    inverterEffValue.textContent = this.value + '%';
+                });
+            }
+            
+            // Battery depth of discharge
+            const batteryDod = document.getElementById('battery-dod');
+            const batteryDodValue = document.getElementById('battery-dod-value');
+            if (batteryDod && batteryDodValue) {
+                batteryDod.addEventListener('input', function() {
+                    batteryDodValue.textContent = this.value + '%';
+                });
+            }
+        });
+        
+        // Placeholder functions for simulation and export
+        function runSimulation() {
+            alert('Simulation wird gestartet... (Funktion noch nicht implementiert)');
+        }
+        
+        function exportResults() {
+            alert('Ergebnisse werden exportiert... (Funktion noch nicht implementiert)');
+        }
+    </script>
+
     <!-- 3D Builder Script -->
     <script src="{{ url_for('static', filename='3d_builder.js') }}"></script>
 </body>
