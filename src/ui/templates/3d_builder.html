@@ -556,15 +556,27 @@
         }
         
         /* Primary Buttons (Hauptaktionen) */
-        .btn-primary, .tool-btn.active {
+        .btn-primary {
             background: #007acc;
             color: white;
             border-color: #005a9e;
         }
         
-        .btn-primary:hover, .tool-btn.active:hover {
+        .btn-primary:hover {
             background: #005a9e;
             border-color: #004080;
+        }
+        
+        /* AKTIVE TOOL-BUTTONS (GELB = AN) */
+        .tool-btn.active {
+            background: #ffc107 !important;
+            color: #212529 !important;
+            border-color: #ffca2c !important;
+        }
+        
+        .tool-btn.active:hover {
+            background: #e0a800 !important;
+            border-color: #d39e00 !important;
         }
         
         /* AKTIVE TOGGLE-BUTTONS (GELB = AN) */
@@ -592,16 +604,29 @@
         }
         
         /* Secondary Buttons (Standard-Aktionen) */
-        .btn-secondary, .tool-btn, .move-btn, .building-btn {
+        .btn-secondary, .move-btn, .building-btn {
             background: white;
             color: #333;
             border-color: #ddd;
         }
         
-        .btn-secondary:hover, .tool-btn:hover:not(.disabled), .move-btn:hover:not(.active), .building-btn:hover {
+        .btn-secondary:hover, .move-btn:hover:not(.active), .building-btn:hover {
             background: #f8f9fa;
             border-color: #007acc;
             color: #007acc;
+        }
+        
+        /* INAKTIVE TOOL-BUTTONS (HELLGRAU = AUS) */
+        .tool-btn:not(.active) {
+            background: #e9ecef !important;
+            color: #6c757d !important;
+            border-color: #dee2e6 !important;
+        }
+        
+        .tool-btn:not(.active):hover:not(.disabled) {
+            background: #dae0e5 !important;
+            border-color: #c6d0d7 !important;
+            color: #495057 !important;
         }
         
         /* Success Buttons (Positive Aktionen) */
@@ -987,7 +1012,23 @@
             gap: 6px;
         }
         
-
+        /* Building Action Rows */
+        .building-action-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        
+        .building-action-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .building-action-row .edit-btn,
+        .building-action-row .building-btn {
+            width: 100%;
+            margin: 0;
+        }
         
         /* Component Overview */
         .component-overview {
@@ -1137,22 +1178,25 @@
                     <!-- Building Management -->
                     <div class="building-management">
                         <h3>📁 Gebäude</h3>
-                        <!-- Edit Mode Button -->
+                        <!-- Edit Mode Section -->
                         <div class="edit-mode-section">
-                            <button id="edit-mode-btn" class="edit-btn" onclick="toggleEditMode()">
-                                ✏️ Bearbeiten aktivieren
-                            </button>
-                        </div>
-                        <div class="building-buttons">
-                            <button class="building-btn" onclick="importBuilding()">
-                                📥 Importieren
-                            </button>
-                            <button class="building-btn" onclick="exportBuilding()">
-                                📤 Exportieren
-                            </button>
-                            <button class="building-btn delete-btn" onclick="clearBuilding()">
-                                🗑️ Gebäude löschen
-                            </button>
+                            <div class="building-action-row">
+                                <button id="edit-mode-btn" class="edit-btn" onclick="toggleEditMode()">
+                                    ✏️ Bearbeiten
+                                </button>
+                                <button class="building-btn delete-btn" onclick="clearBuilding()">
+                                    🗑️ Löschen
+                                </button>
+                            </div>
+                            
+                            <div class="building-action-row">
+                                <button class="building-btn" onclick="importBuilding()">
+                                    � Import
+                                </button>
+                                <button class="building-btn" onclick="exportBuilding()">
+                                    � Export
+                                </button>
+                            </div>
                         </div>
                     </div>
                     

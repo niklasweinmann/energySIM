@@ -533,170 +533,471 @@ class Simple3DBuilder {
         debugLog('Szene geleert', 'info');
     }
     
-    // Snap-Funktionalität für realistische Bauplatzierung
+    // Intelligentes Constraint-basiertes Snap-System
     snapToNearestWall(position, componentType) {
         if (!this.snapMode) {
+            // Kein Snap-Modus - verstecke Feedback
+            this.showSnapFeedback(false, false, null);
             return position;
         }
         
         const snappedPosition = position.clone();
-        const snapDistance = 80; // 80cm Snap-Reichweite
+        const snapDistance = 100; // 100cm Snap-Reichweite
+        const glideThreshold = 150; // 150cm Gleiten-Reichweite (größer als Snap)
         const allComponents = this.getAllComponents();
         
-        // FENSTER & TÜREN: Erstellen Öffnungen in Wänden
+        let snapResult = null;
+        let snapType = '';
+        
+        // FENSTER & TÜREN: Entlang Wandflächen bewegen und gleiten
         if (componentType === 'window' || componentType === 'door') {
-            const walls = allComponents.filter(obj => obj.userData.type === 'wall');
-            let bestWall = null;
-            let minDistance = Infinity;
-            
-            walls.forEach(wall => {
-                const wallPos = wall.position;
-                const wallWidth = wall.userData.width || this.componentDefaults.wall.width;
-                const wallDepth = wall.userData.depth || this.componentDefaults.wall.depth;
-                const wallHeight = wall.userData.height || this.componentDefaults.wall.height;
-                
-                // Prüfe alle 4 Wandseiten für Snap-Möglichkeiten
-                const snapSides = [
-                    { // Vorderseite
-                        center: { x: wallPos.x, z: wallPos.z + wallDepth/2 },
-                        normal: { x: 0, z: 1 },
-                        snapPos: { x: wallPos.x, z: wallPos.z + wallDepth/2, y: wallPos.y }
-                    },
-                    { // Rückseite  
-                        center: { x: wallPos.x, z: wallPos.z - wallDepth/2 },
-                        normal: { x: 0, z: -1 },
-                        snapPos: { x: wallPos.x, z: wallPos.z - wallDepth/2, y: wallPos.y }
-                    },
-                    { // Rechte Seite
-                        center: { x: wallPos.x + wallWidth/2, z: wallPos.z },
-                        normal: { x: 1, z: 0 },
-                        snapPos: { x: wallPos.x + wallWidth/2, z: wallPos.z, y: wallPos.y }
-                    },
-                    { // Linke Seite
-                        center: { x: wallPos.x - wallWidth/2, z: wallPos.z },
-                        normal: { x: -1, z: 0 },
-                        snapPos: { x: wallPos.x - wallWidth/2, z: wallPos.z, y: wallPos.y }
-                    }
-                ];
-                
-                snapSides.forEach(side => {
-                    const distance = Math.sqrt(
-                        Math.pow(position.x - side.center.x, 2) + 
-                        Math.pow(position.z - side.center.z, 2)
-                    );
-                    
-                    if (distance < minDistance && distance < snapDistance) {
-                        minDistance = distance;
-                        bestWall = {
-                            snapPos: side.snapPos,
-                            wall: wall,
-                            wallHeight: wallHeight
-                        };
-                    }
-                });
-            });
-            
-            if (bestWall) {
-                snappedPosition.copy(bestWall.snapPos);
-                // Fenster auf mittlerer Höhe, Türen am Boden
-                if (componentType === 'window') {
-                    snappedPosition.y = bestWall.snapPos.y + bestWall.wallHeight * 0.2;
-                } else { // door
-                    snappedPosition.y = bestWall.snapPos.y - bestWall.wallHeight * 0.4;
-                }
-                debugLog(`${componentType} in Wand eingerastet`, 'success');
-            }
-        }
-        
-        // DÄCHER: Auf Wände setzen (oberhalb)
-        else if (componentType === 'roof') {
-            const walls = allComponents.filter(obj => obj.userData.type === 'wall');
-            if (walls.length > 0) {
-                // Finde zentrale Position aller Wände
-                let centerX = 0, centerZ = 0, maxY = -Infinity;
-                walls.forEach(wall => {
-                    centerX += wall.position.x;
-                    centerZ += wall.position.z;
-                    const wallTop = wall.position.y + (wall.userData.height || this.componentDefaults.wall.height) / 2;
-                    if (wallTop > maxY) maxY = wallTop;
-                });
-                
-                centerX /= walls.length;
-                centerZ /= walls.length;
-                
+            snapResult = this.snapAndGlideToWallSurface(position, allComponents, snapDistance, glideThreshold);
+            snapType = 'wall-surface';
+            if (snapResult) {
                 snappedPosition.set(
-                    centerX, 
-                    maxY + (this.componentDefaults.roof.height || 20) / 2, 
-                    centerZ
+                    snapResult.x, 
+                    snapResult.y + (componentType === 'window' ? snapResult.wallHeight * 0.2 : -snapResult.wallHeight * 0.4), 
+                    snapResult.z
                 );
-                debugLog('Dach auf Wände aufgesetzt', 'success');
+                debugLog(`${componentType} entlang Wand bewegt`, 'success');
             }
         }
         
-        // BÖDEN: An Wand-Basis andocken
-        else if (componentType === 'floor') {
-            const walls = allComponents.filter(obj => obj.userData.type === 'wall');
-            if (walls.length > 0) {
-                // Finde niedrigste Wand-Basis
-                let centerX = 0, centerZ = 0, minY = Infinity;
-                walls.forEach(wall => {
-                    centerX += wall.position.x;
-                    centerZ += wall.position.z;
-                    const wallBottom = wall.position.y - (wall.userData.height || this.componentDefaults.wall.height) / 2;
-                    if (wallBottom < minY) minY = wallBottom;
-                });
-                
-                centerX /= walls.length;
-                centerZ /= walls.length;
-                
-                snappedPosition.set(
-                    centerX, 
-                    minY - (this.componentDefaults.floor.height || 20) / 2, 
-                    centerZ
-                );
-                debugLog('Boden an Wand-Basis angedockt', 'success');
-            }
-        }
-        
-        // WÄNDE: Nahtlos an andere Wände andocken
+        // WÄNDE: Entlang anderen Wänden bewegen und gleiten (Kante-an-Kante)
         else if (componentType === 'wall') {
-            const otherWalls = allComponents.filter(obj => obj.userData.type === 'wall' && obj !== this.selectedObject);
-            let bestConnection = null;
-            let minDistance = Infinity;
-            
-            otherWalls.forEach(wall => {
-                const wallPos = wall.position;
-                const wallWidth = wall.userData.width || this.componentDefaults.wall.width;
-                const wallDepth = wall.userData.depth || this.componentDefaults.wall.depth;
-                
-                // Alle Verbindungspunkte der Wand
-                const connectionPoints = [
-                    { x: wallPos.x + wallWidth/2, z: wallPos.z, y: wallPos.y }, // Rechtes Ende
-                    { x: wallPos.x - wallWidth/2, z: wallPos.z, y: wallPos.y }, // Linkes Ende
-                    { x: wallPos.x, z: wallPos.z + wallDepth/2, y: wallPos.y }, // Vorderes Ende
-                    { x: wallPos.x, z: wallPos.z - wallDepth/2, y: wallPos.y }  // Hinteres Ende
-                ];
-                
-                connectionPoints.forEach(point => {
-                    const distance = Math.sqrt(
-                        Math.pow(position.x - point.x, 2) + 
-                        Math.pow(position.z - point.z, 2)
-                    );
-                    
-                    if (distance < minDistance && distance < snapDistance) {
-                        minDistance = distance;
-                        bestConnection = point;
-                    }
-                });
-            });
-            
-            if (bestConnection) {
-                snappedPosition.copy(bestConnection);
-                debugLog('Wand nahtlos angedockt', 'success');
+            snapResult = this.snapAndGlideToWallEdge(position, allComponents, snapDistance, glideThreshold);
+            snapType = 'wall-edge';
+            if (snapResult) {
+                snappedPosition.set(snapResult.x, snapResult.y, snapResult.z);
+                debugLog('Wand entlang Kante bewegt', 'success');
             }
+        }
+        
+        // DÄCHER: Entlang Wand-Oberkanten bewegen und gleiten
+        else if (componentType === 'roof') {
+            snapResult = this.snapAndGlideToWallTops(position, allComponents, snapDistance, glideThreshold);
+            snapType = 'wall-tops';
+            if (snapResult) {
+                snappedPosition.set(snapResult.x, snapResult.y, snapResult.z);
+                debugLog('Dach entlang Wänden bewegt', 'success');
+            }
+        }
+        
+        // BÖDEN: Entlang Wand-Unterkanten bewegen und gleiten
+        else if (componentType === 'floor') {
+            snapResult = this.snapAndGlideToWallBottoms(position, allComponents, snapDistance, glideThreshold);
+            snapType = 'wall-bottoms';
+            if (snapResult) {
+                snappedPosition.set(snapResult.x, snapResult.y, snapResult.z);
+                debugLog('Boden entlang Wänden bewegt', 'success');
+            }
+        }
+        
+        // Zeige visuelles Feedback
+        if (snapResult) {
+            this.showSnapFeedback(snapResult.isGliding === false, snapResult.isGliding === true, snapType);
+        } else {
+            this.showSnapFeedback(false, false, null);
         }
         
         return snappedPosition;
+    }
+    
+    // Magnetisches Gleiten: Entlang Wandfläche bewegen
+    snapAndGlideToWallSurface(position, allComponents, snapDistance, glideThreshold) {
+        const walls = allComponents.filter(obj => obj.userData.type === 'wall');
+        let bestConstraint = null;
+        let minDistance = Infinity;
+        let isGliding = false;
+        
+        walls.forEach(wall => {
+            const wallPos = wall.position;
+            const wallWidth = wall.userData.width || this.componentDefaults.wall.width;
+            const wallDepth = wall.userData.depth || this.componentDefaults.wall.depth;
+            const wallHeight = wall.userData.height || this.componentDefaults.wall.height;
+            
+            // Prüfe alle 4 Wandflächen
+            const surfaces = [
+                { // Nord (Vorne)
+                    normal: { x: 0, z: 1 },
+                    surfacePos: { x: wallPos.x, z: wallPos.z + wallDepth/2 },
+                    constraint: { // Bewegung entlang X-Achse
+                        axis: 'x',
+                        fixedZ: wallPos.z + wallDepth/2,
+                        minX: wallPos.x - wallWidth/2,
+                        maxX: wallPos.x + wallWidth/2
+                    }
+                },
+                { // Süd (Hinten)
+                    normal: { x: 0, z: -1 },
+                    surfacePos: { x: wallPos.x, z: wallPos.z - wallDepth/2 },
+                    constraint: {
+                        axis: 'x',
+                        fixedZ: wallPos.z - wallDepth/2,
+                        minX: wallPos.x - wallWidth/2,
+                        maxX: wallPos.x + wallWidth/2
+                    }
+                },
+                { // Ost (Rechts)
+                    normal: { x: 1, z: 0 },
+                    surfacePos: { x: wallPos.x + wallWidth/2, z: wallPos.z },
+                    constraint: { // Bewegung entlang Z-Achse
+                        axis: 'z',
+                        fixedX: wallPos.x + wallWidth/2,
+                        minZ: wallPos.z - wallDepth/2,
+                        maxZ: wallPos.z + wallDepth/2
+                    }
+                },
+                { // West (Links)
+                    normal: { x: -1, z: 0 },
+                    surfacePos: { x: wallPos.x - wallWidth/2, z: wallPos.z },
+                    constraint: {
+                        axis: 'z',
+                        fixedX: wallPos.x - wallWidth/2,
+                        minZ: wallPos.z - wallDepth/2,
+                        maxZ: wallPos.z + wallDepth/2
+                    }
+                }
+            ];
+            
+            surfaces.forEach(surface => {
+                const distanceToSurface = Math.abs(
+                    (position.x - surface.surfacePos.x) * surface.normal.x +
+                    (position.z - surface.surfacePos.z) * surface.normal.z
+                );
+                
+                // Erweiterte Reichweite für Gleiten
+                const effectiveThreshold = isGliding ? glideThreshold : snapDistance;
+                
+                if (distanceToSurface < effectiveThreshold && distanceToSurface < minDistance) {
+                    minDistance = distanceToSurface;
+                    
+                    // Berechne Position mit Gleiten-Constraint
+                    let constrainedPos = { x: position.x, z: position.z };
+                    
+                    if (surface.constraint.axis === 'x') {
+                        // Gleiten entlang X-Achse, Z fixiert
+                        constrainedPos.z = surface.constraint.fixedZ;
+                        constrainedPos.x = Math.max(surface.constraint.minX, 
+                                                  Math.min(surface.constraint.maxX, position.x));
+                        
+                        // Prüfe ob wir am Ende der Wand angelangt sind
+                        if (position.x < surface.constraint.minX - 50 || position.x > surface.constraint.maxX + 50) {
+                            isGliding = false; // Loslassen der Wand
+                            return null;
+                        }
+                    } else {
+                        // Gleiten entlang Z-Achse, X fixiert
+                        constrainedPos.x = surface.constraint.fixedX;
+                        constrainedPos.z = Math.max(surface.constraint.minZ, 
+                                                  Math.min(surface.constraint.maxZ, position.z));
+                        
+                        // Prüfe ob wir am Ende der Wand angelangt sind
+                        if (position.z < surface.constraint.minZ - 50 || position.z > surface.constraint.maxZ + 50) {
+                            isGliding = false; // Loslassen der Wand
+                            return null;
+                        }
+                    }
+                    
+                    bestConstraint = {
+                        x: constrainedPos.x,
+                        y: wallPos.y,
+                        z: constrainedPos.z,
+                        wallHeight: wallHeight,
+                        isGliding: distanceToSurface < snapDistance
+                    };
+                }
+            });
+        });
+        
+        return bestConstraint;
+    }
+    
+    // Magnetisches Gleiten: Entlang Wandkante bewegen
+    snapAndGlideToWallEdge(position, allComponents, snapDistance, glideThreshold) {
+        const otherWalls = allComponents.filter(obj => obj.userData.type === 'wall' && obj !== this.selectedObject);
+        let bestConstraint = null;
+        let minDistance = Infinity;
+        let isGliding = false;
+        
+        otherWalls.forEach(wall => {
+            const wallPos = wall.position;
+            const wallWidth = wall.userData.width || this.componentDefaults.wall.width;
+            const wallDepth = wall.userData.depth || this.componentDefaults.wall.depth;
+            
+            // Kanten der existierenden Wand
+            const edges = [
+                { // Rechte Kante - Gleiten nach vorne/hinten
+                    name: 'right',
+                    point: { x: wallPos.x + wallWidth/2, z: wallPos.z },
+                    constraint: {
+                        fixedX: wallPos.x + wallWidth/2,
+                        minZ: wallPos.z - wallDepth/2,
+                        maxZ: wallPos.z + wallDepth/2,
+                        axis: 'z'
+                    }
+                },
+                { // Linke Kante
+                    name: 'left',
+                    point: { x: wallPos.x - wallWidth/2, z: wallPos.z },
+                    constraint: {
+                        fixedX: wallPos.x - wallWidth/2,
+                        minZ: wallPos.z - wallDepth/2,
+                        maxZ: wallPos.z + wallDepth/2,
+                        axis: 'z'
+                    }
+                },
+                { // Vordere Kante - Gleiten nach links/rechts
+                    name: 'front',
+                    point: { x: wallPos.x, z: wallPos.z + wallDepth/2 },
+                    constraint: {
+                        fixedZ: wallPos.z + wallDepth/2,
+                        minX: wallPos.x - wallWidth/2,
+                        maxX: wallPos.x + wallWidth/2,
+                        axis: 'x'
+                    }
+                },
+                { // Hintere Kante
+                    name: 'back',
+                    point: { x: wallPos.x, z: wallPos.z - wallDepth/2 },
+                    constraint: {
+                        fixedZ: wallPos.z - wallDepth/2,
+                        minX: wallPos.x - wallWidth/2,
+                        maxX: wallPos.x + wallWidth/2,
+                        axis: 'x'
+                    }
+                }
+            ];
+            
+            edges.forEach(edge => {
+                const distance = Math.sqrt(
+                    Math.pow(position.x - edge.point.x, 2) + 
+                    Math.pow(position.z - edge.point.z, 2)
+                );
+                
+                // Erweiterte Reichweite für Gleiten
+                const effectiveThreshold = isGliding ? glideThreshold : snapDistance;
+                
+                if (distance < effectiveThreshold && distance < minDistance) {
+                    minDistance = distance;
+                    
+                    // Berechne Constraint-Position mit Gleiten
+                    let constrainedPos = { x: position.x, z: position.z };
+                    
+                    if (edge.constraint.axis === 'z') {
+                        // Gleiten entlang Z-Achse (bei rechten/linken Kanten)
+                        constrainedPos.x = edge.constraint.fixedX;
+                        constrainedPos.z = Math.max(edge.constraint.minZ, 
+                                                  Math.min(edge.constraint.maxZ, position.z));
+                        
+                        // Prüfe ob wir am Ende der Kante angelangt sind
+                        if (position.z < edge.constraint.minZ - 50 || position.z > edge.constraint.maxZ + 50) {
+                            isGliding = false; // Loslassen der Kante
+                            return null;
+                        }
+                    } else {
+                        // Gleiten entlang X-Achse (bei vorderen/hinteren Kanten)
+                        constrainedPos.z = edge.constraint.fixedZ;
+                        constrainedPos.x = Math.max(edge.constraint.minX, 
+                                                  Math.min(edge.constraint.maxX, position.x));
+                        
+                        // Prüfe ob wir am Ende der Kante angelangt sind
+                        if (position.x < edge.constraint.minX - 50 || position.x > edge.constraint.maxX + 50) {
+                            isGliding = false; // Loslassen der Kante
+                            return null;
+                        }
+                    }
+                    
+                    bestConstraint = {
+                        x: constrainedPos.x,
+                        y: wallPos.y,
+                        z: constrainedPos.z,
+                        isGliding: distance < snapDistance,
+                        edgeName: edge.name
+                    };
+                }
+            });
+        });
+        
+        return bestConstraint;
+    }
+    
+    // Magnetisches Gleiten: Entlang Wand-Oberkanten bewegen (für Dächer)
+    snapAndGlideToWallTops(position, allComponents, snapDistance, glideThreshold) {
+        const walls = allComponents.filter(obj => obj.userData.type === 'wall');
+        if (walls.length === 0) return null;
+        
+        // Berechne erweiterte Bounding Box aller Wände für Gleiten
+        let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, maxY = -Infinity;
+        
+        walls.forEach(wall => {
+            const wallPos = wall.position;
+            const wallWidth = wall.userData.width || this.componentDefaults.wall.width;
+            const wallDepth = wall.userData.depth || this.componentDefaults.wall.depth;
+            const wallHeight = wall.userData.height || this.componentDefaults.wall.height;
+            
+            minX = Math.min(minX, wallPos.x - wallWidth/2);
+            maxX = Math.max(maxX, wallPos.x + wallWidth/2);
+            minZ = Math.min(minZ, wallPos.z - wallDepth/2);
+            maxZ = Math.max(maxZ, wallPos.z + wallDepth/2);
+            maxY = Math.max(maxY, wallPos.y + wallHeight/2);
+        });
+        
+        // Prüfe ob Position innerhalb oder nahe der Wand-Bounding-Box ist
+        const marginX = 100; // 100cm Spielraum zum Gleiten
+        const marginZ = 100;
+        
+        const extMinX = minX - marginX;
+        const extMaxX = maxX + marginX;
+        const extMinZ = minZ - marginZ;
+        const extMaxZ = maxZ + marginZ;
+        
+        // Gleiten: Wenn außerhalb der Grundfläche, aber innerhalb der erweiterten Zone
+        let constrainedX = position.x;
+        let constrainedZ = position.z;
+        let isGliding = false;
+        
+        if (position.x >= extMinX && position.x <= extMaxX && position.z >= extMinZ && position.z <= extMaxZ) {
+            // Innerhalb der Gleit-Zone - begrenzen auf Wand-Bounding-Box
+            if (position.x < minX) {
+                constrainedX = minX;
+                isGliding = true;
+            } else if (position.x > maxX) {
+                constrainedX = maxX;
+                isGliding = true;
+            }
+            
+            if (position.z < minZ) {
+                constrainedZ = minZ;
+                isGliding = true;
+            } else if (position.z > maxZ) {
+                constrainedZ = maxZ;
+                isGliding = true;
+            }
+            
+            return {
+                x: constrainedX,
+                y: maxY + (this.componentDefaults.roof.height || 20) / 2,
+                z: constrainedZ,
+                isGliding: isGliding
+            };
+        }
+        
+        return null;
+    }
+    
+    // Magnetisches Gleiten: Entlang Wand-Unterkanten bewegen (für Böden)
+    snapAndGlideToWallBottoms(position, allComponents, snapDistance, glideThreshold) {
+        const walls = allComponents.filter(obj => obj.userData.type === 'wall');
+        if (walls.length === 0) return null;
+        
+        // Berechne erweiterte Bounding Box aller Wände für Gleiten
+        let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, minY = Infinity;
+        
+        walls.forEach(wall => {
+            const wallPos = wall.position;
+            const wallWidth = wall.userData.width || this.componentDefaults.wall.width;
+            const wallDepth = wall.userData.depth || this.componentDefaults.wall.depth;
+            const wallHeight = wall.userData.height || this.componentDefaults.wall.height;
+            
+            minX = Math.min(minX, wallPos.x - wallWidth/2);
+            maxX = Math.max(maxX, wallPos.x + wallWidth/2);
+            minZ = Math.min(minZ, wallPos.z - wallDepth/2);
+            maxZ = Math.max(maxZ, wallPos.z + wallDepth/2);
+            minY = Math.min(minY, wallPos.y - wallHeight/2);
+        });
+        
+        // Prüfe ob Position innerhalb oder nahe der Wand-Bounding-Box ist
+        const marginX = 100; // 100cm Spielraum zum Gleiten
+        const marginZ = 100;
+        
+        const extMinX = minX - marginX;
+        const extMaxX = maxX + marginX;
+        const extMinZ = minZ - marginZ;
+        const extMaxZ = maxZ + marginZ;
+        
+        // Gleiten: Wenn außerhalb der Grundfläche, aber innerhalb der erweiterten Zone
+        let constrainedX = position.x;
+        let constrainedZ = position.z;
+        let isGliding = false;
+        
+        if (position.x >= extMinX && position.x <= extMaxX && position.z >= extMinZ && position.z <= extMaxZ) {
+            // Innerhalb der Gleit-Zone - begrenzen auf Wand-Bounding-Box
+            if (position.x < minX) {
+                constrainedX = minX;
+                isGliding = true;
+            } else if (position.x > maxX) {
+                constrainedX = maxX;
+                isGliding = true;
+            }
+            
+            if (position.z < minZ) {
+                constrainedZ = minZ;
+                isGliding = true;
+            } else if (position.z > maxZ) {
+                constrainedZ = maxZ;
+                isGliding = true;
+            }
+            
+            return {
+                x: constrainedX,
+                y: minY - (this.componentDefaults.floor.height || 20) / 2,
+                z: constrainedZ,
+                isGliding: isGliding
+            };
+        }
+        
+        return null;
+    }
+    
+    // Visuelles Feedback für das Kleben/Gleiten
+    showSnapFeedback(isSnapped, isGliding, snapType) {
+        const feedbackDiv = document.getElementById('snap-feedback') || this.createSnapFeedback();
+        
+        if (isSnapped || isGliding) {
+            let message = '';
+            let color = '';
+            
+            if (isSnapped) {
+                message = '🧲 Magnetisch angeklebt';
+                color = '#ff6b35'; // Orange für angeklebt
+            } else if (isGliding) {
+                message = '⟷ Gleitet entlang der Kante';
+                color = '#ffa500'; // Hellorange für gleiten
+            }
+            
+            feedbackDiv.textContent = message;
+            feedbackDiv.style.backgroundColor = color;
+            feedbackDiv.style.opacity = '1';
+            feedbackDiv.style.transform = 'translateY(0)';
+        } else {
+            feedbackDiv.style.opacity = '0';
+            feedbackDiv.style.transform = 'translateY(-10px)';
+        }
+    }
+    
+    // Erstelle Feedback-Element
+    createSnapFeedback() {
+        const feedbackDiv = document.createElement('div');
+        feedbackDiv.id = 'snap-feedback';
+        feedbackDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 25px;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            pointer-events: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        `;
+        document.body.appendChild(feedbackDiv);
+        return feedbackDiv;
     }
     
     dispose() {
