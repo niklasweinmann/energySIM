@@ -417,7 +417,7 @@ class Simple3DBuilder {
         this.showPropertiesPanel();
         this.needsRender = true;
         
-        debugLog(`${object.userData.type} ausgewählt`, 'info');
+        debugLog(`${object.userData.type} ausgewählt - Properties-Panel sollte angezeigt werden`, 'info');
     }
     
     clearSelection() {
@@ -544,13 +544,14 @@ class Simple3DBuilder {
         // Auto-Update Events hinzufügen
         this.setupAutoUpdate();
         
-        panel.style.display = 'block';
+        panel.classList.add('open');
+        debugLog('Properties-Panel angezeigt', 'success');
     }
     
     hidePropertiesPanel() {
         const panel = document.getElementById('properties-panel');
         if (panel) {
-            panel.style.display = 'none';
+            panel.classList.remove('open');
         }
     }
     
@@ -804,12 +805,16 @@ function deleteSelectedComponent() {
     }
 }
 
+// Close Properties Panel
+function closePropertiesPanel() {
+    if (builder3d) {
+        builder3d.hidePropertiesPanel();
+        builder3d.clearSelection();
+    }
+}
+
 // Globale Funktionen verfügbar machen
 window.toggleEditMode = toggleEditMode;
 window.toggleMoveMode = toggleMoveMode;
 window.deleteSelectedComponent = deleteSelectedComponent;
-function deleteSelected() {
-    if (builder3d) {
-        builder3d.deleteSelected();
-    }
-}
+window.closePropertiesPanel = closePropertiesPanel;

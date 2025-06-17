@@ -18,6 +18,8 @@
                 this.enabled = true;
                 this.target = new THREE.Vector3();
                 this.enableDamping = false;
+                this.target = new THREE.Vector3();
+                this.enableDamping = false;
                 this.dampingFactor = 0.25;
                 this.enableZoom = true;
                 this.zoomSpeed = 1.0;
@@ -638,15 +640,13 @@
             border-color: #4CAF50;
         }
         
-        .properties-panel {
-            margin-top: 20px;
-            padding: 15px;
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 6px;
+        .properties-content {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
         }
         
-        .properties-panel h4 {
+        .properties-content h4 {
             margin: 0 0 15px 0;
             color: #4CAF50;
             font-size: 14px;
@@ -783,9 +783,12 @@
             </div>
             
             <!-- Properties Panel -->
-            <div id="properties-panel" class="properties-panel" style="display: none;">
-                <h4>🔧 Eigenschaften</h4>
-                <div id="properties-content"></div>
+            <div id="properties-panel" class="properties-panel">
+                <div class="properties-header">
+                    <span>🔧 Eigenschaften</span>
+                    <button class="close-btn" onclick="closePropertiesPanel()">×</button>
+                </div>
+                <div id="properties-content" class="properties-content"></div>
             </div>
         </div>
         
