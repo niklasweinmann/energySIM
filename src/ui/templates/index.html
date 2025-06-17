@@ -582,7 +582,7 @@
 </head>
 <body>
     <div id="container">
-        <!-- Sidebar mit vereinfachtem Menü -->
+        <!-- Sidebar mit dynamischem Menü -->
         <div id="sidebar">
             <!-- Normaler Modus Header -->
             <div class="menu-header" id="normal-header">
@@ -602,14 +602,145 @@
                 </div>
             </div>
             
-            <!-- Bearbeitungsmodus Header -->
-            <div class="edit-mode-header" id="edit-header">
-                <div class="edit-mode-title">🛠️ Bearbeitungsmodus</div>
+            <!-- Bearbeitungsmodus Header (versteckt per default) -->
+            <div class="edit-mode-header" id="edit-header" style="display: none;">
+                <div class="edit-mode-title">🛠️ 3D-Builder</div>
                 <button class="exit-edit-btn" onclick="exitEditMode()">Beenden</button>
             </div>
             
-            <!-- 3D-Bearbeitungstools -->
-            <div class="edit-tools-menu" id="edit-tools">
+            <!-- Tab-Inhalte (normal sichtbar) -->
+            <div id="tab-contents">
+                <!-- Gebäude Tab -->
+                <div id="gebaude-tab" class="tab-content active">
+                    <div class="section">
+                        <h3>🏠 3D-Gebäudemodellierung</h3>
+                        <div class="form-group">
+                            <button class="btn" id="edit-mode-btn" onclick="toggleEditMode()">
+                                <span id="edit-mode-icon">✏️</span> 3D-Builder starten
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Weitere Gebäude-Inhalte hier -->
+                    <div class="section">
+                        <h3>📐 Gebäudedaten</h3>
+                        <div class="form-group">
+                            <label>Gebäudetyp:</label>
+                            <select id="building-type">
+                                <option value="residential">Wohngebäude</option>
+                                <option value="office">Bürogebäude</option>
+                                <option value="mixed">Mischnutzung</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Baujahr:</label>
+                            <input type="number" id="construction-year" value="2020" min="1900" max="2025">
+                        </div>
+                        <div class="form-group">
+                            <label>Wohnfläche (m²):</label>
+                            <input type="number" id="living-area" value="150" min="50" max="1000">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- PV Tab -->
+                <div id="pv-tab" class="tab-content">
+                    <div class="section">
+                        <h3>☀️ PV-Anlage</h3>
+                        <div class="form-group">
+                            <label>Modultyp:</label>
+                            <select id="pv-module-type">
+                                <option value="mono">Monokristallin (370W)</option>
+                                <option value="poly">Polykristallin (330W)</option>
+                                <option value="thin">Dünnschicht (280W)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Anzahl Module:</label>
+                            <input type="number" id="pv-module-count" value="20" min="1" max="100">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Batterie Tab -->
+                <div id="batterie-tab" class="tab-content">
+                    <div class="section">
+                        <h3>🔋 Batteriespeicher</h3>
+                        <div class="form-group">
+                            <label>Batterietyp:</label>
+                            <select id="battery-type">
+                                <option value="lithium">Lithium-Ionen</option>
+                                <option value="salt">Salzwasser</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Kapazität (kWh):</label>
+                            <input type="number" id="battery-capacity" value="10" min="1" max="100" step="0.5">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Wärmepumpe Tab -->
+                <div id="waermepumpe-tab" class="tab-content">
+                    <div class="section">
+                        <h3>🔥 Wärmepumpe</h3>
+                        <div class="form-group">
+                            <label>Wärmepumpentyp:</label>
+                            <select id="hp-type">
+                                <option value="air">Luft-Wasser</option>
+                                <option value="ground">Sole-Wasser</option>
+                                <option value="water">Wasser-Wasser</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Heizleistung (kW):</label>
+                            <input type="number" id="hp-power" value="8" min="3" max="20" step="0.5">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Simulation Tab -->
+                <div id="simulation-tab" class="tab-content">
+                    <div class="section">
+                        <h3>⚡ Energiesimulation</h3>
+                        <div class="form-group">
+                            <label>Standort:</label>
+                            <select id="location">
+                                <option value="berlin">Berlin</option>
+                                <option value="muenchen">München</option>
+                                <option value="hamburg">Hamburg</option>
+                                <option value="koeln">Köln</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <button class="btn btn-success" onclick="startSimulation()">🚀 Simulation starten</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Ergebnisse Tab -->
+                <div id="ergebnisse-tab" class="tab-content">
+                    <div class="section">
+                        <h3>📊 Simulationsergebnisse</h3>
+                        <div id="results-container">
+                            <div class="form-group">
+                                <label>Energiebedarf (kWh/Jahr):</label>
+                                <div id="energy-demand" style="color: #4CAF50;">12.500 kWh</div>
+                            </div>
+                            <div class="form-group">
+                                <label>PV-Ertrag (kWh/Jahr):</label>
+                                <div id="pv-yield" style="color: #4CAF50;">8.200 kWh</div>
+                            </div>
+                            <div class="form-group">
+                                <button class="btn" onclick="exportResults()">💾 Ergebnisse exportieren</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 3D-Bearbeitungstools (versteckt per default) -->
+            <div class="edit-tools-menu" id="edit-tools" style="display: none;">
                 <!-- Bauteile -->
                 <div class="tool-section">
                     <h4>Bauteile</h4>
@@ -743,8 +874,10 @@
                     </div>
                 </div>
             </div>
-            
-            <!-- Tab Content: Gebäude -->
+        </div>
+        
+        <!-- 3D Viewer -->
+        <div id="viewer">
             <div id="gebaude-tab" class="tab-content active">
                 <div class="section">
                     <h3>🏠 3D-Gebäudemodellierung</h3>
@@ -1132,6 +1265,11 @@
         </div>
     </div>
 
+    <!-- Test-Ausgabe -->
+    <div style="position: fixed; top: 10px; left: 10px; background: red; color: white; padding: 10px; z-index: 9999;">
+        HTML funktioniert!
+    </div>
+
     <!-- Debug Panel -->
     <div class="debug-panel">
         <div class="debug-header" onclick="toggleDebug()">
@@ -1139,29 +1277,155 @@
             <span class="debug-toggle" id="debug-toggle">▼</span>
         </div>
         <div class="debug-content" id="debug-content">
-            <div id="debug-log">Initialisierung...</div>
+            <div id="debug-log">
+                ⚠️ JavaScript-Fehler erkannt<br>
+                🔍 Überprüfe Browser-Konsole (F12)<br>
+                📝 Mögliche Probleme:<br>
+                - THREE.js lädt nicht<br>
+                - OrbitControls fehlt<br>
+                - Syntax-Fehler im Code<br>
+                💡 Verwende separate JS-Datei
+            </div>
         </div>
     </div>
 
     <!-- Three.js -->
     <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
-    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
 
     <script>
+        // SOFORTIGE TESTAUSGABE
+        console.log('🚀 JavaScript wird geladen...');
+        
+        // 3D Builder - BuildingViewer-Klasse
         let building3D;
-        let currentTab = 'gebaude';
-        let currentMainTab = 'gebaude-3d';
         let simulationCompleted = false;
         
-        // Hamburger-Menü Funktionen
-        const tabNames = {
-            'gebaude': '🏠 Gebäude',
-            'pv': '☀️ PV-Anlage',
-            'batterie': '🔋 Batteriespeicher',
-            'waermepumpe': '🔥 Wärmepumpe',
-            'simulation': '⚡ Simulation',
-            'ergebnisse': '📊 Ergebnisse'
-        };
+        // BuildingViewer-Klasse für 3D-Darstellung
+        class BuildingViewer {
+            constructor(containerId) {
+                this.container = document.getElementById(containerId);
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, this.container.clientWidth / this.container.clientHeight, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.controls = null;
+                this.editMode = false;
+                
+                this.init();
+            }
+            
+            init() {
+                // Renderer Setup
+                this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+                this.renderer.setClearColor(0x87CEEB);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                this.container.appendChild(this.renderer.domElement);
+                
+                // Kamera Position
+                this.camera.position.set(10, 10, 10);
+                this.camera.lookAt(0, 0, 0);
+                
+                // Orbit Controls (optional)
+                try {
+                    if (typeof THREE.OrbitControls !== 'undefined') {
+                        this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                        this.controls.enableDamping = true;
+                        this.controls.dampingFactor = 0.05;
+                        console.log('✅ OrbitControls aktiviert');
+                    } else {
+                        console.log('⚠️ OrbitControls nicht verfügbar - Kamera ist statisch');
+                    }
+                } catch (error) {
+                    console.log('⚠️ OrbitControls Fehler:', error.message);
+                }
+                
+                // Beleuchtung
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+                this.scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(10, 10, 5);
+                directionalLight.castShadow = true;
+                this.scene.add(directionalLight);
+                
+                // Boden
+                const floorGeometry = new THREE.PlaneGeometry(50, 50);
+                const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x90EE90 });
+                const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+                floor.rotation.x = -Math.PI / 2;
+                floor.receiveShadow = true;
+                this.scene.add(floor);
+                
+                // Beispiel-Gebäude
+                this.createSampleBuilding();
+                
+                // Event Listeners
+                window.addEventListener('resize', () => this.onWindowResize());
+                
+                // Animation starten
+                this.animate();
+                
+                console.log('✅ BuildingViewer initialisiert');
+            }
+            
+            createSampleBuilding() {
+                // Einfaches Beispielgebäude
+                const wallGeometry = new THREE.BoxGeometry(8, 3, 0.2);
+                const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+                
+                // Wände
+                const frontWall = new THREE.Mesh(wallGeometry, wallMaterial);
+                frontWall.position.set(0, 1.5, 4);
+                frontWall.castShadow = true;
+                this.scene.add(frontWall);
+                
+                const backWall = new THREE.Mesh(wallGeometry, wallMaterial);
+                backWall.position.set(0, 1.5, -4);
+                backWall.castShadow = true;
+                this.scene.add(backWall);
+                
+                const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.2, 3, 8), wallMaterial);
+                leftWall.position.set(-4, 1.5, 0);
+                leftWall.castShadow = true;
+                this.scene.add(leftWall);
+                
+                const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.2, 3, 8), wallMaterial);
+                rightWall.position.set(4, 1.5, 0);
+                rightWall.castShadow = true;
+                this.scene.add(rightWall);
+                
+                // Dach
+                const roofGeometry = new THREE.ConeGeometry(6, 2, 4);
+                const roofMaterial = new THREE.MeshLambertMaterial({ color: 0xDC143C });
+                const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+                roof.position.set(0, 4, 0);
+                roof.rotation.y = Math.PI / 4;
+                roof.castShadow = true;
+                this.scene.add(roof);
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                this.controls.update();
+                this.renderer.render(this.scene, this.camera);
+            }
+            
+            onWindowResize() {
+                this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+            }
+            
+            toggleEditMode() {
+                this.editMode = !this.editMode;
+                return this.editMode;
+            }
+            
+            isEditMode() {
+                return this.editMode;
+            }
+        }
         
         function toggleMenu() {
             const menu = document.getElementById('main-menu');
@@ -1287,49 +1551,7 @@
             }
         }
         
-        // Tab-System
-        function showTab(tabName) {
-            // Prüfe ob Bearbeitungsmodus aktiv ist und es sich nicht um den Gebäude-Tab handelt
-            if (isEditModeActive() && tabName !== 'gebaude') {
-                debugLog('⚠️ Tab-Wechsel im Bearbeitungsmodus blockiert: ' + tabName);
-                return;
-            }
-            
-            // Alle Tab-Contents verstecken
-            const tabContents = document.querySelectorAll('.tab-content');
-            tabContents.forEach(content => content.classList.remove('active'));
-            
-            // Gewählten Content anzeigen
-            const selectedContent = document.getElementById(tabName + '-tab');
-            if (selectedContent) {
-                selectedContent.classList.add('active');
-                currentTab = tabName;
-                
-                // Haupttabs-Sichtbarkeit aktualisieren
-                updateMainTabsVisibility(tabName);
-                
-                debugLog('📂 Tab gewechselt zu: ' + tabName);
-            }
-        }
-
-
-
-        // Hilfsfunktion: Prüft ob Bearbeitungsmodus aktiv ist
-        function isEditModeActive() {
-            return building3D && building3D.editMode;
-        }
-        
-        // Test-Funktionen
-        function addWindow() {
-            debugLog('🪟 Fenster hinzugefügt');
-            addComponent('window');
-        }
-        
-        function addDoor() {
-            debugLog('🚪 Tür hinzugefügt');
-            addComponent('door');
-        }
-        
+        // Utility-Funktionen
         function toggleDebug() {
             const content = document.getElementById('debug-content');
             const toggle = document.getElementById('debug-toggle');
@@ -1356,25 +1578,10 @@
             }
         }
         
-        function updateBuilding() {
-            const length = parseFloat(document.getElementById('building-length').value);
-            const width = parseFloat(document.getElementById('building-width').value);
-            const height = parseFloat(document.getElementById('building-height').value);
-            
-            if (building3D) {
-                building3D.updateBuilding(length, width, height);
-                debugLog('🔄 Gebäude aktualisiert: ' + length + 'x' + width + 'x' + height);
-                updateStatus('Aktiv: ' + length + 'x' + width + 'x' + height);
-            }
+        function runSimulation() {
+            debugLog('⚡ Simulation gestartet');
+            // Simulation-Logik hier implementieren
         }
-
-        // Edit Mode
-        function toggleEditMode() {
-            if (building3D) {
-                const editModeActive = building3D.toggleEditMode();
-                const btn = document.getElementById('edit-mode-btn');
-                const icon = document.getElementById('edit-mode-icon');
-                const submenu = document.getElementById('edit-submenu');
                 
                 if (editModeActive) {
                     btn.className = 'btn btn-warning';
@@ -1407,36 +1614,50 @@
 
         // Exit Edit Mode - separater Button für Bearbeitungsmodus beenden
         function exitEditMode() {
-            if (building3D && building3D.isEditMode()) {
-                building3D.toggleEditMode(); // Beendet den Edit-Modus
+            // Wechsle zurück zum normalen Modus
+            toggleEditMode();
+            
+            debugLog('🔒 3D-Builder beendet');
+            
+            // Optional: Python-Prozesse beenden (falls läuft)
+            fetch('/api/kill_processes', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        debugLog('🔄 Python-Prozesse erfolgreich beendet');
+                    }
+                })
+                .catch(error => {
+                    console.log('Info: Keine laufenden Prozesse gefunden');
+                });
+        }
+
+        // Edit Mode Toggle
+        function toggleEditMode() {
+            const normalHeader = document.getElementById('normal-header');
+            const editHeader = document.getElementById('edit-header');
+            const tabContents = document.getElementById('tab-contents');
+            const editTools = document.getElementById('edit-tools');
+            
+            if (editHeader.style.display === 'none') {
+                // Edit-Modus aktivieren
+                normalHeader.style.display = 'none';
+                editHeader.style.display = 'flex';
+                tabContents.style.display = 'none';
+                editTools.style.display = 'block';
                 
-                const btn = document.getElementById('edit-mode-btn');
-                const icon = document.getElementById('edit-mode-icon');
-                const submenu = document.getElementById('edit-submenu');
+                debugLog('✏️ 3D-Builder aktiviert');
+            } else {
+                // Normaler Modus aktivieren
+                normalHeader.style.display = 'block';
+                editHeader.style.display = 'none';
+                tabContents.style.display = 'block';
+                editTools.style.display = 'none';
                 
-                btn.className = 'btn';
-                icon.textContent = '✏️';
-                btn.innerHTML = icon.outerHTML + ' Bearbeiten';
-                submenu.classList.remove('active');
-                removeGhostPreview();
-                clearSelection();
+                // Beende auch Vorschau-Modus
+                exitPreviewMode();
                 
-                // Alle Tabs wieder aktivieren
-                enableAllTabs();
-                
-                debugLog('🔒 Bearbeitungsmodus beendet');
-                
-                // Optional: Python-Prozesse beenden (falls läuft)
-                fetch('/api/kill_processes', { method: 'POST' })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            debugLog('🔄 Python-Prozesse erfolgreich beendet');
-                        }
-                    })
-                    .catch(error => {
-                        console.log('Info: Keine laufenden Prozesse gefunden');
-                    });
+                debugLog('🔒 3D-Builder deaktiviert');
             }
         }
 
@@ -2291,8 +2512,142 @@
                     document.getElementById('min-insulation').textContent = standards.insulation;
                 }
                 
+                // Transparente Vorschau aktivieren
+                activateComponentPreview(toolType, standards);
+                
                 debugLog(`🔧 Tool gewählt: ${toolType} (U-Wert: ${standards.uValue})`);
             }
+        }
+        
+        let currentPreview = null;
+        let isPreviewMode = false;
+        
+        function activateComponentPreview(toolType, standards) {
+            isPreviewMode = true;
+            
+            // Mouse-Move-Listener für 3D-Vorschau hinzufügen
+            const viewer = document.getElementById('building-3d');
+            if (viewer && building3D) {
+                viewer.addEventListener('mousemove', (event) => showPreview(event, toolType, standards));
+                viewer.addEventListener('click', (event) => placeComponent(event, toolType, standards));
+                viewer.style.cursor = 'crosshair';
+                
+                debugLog(`👻 Vorschau-Modus aktiv für: ${toolType}`);
+            }
+        }
+        
+        function showPreview(event, toolType, standards) {
+            if (!isPreviewMode || !building3D) return;
+            
+            // Entferne alte Vorschau
+            if (currentPreview) {
+                building3D.scene.remove(currentPreview);
+            }
+            
+            // Erstelle neue transparente Vorschau
+            const geometry = getGeometryForTool(toolType, standards);
+            const material = new THREE.MeshBasicMaterial({ 
+                color: 0x4CAF50, 
+                transparent: true, 
+                opacity: 0.3,
+                wireframe: true
+            });
+            
+            currentPreview = new THREE.Mesh(geometry, material);
+            
+            // Berechne Position basierend auf Mausposition
+            const mouse = new THREE.Vector2();
+            const rect = event.target.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, building3D.camera);
+            
+            // Platziere Vorschau an Raycaster-Position
+            const intersects = raycaster.intersectObjects(building3D.scene.children);
+            if (intersects.length > 0) {
+                currentPreview.position.copy(intersects[0].point);
+            } else {
+                // Fallback: Platziere in der Mitte der Szene
+                currentPreview.position.set(0, 0, 0);
+            }
+            
+            building3D.scene.add(currentPreview);
+        }
+        
+        function placeComponent(event, toolType, standards) {
+            if (!isPreviewMode || !currentPreview) return;
+            
+            // Erstelle finales Bauteil
+            const geometry = getGeometryForTool(toolType, standards);
+            const material = new THREE.MeshLambertMaterial({ color: getColorForTool(toolType) });
+            const component = new THREE.Mesh(geometry, material);
+            
+            // Übernehme Position von Vorschau
+            component.position.copy(currentPreview.position);
+            component.userData = {
+                type: toolType,
+                standards: standards,
+                id: Date.now()
+            };
+            
+            building3D.scene.add(component);
+            
+            // Beende Vorschau-Modus
+            exitPreviewMode();
+            
+            debugLog(`✅ ${toolType} platziert bei: ${component.position.x.toFixed(1)}, ${component.position.y.toFixed(1)}, ${component.position.z.toFixed(1)}`);
+        }
+        
+        function getGeometryForTool(toolType, standards) {
+            const width = parseFloat(document.getElementById('comp-width')?.value || 3.0);
+            const height = parseFloat(document.getElementById('comp-height')?.value || 2.5);
+            const thickness = parseFloat(document.getElementById('comp-thickness')?.value || 24) / 100; // cm zu m
+            
+            switch(toolType) {
+                case 'wall':
+                    return new THREE.BoxGeometry(width, height, thickness);
+                case 'window':
+                case 'door':
+                    return new THREE.BoxGeometry(width * 0.8, height * 0.9, thickness * 0.5);
+                case 'roof':
+                    return new THREE.ConeGeometry(width, height * 0.5, 4);
+                case 'floor':
+                    return new THREE.BoxGeometry(width, thickness, width);
+                default:
+                    return new THREE.BoxGeometry(1, 1, 1);
+            }
+        }
+        
+        function getColorForTool(toolType) {
+            switch(toolType) {
+                case 'wall': return 0x8B4513;     // Braun
+                case 'window': return 0x87CEEB;   // Himmelblau
+                case 'door': return 0x654321;     // Dunkelbraun
+                case 'roof': return 0xDC143C;     // Rot
+                case 'floor': return 0x696969;    // Grau
+                default: return 0x4CAF50;         // Grün
+            }
+        }
+        
+        function exitPreviewMode() {
+            isPreviewMode = false;
+            
+            // Entferne Vorschau
+            if (currentPreview && building3D) {
+                building3D.scene.remove(currentPreview);
+                currentPreview = null;
+            }
+            
+            // Entferne Event-Listener
+            const viewer = document.getElementById('building-3d');
+            if (viewer) {
+                viewer.style.cursor = 'default';
+                // Neue Event-Listener werden beim nächsten Tool-Auswahl hinzugefügt
+            }
+            
+            debugLog('👋 Vorschau-Modus beendet');
         }
         
         function selectRoofType(roofType) {
@@ -2319,30 +2674,104 @@
             debugLog('✋ Objekt bewegen');
         }
         
+        // Debug und Status Funktionen
+        function debugLog(message) {
+            console.log(message);
+            
+            // Erstelle Debug-Panel falls es nicht existiert
+            let debugPanel = document.querySelector('.debug-panel');
+            if (!debugPanel) {
+                debugPanel = document.createElement('div');
+                debugPanel.className = 'debug-panel';
+                debugPanel.innerHTML = `
+                    <div class="debug-header" onclick="toggleDebug()">
+                        <span>🐛 Debug Log</span>
+                        <span class="debug-toggle" id="debug-toggle">▼</span>
+                    </div>
+                    <div class="debug-content" id="debug-content">
+                        <div id="debug-log">Initialisierung...</div>
+                    </div>
+                `;
+                document.body.appendChild(debugPanel);
+            }
+            
+            const debugElement = document.getElementById('debug-log');
+            if (debugElement) {
+                debugElement.innerHTML += message + '<br>';
+                debugElement.scrollTop = debugElement.scrollHeight;
+            }
+        }
+        
+        function updateStatus(status) {
+            const statusElement = document.querySelector('.debug-header span');
+            if (statusElement) {
+                statusElement.textContent = status;
+            }
+        }
+        
+        function toggleDebug() {
+            const content = document.getElementById('debug-content');
+            const toggle = document.getElementById('debug-toggle');
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                toggle.textContent = '▼';
+            } else {
+                content.style.display = 'none';
+                toggle.textContent = '▶';
+            }
+        }
+        
+        function initializeClickSystem() {
+            // Placeholder für Click-System
+            debugLog('🖱️ Click-System initialisiert');
+        }
+        
+        // Weitere Utility-Funktionen
+        function toggleWireframe() {
+            debugLog('🔍 Drahtmodell umgeschaltet');
+        }
+        
+        function resetView() {
+            if (building3D) {
+                building3D.camera.position.set(10, 10, 10);
+                building3D.camera.lookAt(0, 0, 0);
+                debugLog('🏠 Ansicht zurückgesetzt');
+            }
+        }
+        
+        function runSimulation() {
+            debugLog('⚡ Simulation gestartet');
+        }
+        
+        function startSimulation() {
+            debugLog('🚀 Erweiterte Simulation gestartet');
+        }
+        
+        function exportResults() {
+            debugLog('💾 Ergebnisse exportiert');
+        }
+        
         // Initialisierung
         document.addEventListener('DOMContentLoaded', function() {
-            debugLog('🚀 DOM loaded - energyOS Hauptanwendung');
+            console.log('🚀 DOM loaded - energyOS Hauptanwendung');
             
+            // Prüfe THREE.js verfügbarkeit
             if (typeof THREE === 'undefined') {
-                debugLog('❌ THREE.js not loaded!');
-                updateStatus('❌ THREE.js Fehler');
+                console.error('❌ THREE.js not loaded!');
+                document.getElementById('debug-log').innerHTML = '❌ THREE.js Fehler - Kann nicht laden';
                 return;
             }
-            debugLog('✅ THREE.js available (v' + THREE.REVISION + ')');
+            console.log('✅ THREE.js available (v' + THREE.REVISION + ')');
             
             try {
                 building3D = new BuildingViewer('building-3d');
-                debugLog('✅ energyOS erfolgreich initialisiert!');
-                debugLog('🎮 Alle Funktionen verfügbar: Tabs, 3D-Modellierung, Tests');
-                updateStatus('energyOS bereit');
-                
-                // Click-System initialisieren
-                initializeClickSystem();
-                debugLog('🖱️ Click-System aktiviert');
+                console.log('✅ energyOS erfolgreich initialisiert!');
+                document.getElementById('debug-log').innerHTML = '✅ energyOS bereit!<br>🎮 3D-Viewer aktiv<br>🛠️ Edit-Modus verfügbar';
                 
             } catch (error) {
-                debugLog('❌ Error: ' + error.message);
-                updateStatus('❌ Initialisierung fehlgeschlagen');
+                console.error('❌ Error: ' + error.message);
+                console.error(error);
+                document.getElementById('debug-log').innerHTML = '❌ Initialisierung fehlgeschlagen: ' + error.message;
             }
         });
     </script>

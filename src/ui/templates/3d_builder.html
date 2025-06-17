@@ -3,12 +3,353 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>energyOS - Erweiterte 3D-Gebäudemodellierung</title>
+    <title>energyOS - 3D-Gebäudemodellierung</title>
     
     <!-- Three.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/controls/OrbitControls.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/controls/DragControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r127/three.min.js"></script>
+    <script>
+        // OrbitControls inline definition for compatibility
+        (function() {
+            THREE.OrbitControls = function(object, domElement) {
+                this.object = object;
+                this.domElement = (domElement !== undefined) ? domElement : document;
+                
+                // API
+                this.enabled = true;
+                this.target = new THREE.Vector3();
+                this.enableDamping = false;
+                this.dampingFactor = 0.25;
+                this.enableZoom = true;
+                this.zoomSpeed = 1.0;
+                this.enableRotate = true;
+                this.rotateSpeed = 1.0;
+                this.enablePan = true;
+                this.panSpeed = 1.0;
+                this.screenSpacePanning = false;
+                this.keyPanSpeed = 7.0;
+                this.autoRotate = false;
+                this.autoRotateSpeed = 2.0;
+                this.enableKeys = true;
+                this.keys = { LEFT: 37, UP: 38, RIGHT: 39, BOTTOM: 40 };
+                this.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+                this.target0 = this.target.clone();
+                this.position0 = this.object.position.clone();
+                this.zoom0 = this.object.zoom;
+                
+                // Internals
+                var scope = this;
+                var changeEvent = { type: 'change' };
+                var startEvent = { type: 'start' };
+                var endEvent = { type: 'end' };
+                var STATE = { NONE: -1, ROTATE: 0, DOLLY: 1, PAN: 2, TOUCH_ROTATE: 3, TOUCH_DOLLY_PAN: 4 };
+                var state = STATE.NONE;
+                
+                var EPS = 0.000001;
+                var spherical = new THREE.Spherical();
+                var sphericalDelta = new THREE.Spherical();
+                var scale = 1;
+                var panOffset = new THREE.Vector3();
+                var zoomChanged = false;
+                var rotateStart = new THREE.Vector2();
+                var rotateEnd = new THREE.Vector2();
+                var rotateDelta = new THREE.Vector2();
+                var panStart = new THREE.Vector2();
+                var panEnd = new THREE.Vector2();
+                var panDelta = new THREE.Vector2();
+                var dollyStart = new THREE.Vector2();
+                var dollyEnd = new THREE.Vector2();
+                var dollyDelta = new THREE.Vector2();
+                
+                function getAutoRotationAngle() {
+                    return 2 * Math.PI / 60 / 60 * scope.autoRotateSpeed;
+                }
+                
+                function getZoomScale() {
+                    return Math.pow(0.95, scope.zoomSpeed);
+                }
+                
+                function rotateLeft(angle) {
+                    sphericalDelta.theta -= angle;
+                }
+                
+                function rotateUp(angle) {
+                    sphericalDelta.phi -= angle;
+                }
+                
+                var panLeft = function() {
+                    var v = new THREE.Vector3();
+                    return function panLeft(distance, objectMatrix) {
+                        v.setFromMatrixColumn(objectMatrix, 0);
+                        v.multiplyScalar(-distance);
+                        panOffset.add(v);
+                    };
+                }();
+                
+                var panUp = function() {
+                    var v = new THREE.Vector3();
+                    return function panUp(distance, objectMatrix) {
+                        if (scope.screenSpacePanning === true) {
+                            v.setFromMatrixColumn(objectMatrix, 1);
+                        } else {
+                            v.setFromMatrixColumn(objectMatrix, 0);
+                            v.crossVectors(scope.object.up, v);
+                        }
+                        v.multiplyScalar(distance);
+                        panOffset.add(v);
+                    };
+                }();
+                
+                var pan = function() {
+                    var offset = new THREE.Vector3();
+                    return function pan(deltaX, deltaY) {
+                        var element = scope.domElement === document ? scope.domElement.body : scope.domElement;
+                        if (scope.object.isPerspectiveCamera) {
+                            var position = scope.object.position;
+                            offset.copy(position).sub(scope.target);
+                            var targetDistance = offset.length();
+                            targetDistance *= Math.tan((scope.object.fov / 2) * Math.PI / 180.0);
+                            panLeft(2 * deltaX * targetDistance / element.clientHeight, scope.object.matrix);
+                            panUp(2 * deltaY * targetDistance / element.clientHeight, scope.object.matrix);
+                        } else if (scope.object.isOrthographicCamera) {
+                            panLeft(deltaX * (scope.object.right - scope.object.left) / scope.object.zoom / element.clientWidth, scope.object.matrix);
+                            panUp(deltaY * (scope.object.top - scope.object.bottom) / scope.object.zoom / element.clientHeight, scope.object.matrix);
+                        } else {
+                            console.warn('WARNING: OrbitControls.js encountered an unknown camera type - pan disabled.');
+                            scope.enablePan = false;
+                        }
+                    };
+                }();
+                
+                function dollyIn(dollyScale) {
+                    if (scope.object.isPerspectiveCamera) {
+                        scale /= dollyScale;
+                    } else if (scope.object.isOrthographicCamera) {
+                        scope.object.zoom = Math.max(scope.minZoom, Math.min(scope.maxZoom, scope.object.zoom * dollyScale));
+                        scope.object.updateProjectionMatrix();
+                        zoomChanged = true;
+                    } else {
+                        console.warn('WARNING: OrbitControls.js encountered an unknown camera type - dolly/zoom disabled.');
+                        scope.enableZoom = false;
+                    }
+                }
+                
+                function dollyOut(dollyScale) {
+                    if (scope.object.isPerspectiveCamera) {
+                        scale *= dollyScale;
+                    } else if (scope.object.isOrthographicCamera) {
+                        scope.object.zoom = Math.max(scope.minZoom, Math.min(scope.maxZoom, scope.object.zoom / dollyScale));
+                        scope.object.updateProjectionMatrix();
+                        zoomChanged = true;
+                    } else {
+                        console.warn('WARNING: OrbitControls.js encountered an unknown camera type - dolly/zoom disabled.');
+                        scope.enableZoom = false;
+                    }
+                }
+                
+                function handleMouseDownRotate(event) {
+                    rotateStart.set(event.clientX, event.clientY);
+                }
+                
+                function handleMouseDownDolly(event) {
+                    dollyStart.set(event.clientX, event.clientY);
+                }
+                
+                function handleMouseDownPan(event) {
+                    panStart.set(event.clientX, event.clientY);
+                }
+                
+                function handleMouseMoveRotate(event) {
+                    rotateEnd.set(event.clientX, event.clientY);
+                    rotateDelta.subVectors(rotateEnd, rotateStart).multiplyScalar(scope.rotateSpeed);
+                    var element = scope.domElement === document ? scope.domElement.body : scope.domElement;
+                    rotateLeft(2 * Math.PI * rotateDelta.x / element.clientHeight);
+                    rotateUp(2 * Math.PI * rotateDelta.y / element.clientHeight);
+                    rotateStart.copy(rotateEnd);
+                    scope.update();
+                }
+                
+                function handleMouseMoveDolly(event) {
+                    dollyEnd.set(event.clientX, event.clientY);
+                    dollyDelta.subVectors(dollyEnd, dollyStart);
+                    if (dollyDelta.y > 0) {
+                        dollyIn(getZoomScale());
+                    } else if (dollyDelta.y < 0) {
+                        dollyOut(getZoomScale());
+                    }
+                    dollyStart.copy(dollyEnd);
+                    scope.update();
+                }
+                
+                function handleMouseMovePan(event) {
+                    panEnd.set(event.clientX, event.clientY);
+                    panDelta.subVectors(panEnd, panStart).multiplyScalar(scope.panSpeed);
+                    pan(panDelta.x, panDelta.y);
+                    panStart.copy(panEnd);
+                    scope.update();
+                }
+                
+                function handleMouseWheel(event) {
+                    if (event.deltaY < 0) {
+                        dollyOut(getZoomScale());
+                    } else if (event.deltaY > 0) {
+                        dollyIn(getZoomScale());
+                    }
+                    scope.update();
+                }
+                
+                function onMouseDown(event) {
+                    if (scope.enabled === false) return;
+                    event.preventDefault();
+                    
+                    switch (event.button) {
+                        case 0:
+                            if (event.ctrlKey || event.metaKey || event.shiftKey) {
+                                if (scope.enablePan === false) return;
+                                handleMouseDownPan(event);
+                                state = STATE.PAN;
+                            } else {
+                                if (scope.enableRotate === false) return;
+                                handleMouseDownRotate(event);
+                                state = STATE.ROTATE;
+                            }
+                            break;
+                        case 1:
+                            if (scope.enableZoom === false) return;
+                            handleMouseDownDolly(event);
+                            state = STATE.DOLLY;
+                            break;
+                        case 2:
+                            if (scope.enablePan === false) return;
+                            handleMouseDownPan(event);
+                            state = STATE.PAN;
+                            break;
+                    }
+                    
+                    if (state !== STATE.NONE) {
+                        document.addEventListener('mousemove', onMouseMove, false);
+                        document.addEventListener('mouseup', onMouseUp, false);
+                        scope.dispatchEvent(startEvent);
+                    }
+                }
+                
+                function onMouseMove(event) {
+                    if (scope.enabled === false) return;
+                    event.preventDefault();
+                    
+                    switch (state) {
+                        case STATE.ROTATE:
+                            if (scope.enableRotate === false) return;
+                            handleMouseMoveRotate(event);
+                            break;
+                        case STATE.DOLLY:
+                            if (scope.enableZoom === false) return;
+                            handleMouseMoveDolly(event);
+                            break;
+                        case STATE.PAN:
+                            if (scope.enablePan === false) return;
+                            handleMouseMovePan(event);
+                            break;
+                    }
+                }
+                
+                function onMouseUp(event) {
+                    if (scope.enabled === false) return;
+                    document.removeEventListener('mousemove', onMouseMove, false);
+                    document.removeEventListener('mouseup', onMouseUp, false);
+                    scope.dispatchEvent(endEvent);
+                    state = STATE.NONE;
+                }
+                
+                function onMouseWheel(event) {
+                    if (scope.enabled === false || scope.enableZoom === false || (state !== STATE.NONE && state !== STATE.ROTATE)) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    scope.dispatchEvent(startEvent);
+                    handleMouseWheel(event);
+                    scope.dispatchEvent(endEvent);
+                }
+                
+                this.update = function() {
+                    var offset = new THREE.Vector3();
+                    var quat = new THREE.Quaternion().setFromUnitVectors(object.up, new THREE.Vector3(0, 1, 0));
+                    var quatInverse = quat.clone().inverse();
+                    var lastPosition = new THREE.Vector3();
+                    var lastQuaternion = new THREE.Quaternion();
+                    
+                    return function update() {
+                        var position = scope.object.position;
+                        offset.copy(position).sub(scope.target);
+                        offset.applyQuaternion(quat);
+                        spherical.setFromVector3(offset);
+                        
+                        if (scope.autoRotate && state === STATE.NONE) {
+                            rotateLeft(getAutoRotationAngle());
+                        }
+                        
+                        spherical.theta += sphericalDelta.theta;
+                        spherical.phi += sphericalDelta.phi;
+                        spherical.theta = Math.max(scope.minAzimuthAngle, Math.min(scope.maxAzimuthAngle, spherical.theta));
+                        spherical.phi = Math.max(scope.minPolarAngle, Math.min(scope.maxPolarAngle, spherical.phi));
+                        spherical.makeSafe();
+                        spherical.radius *= scale;
+                        spherical.radius = Math.max(scope.minDistance, Math.min(scope.maxDistance, spherical.radius));
+                        
+                        scope.target.add(panOffset);
+                        offset.setFromSpherical(spherical);
+                        offset.applyQuaternion(quatInverse);
+                        position.copy(scope.target).add(offset);
+                        scope.object.lookAt(scope.target);
+                        
+                        if (scope.enableDamping === true) {
+                            sphericalDelta.theta *= (1 - scope.dampingFactor);
+                            sphericalDelta.phi *= (1 - scope.dampingFactor);
+                            panOffset.multiplyScalar(1 - scope.dampingFactor);
+                        } else {
+                            sphericalDelta.set(0, 0, 0);
+                            panOffset.set(0, 0, 0);
+                        }
+                        
+                        scale = 1;
+                        
+                        if (zoomChanged ||
+                            lastPosition.distanceToSquared(scope.object.position) > EPS ||
+                            8 * (1 - lastQuaternion.dot(scope.object.quaternion)) > EPS) {
+                            scope.dispatchEvent(changeEvent);
+                            lastPosition.copy(scope.object.position);
+                            lastQuaternion.copy(scope.object.quaternion);
+                            zoomChanged = false;
+                            return true;
+                        }
+                        
+                        return false;
+                    };
+                }();
+                
+                this.dispose = function() {
+                    scope.domElement.removeEventListener('mousedown', onMouseDown, false);
+                    scope.domElement.removeEventListener('wheel', onMouseWheel, false);
+                };
+                
+                this.minDistance = 0;
+                this.maxDistance = Infinity;
+                this.minZoom = 0;
+                this.maxZoom = Infinity;
+                this.minPolarAngle = 0;
+                this.maxPolarAngle = Math.PI;
+                this.minAzimuthAngle = -Infinity;
+                this.maxAzimuthAngle = Infinity;
+                
+                scope.domElement.addEventListener('mousedown', onMouseDown, false);
+                scope.domElement.addEventListener('wheel', onMouseWheel, false);
+                scope.domElement.addEventListener('contextmenu', function(event) { event.preventDefault(); }, false);
+                
+                this.update();
+            };
+            
+            THREE.OrbitControls.prototype = Object.create(THREE.EventDispatcher.prototype);
+            THREE.OrbitControls.prototype.constructor = THREE.OrbitControls;
+        })();
+    </script>
     
     <style>
         * {
@@ -19,7 +360,7 @@
         
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f5f5f5;
             color: #333;
             overflow: hidden;
         }
@@ -27,539 +368,199 @@
         #app-container {
             display: flex;
             height: 100vh;
-            position: relative;
+        }
+        
+        .sidebar {
+            width: 200px;
+            background: white;
+            border-right: 1px solid #ddd;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .sidebar h3 {
+            margin-bottom: 20px;
+            color: #4CAF50;
+            font-size: 16px;
+        }
+        
+        .tool-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+        
+        .tool-btn {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 12px;
+            cursor: pointer;
+            font-size: 12px;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+        
+        .tool-btn:hover {
+            background: #e8f5e8;
+            border-color: #4CAF50;
+        }
+        
+        .tool-btn.active {
+            background: #4CAF50;
+            color: white;
+            border-color: #45a049;
         }
         
         #building-3d {
             flex: 1;
             background: #f0f0f0;
             position: relative;
-            border-radius: 0 0 0 20px;
-            overflow: hidden;
-            box-shadow: 0 0 50px rgba(0,0,0,0.1);
         }
         
-        /* Header */
-        .app-header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 60px;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(0,0,0,0.1);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 20px;
-            z-index: 1000;
-        }
-        
-        .app-logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 20px;
-            font-weight: 700;
-            color: #4CAF50;
-        }
-        
-        .app-actions {
-            display: flex;
-            gap: 12px;
-        }
-        
-        .btn {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-        
-        .btn:hover {
-            background: #45a049;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-        }
-        
-        .btn.secondary {
-            background: #f5f5f5;
-            color: #333;
-        }
-        
-        .btn.secondary:hover {
-            background: #e8e8e8;
-        }
-        
-        /* Performance Panel */
-        .performance-panel {
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            background: rgba(255, 255, 255, 0.95);
-            border: 2px solid #4CAF50;
-            border-radius: 12px;
-            padding: 20px;
-            min-width: 280px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-            z-index: 900;
-        }
-        
-        .performance-panel h3 {
-            color: #4CAF50;
-            margin-bottom: 16px;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .metric-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 13px;
-        }
-        
-        .metric-label {
-            color: #666;
-        }
-        
-        .metric-value {
-            font-weight: 600;
-            color: #333;
-        }
-        
-        /* Status Bar */
         .status-bar {
             position: fixed;
             bottom: 0;
             left: 0;
             right: 0;
-            height: 32px;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
+            height: 24px;
+            background: #2d2d30;
+            color: #cccccc;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 0 20px;
+            padding: 0 12px;
             font-size: 11px;
             z-index: 1000;
         }
         
-        .status-left {
-            display: flex;
-            gap: 20px;
-        }
-        
-        .status-right {
-            display: flex;
-            gap: 20px;
-        }
-        
-        /* Responsive Design */
-        @media (max-width: 1024px) {
-            .performance-panel {
-                position: static;
-                margin: 20px;
-                width: auto;
-                min-width: 0;
-            }
-            
-            #building-3d {
-                border-radius: 0;
-            }
-        }
-        
-        @media (max-width: 768px) {
-            .app-header {
-                padding: 0 15px;
-            }
-            
-            .app-logo {
-                font-size: 18px;
-            }
-            
-            .btn {
-                padding: 6px 12px;
-                font-size: 12px;
-            }
-        }
-        
-        /* Loading Screen */
-        .loading-screen {
+        /* Debug-Panel */
+        .debug-panel {
             position: fixed;
-            top: 0;
+            bottom: 24px;
             left: 0;
             right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 200px;
+            background: #1e1e1e;
+            border-top: 1px solid #333;
+            z-index: 900;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
             display: flex;
+            flex-direction: column;
+        }
+        
+        .debug-panel.open {
+            transform: translateY(0);
+        }
+        
+        .debug-header {
+            background: #2d2d30;
+            color: #cccccc;
+            padding: 4px 12px;
+            display: flex;
+            justify-content: space-between;
             align-items: center;
-            justify-content: center;
-            z-index: 10000;
-            opacity: 1;
-            transition: opacity 0.5s ease;
+            font-size: 11px;
+            min-height: 24px;
         }
         
-        .loading-screen.hidden {
-            opacity: 0;
-            pointer-events: none;
+        .debug-controls {
+            display: flex;
+            gap: 8px;
         }
         
-        .loading-content {
-            text-align: center;
-            color: white;
+        .debug-btn {
+            background: transparent;
+            border: none;
+            color: #cccccc;
+            cursor: pointer;
+            padding: 2px 6px;
+            font-size: 10px;
+            border-radius: 2px;
         }
         
-        .loading-spinner {
-            width: 60px;
-            height: 60px;
-            border: 4px solid rgba(255,255,255,0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
+        .debug-btn:hover {
+            background: #3e3e42;
         }
         
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .debug-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 12px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 11px;
+            line-height: 1.3;
+            color: #cccccc;
         }
         
-        /* Notifications */
-        .notification {
+        .debug-log-entry {
+            margin: 1px 0;
+            word-wrap: break-word;
+        }
+        
+        .debug-log-entry.info { color: #4fc1ff; }
+        .debug-log-entry.warn { color: #ffcc02; }
+        .debug-log-entry.error { color: #f48771; }
+        .debug-log-entry.success { color: #73c991; }
+        
+        .debug-toggle {
             position: fixed;
-            top: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #4CAF50;
+            bottom: 32px;
+            right: 12px;
+            background: #007acc;
             color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-            z-index: 10000;
-            animation: slideDown 0.3s ease;
+            border: none;
+            border-radius: 3px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 10px;
+            z-index: 1001;
         }
         
-        .notification.error {
-            background: #f44336;
-        }
-        
-        .notification.warning {
-            background: #ff9800;
-        }
-        
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateX(-50%) translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(-50%) translateY(0);
-            }
+        .debug-toggle:hover {
+            background: #005a9e;
         }
     </style>
 </head>
 <body>
-    <!-- Loading Screen -->
-    <div class="loading-screen" id="loading-screen">
-        <div class="loading-content">
-            <div class="loading-spinner"></div>
-            <h2>energyOS</h2>
-            <p>Lade 3D-Gebäudemodellierung...</p>
-        </div>
-    </div>
-    
-    <!-- App Container -->
     <div id="app-container">
-        <!-- Header -->
-        <header class="app-header">
-            <div class="app-logo">
-                <span>🏠</span>
-                <span>energyOS</span>
-                <span style="font-size: 12px; color: #666; font-weight: normal;">3D Builder</span>
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <h3>🛠️ Tools</h3>
+            <div class="tool-grid">
+                <button class="tool-btn active" data-tool="select">Auswählen</button>
+                <button class="tool-btn" data-tool="wall">Wand</button>
+                <button class="tool-btn" data-tool="door">Tür</button>
+                <button class="tool-btn" data-tool="window">Fenster</button>
+                <button class="tool-btn" data-tool="clear">Löschen</button>
             </div>
-            
-            <div class="app-actions">
-                <button class="btn secondary" onclick="saveBuilding()">
-                    💾 Speichern
-                </button>
-                <button class="btn secondary" onclick="loadBuilding()">
-                    📁 Laden
-                </button>
-                <button class="btn secondary" onclick="exportBuilding()">
-                    📤 Exportieren
-                </button>
-                <button class="btn" onclick="calculateEnergy()">
-                    ⚡ Berechnen
-                </button>
-            </div>
-        </header>
+        </div>
         
-        <!-- Main 3D View -->
+        <!-- 3D View -->
         <div id="building-3d"></div>
-        
-        <!-- Performance Panel -->
-        <div class="performance-panel" id="performance-panel">
-            <h3>🏆 Gebäude-Performance</h3>
-            <div class="metric-row">
-                <span class="metric-label">Gesamtfläche:</span>
-                <span class="metric-value" id="total-area">0 m²</span>
-            </div>
-            <div class="metric-row">
-                <span class="metric-label">Mittlerer U-Wert:</span>
-                <span class="metric-value" id="avg-u-value">0.00 W/m²K</span>
-            </div>
-            <div class="metric-row">
-                <span class="metric-label">Wärmeverlust:</span>
-                <span class="metric-value" id="heat-loss">0 W/K</span>
-            </div>
-            <div class="metric-row">
-                <span class="metric-label">Energieklasse:</span>
-                <span class="metric-value">
-                    <span class="energy-class" id="energy-class">-</span>
-                </span>
-            </div>
-        </div>
-        
-        <!-- Status Bar -->
-        <div class="status-bar">
-            <div class="status-left">
-                <span id="status-message">Bereit</span>
-                <span id="component-count">0 Komponenten</span>
-            </div>
-            <div class="status-right">
-                <span id="camera-position">Kamera: 0, 0, 0</span>
-                <span id="selected-tool">Kein Tool</span>
-            </div>
-        </div>
     </div>
     
-    <!-- Advanced 3D Builder Script -->
-    <script src="/static/advanced_3d_builder.js"></script>
+    <!-- Debug Panel -->
+    <div id="debug-panel" class="debug-panel">
+        <div class="debug-header">
+            <span>Debug-Log</span>
+            <div class="debug-controls">
+                <button class="debug-btn" onclick="clearDebugLog()">Clear</button>
+                <button class="debug-btn" onclick="toggleDebugPanel()">×</button>
+            </div>
+        </div>
+        <div id="debug-content" class="debug-content"></div>
+    </div>
     
-    <script>
-        // Global application state
-        let app = {
-            builder: null,
-            notifications: [],
-            settings: {
-                autoSave: true,
-                showGrid: true,
-                showPerformance: true
-            }
-        };
-        
-        // Initialize application
-        document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                // Initialize 3D Builder
-                app.builder = new Advanced3DBuilder('building-3d');
-                
-                // Setup event listeners
-                setupEventListeners();
-                
-                // Setup periodic updates
-                setupPeriodicUpdates();
-                
-                // Hide loading screen
-                setTimeout(() => {
-                    document.getElementById('loading-screen').classList.add('hidden');
-                }, 1000);
-                
-                showNotification('3D-Builder erfolgreich geladen!', 'success');
-                
-            } catch (error) {
-                console.error('Fehler beim Initialisieren:', error);
-                showNotification('Fehler beim Laden des 3D-Builders', 'error');
-            }
-        });
-        
-        function setupEventListeners() {
-            // Keyboard shortcuts
-            document.addEventListener('keydown', (e) => {
-                if (e.ctrlKey || e.metaKey) {
-                    switch (e.key) {
-                        case 's':
-                            e.preventDefault();
-                            saveBuilding();
-                            break;
-                        case 'o':
-                            e.preventDefault();
-                            loadBuilding();
-                            break;
-                        case 'e':
-                            e.preventDefault();
-                            exportBuilding();
-                            break;
-                    }
-                }
-            });
-            
-            // Window resize
-            window.addEventListener('resize', () => {
-                if (app.builder) {
-                    app.builder.onWindowResize();
-                }
-            });
-        }
-        
-        function setupPeriodicUpdates() {
-            // Update status bar every second
-            setInterval(() => {
-                updateStatusBar();
-                updatePerformancePanel();
-            }, 1000);
-        }
-        
-        function updateStatusBar() {
-            if (!app.builder) return;
-            
-            // Update component count
-            const componentCount = app.builder.buildingData.components.size;
-            document.getElementById('component-count').textContent = 
-                `${componentCount} Komponente${componentCount !== 1 ? 'n' : ''}`;
-            
-            // Update camera position
-            const camera = app.builder.camera;
-            if (camera) {
-                const pos = camera.position;
-                document.getElementById('camera-position').textContent = 
-                    `Kamera: ${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)}`;
-            }
-            
-            // Update selected tool
-            const selectedTool = app.builder.selectedTool || 'Kein Tool';
-            document.getElementById('selected-tool').textContent = 
-                `Tool: ${selectedTool}`;
-        }
-        
-        function updatePerformancePanel() {
-            if (!app.builder || !app.builder.buildingData.thermalPerformance) return;
-            
-            const perf = app.builder.buildingData.thermalPerformance;
-            
-            document.getElementById('total-area').textContent = 
-                `${perf.totalArea.toFixed(1)} m²`;
-            document.getElementById('avg-u-value').textContent = 
-                `${perf.averageUValue.toFixed(2)} W/m²K`;
-            document.getElementById('heat-loss').textContent = 
-                `${perf.totalHeatLoss.toFixed(1)} W/K`;
-            
-            const energyClass = document.getElementById('energy-class');
-            energyClass.textContent = perf.energyClass;
-            energyClass.className = `energy-class ${perf.energyClass}`;
-        }
-        
-        // Application functions
-        async function saveBuilding() {
-            try {
-                if (!app.builder) throw new Error('Builder not initialized');
-                
-                const buildingData = app.builder.exportBuildingData();
-                
-                // In a real application, this would send to server
-                localStorage.setItem('energyOS_building', JSON.stringify(buildingData));
-                
-                showNotification('Gebäude erfolgreich gespeichert!', 'success');
-                
-            } catch (error) {
-                console.error('Fehler beim Speichern:', error);
-                showNotification('Fehler beim Speichern des Gebäudes', 'error');
-            }
-        }
-        
-        async function loadBuilding() {
-            try {
-                const savedData = localStorage.getItem('energyOS_building');
-                if (!savedData) {
-                    showNotification('Keine gespeicherten Daten gefunden', 'warning');
-                    return;
-                }
-                
-                const buildingData = JSON.parse(savedData);
-                
-                // Load building data into builder
-                // This would need to be implemented in the builder
-                showNotification('Gebäude erfolgreich geladen!', 'success');
-                
-            } catch (error) {
-                console.error('Fehler beim Laden:', error);
-                showNotification('Fehler beim Laden des Gebäudes', 'error');
-            }
-        }
-        
-        async function exportBuilding() {
-            try {
-                if (!app.builder) throw new Error('Builder not initialized');
-                
-                const buildingData = app.builder.exportBuildingData();
-                
-                // Create download
-                const dataStr = JSON.stringify(buildingData, null, 2);
-                const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(dataBlob);
-                link.download = `building_${new Date().toISOString().split('T')[0]}.json`;
-                link.click();
-                
-                showNotification('Gebäude erfolgreich exportiert!', 'success');
-                
-            } catch (error) {
-                console.error('Fehler beim Exportieren:', error);
-                showNotification('Fehler beim Exportieren des Gebäudes', 'error');
-            }
-        }
-        
-        async function calculateEnergy() {
-            try {
-                if (!app.builder) throw new Error('Builder not initialized');
-                
-                showNotification('Berechnung gestartet...', 'info');
-                
-                // Simulate calculation
-                setTimeout(() => {
-                    app.builder.updateBuildingPhysics();
-                    showNotification('Energieberechnung abgeschlossen!', 'success');
-                }, 1500);
-                
-            } catch (error) {
-                console.error('Fehler bei der Berechnung:', error);
-                showNotification('Fehler bei der Energieberechnung', 'error');
-            }
-        }
-        
-        function showNotification(message, type = 'info') {
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.textContent = message;
-            
-            document.body.appendChild(notification);
-            
-            // Remove after 3 seconds
-            setTimeout(() => {
-                notification.style.animation = 'slideDown 0.3s ease reverse';
-                setTimeout(() => {
-                    document.body.removeChild(notification);
-                }, 300);
-            }, 3000);
-        }
-        
-        // Global helper functions
-        window.saveBuilding = saveBuilding;
-        window.loadBuilding = loadBuilding;
-        window.exportBuilding = exportBuilding;
-        window.calculateEnergy = calculateEnergy;
-    </script>
+    <!-- Debug Toggle -->
+    <button id="debug-toggle" class="debug-toggle" onclick="toggleDebugPanel()">Debug-Log</button>
+    
+    <!-- Status Bar -->
+    <div class="status-bar">
+        energyOS 3D-Builder | Bereit
+    </div>
+    
+    <!-- 3D Builder Script -->
+    <script src="{{ url_for('static', filename='3d_builder.js') }}"></script>
 </body>
 </html>

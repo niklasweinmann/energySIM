@@ -11,3 +11,4 @@ kann der building_editor nicht gelöscht werden? Räume das ui verzeichnis auf. 
 zeige mir nicht was du machst. nur am ende eine sehr kurze, prägnante beschreibung dessen was du erreicht/nicht erreicht hast.
 -->
 
+Das debug-log muss auch wieder rein. außerdem will ich auf der linken seite ein ausfaltbares menü für PV-Anlage, Wärmepumpe, Simulation,  
