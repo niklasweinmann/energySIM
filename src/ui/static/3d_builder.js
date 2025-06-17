@@ -399,9 +399,15 @@ class Simple3DBuilder {
         const component = new THREE.Mesh(geometry, material);
         
         component.position.copy(position);
+        
+        // Generiere einen Standard-Namen basierend auf Typ und Anzahl
+        const existingComponents = this.getAllComponents().filter(c => c.userData.type === type);
+        const defaultName = this.getComponentTypeName(type) + ' ' + (existingComponents.length + 1);
+        
         component.userData = {
             isComponent: true,
             type: type,
+            name: defaultName,
             originalColor: color,
             properties: {
                 width: defaults.width,
@@ -518,8 +524,14 @@ class Simple3DBuilder {
         const props = this.selectedObject.userData.properties;
         const type = this.selectedObject.userData.type;
         const defaults = this.componentDefaults[type];
+        const componentName = this.selectedObject.userData.name || '';
         
         content.innerHTML = `
+            <div class="property-group">
+                <div class="property-label">Name</div>
+                <input type="text" class="property-input" id="prop-name" value="${componentName}" placeholder="Bauteil-Name eingeben">
+            </div>
+            
             <div class="property-group">
                 <div class="property-label">Typ</div>
                 <div style="font-weight: 500; color: #333;">${type.toUpperCase()}</div>
@@ -595,7 +607,7 @@ class Simple3DBuilder {
     }
     
     setupAutoUpdate() {
-        const inputs = ['prop-width', 'prop-height', 'prop-depth', 'prop-uvalue', 
+        const inputs = ['prop-name', 'prop-width', 'prop-height', 'prop-depth', 'prop-uvalue', 
                        'prop-pos-x', 'prop-pos-y', 'prop-pos-z',
                        'prop-rot-x', 'prop-rot-y', 'prop-rot-z'];
         
@@ -614,6 +626,10 @@ class Simple3DBuilder {
         if (!this.selectedObject) return;
         
         const props = this.selectedObject.userData.properties;
+        
+        // Name
+        const name = document.getElementById('prop-name')?.value || '';
+        this.selectedObject.userData.name = name;
         
         // Abmessungen
         const width = parseFloat(document.getElementById('prop-width')?.value) || props.width;
@@ -651,6 +667,9 @@ class Simple3DBuilder {
         props.position = { x: posX, y: posY, z: posZ };
         props.rotation = { x: rotX * 180 / Math.PI, y: rotY * 180 / Math.PI, z: rotZ * 180 / Math.PI };
         props.uValue = uValue;
+        
+        // Bauteilübersicht aktualisieren (falls Name geändert wurde)
+        this.updateComponentOverview();
         
         this.needsRender = true;
     }
@@ -855,6 +874,17 @@ class Simple3DBuilder {
         
         // Tool-Buttons initial aktualisieren
         this.updateToolButtons();
+    }
+    
+    getComponentTypeName(type) {
+        const names = {
+            wall: 'Wand',
+            door: 'Tür',
+            window: 'Fenster',
+            roof: 'Dach',
+            floor: 'Boden'
+        };
+        return names[type] || type;
     }
 }
 
