@@ -822,6 +822,21 @@ class Simple3DBuilder {
         }
     }
 
+    clearAll() {
+        // Alle Bauteile löschen
+        this.clearScene();
+        this.clearSelection();
+        this.clearGhost();
+        
+        // Properties-Panel schließen
+        this.hidePropertiesPanel();
+        
+        // Tool auf "select" zurücksetzen
+        this.setTool('select');
+        
+        debugLog('Gesamtes Gebäude gelöscht', 'info');
+    }
+
     updateInitialUI() {
         // UI-Elemente entsprechend dem initialen editMode aktualisieren
         const btn = document.getElementById('edit-mode-btn');
