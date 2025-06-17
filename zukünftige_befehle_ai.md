@@ -8,7 +8,7 @@ integrieren
 
 kann der building_editor nicht gelöscht werden? Räume das ui verzeichnis auf. Es soll nichts mehr advanced oder enhanced heißen. Alles sollen nur prägnante, kurze Namen sein.
 
-zeige mir nicht was du machst. nur am ende eine sehr kurze, prägnante beschreibung dessen was du erreicht/nicht erreicht hast.
+lies dir zuerst die gesamte ui-struktur und den gesamten code durch, um dann individuell basierend auf diesem code verbesserungen in diesem chatfenster erstellen zu können. zeige mir nicht was du machst. nur am ende eine sehr kurze, prägnante beschreibung dessen was du erreicht/nicht erreicht hast.
 -->
 
 Das debug-log muss auch wieder rein. außerdem will ich auf der linken seite ein ausfaltbares menü für PV-Anlage, Wärmepumpe, Simulation,  

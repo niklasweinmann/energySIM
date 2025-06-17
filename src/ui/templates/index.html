@@ -1577,40 +1577,6 @@
                 debugLog('🏠 Kamera zurückgesetzt');
             }
         }
-        
-        function runSimulation() {
-            debugLog('⚡ Simulation gestartet');
-            // Simulation-Logik hier implementieren
-        }
-                
-                if (editModeActive) {
-                    btn.className = 'btn btn-warning';
-                    icon.textContent = '🔒';
-                    btn.innerHTML = icon.outerHTML + ' Bearbeitung aktiv';
-                    submenu.classList.add('active');
-                    setupDragAndDrop();
-                    
-                    // Andere Tabs deaktivieren
-                    disableOtherTabs();
-                    
-                    // Stelle sicher, dass Gebäude-Tab aktiv ist
-                    if (currentTab !== 'gebaude') {
-                        showTab('gebaude');
-                    }
-                } else {
-                    btn.className = 'btn';
-                    icon.textContent = '✏️';
-                    btn.innerHTML = icon.outerHTML + ' Bearbeiten';
-                    submenu.classList.remove('active');
-                    removeGhostPreview();
-                    clearSelection();
-                    
-                    // Alle Tabs wieder aktivieren
-                    enableAllTabs();
-                }
-                debugLog('✏️ Bearbeitungsmodus: ' + (editModeActive ? 'Ein' : 'Aus'));
-            }
-        }
 
         // Exit Edit Mode - separater Button für Bearbeitungsmodus beenden
         function exitEditMode() {
@@ -2724,31 +2690,6 @@
         function initializeClickSystem() {
             // Placeholder für Click-System
             debugLog('🖱️ Click-System initialisiert');
-        }
-        
-        // Weitere Utility-Funktionen
-        function toggleWireframe() {
-            debugLog('🔍 Drahtmodell umgeschaltet');
-        }
-        
-        function resetView() {
-            if (building3D) {
-                building3D.camera.position.set(10, 10, 10);
-                building3D.camera.lookAt(0, 0, 0);
-                debugLog('🏠 Ansicht zurückgesetzt');
-            }
-        }
-        
-        function runSimulation() {
-            debugLog('⚡ Simulation gestartet');
-        }
-        
-        function startSimulation() {
-            debugLog('🚀 Erweiterte Simulation gestartet');
-        }
-        
-        function exportResults() {
-            debugLog('💾 Ergebnisse exportiert');
         }
         
         // Initialisierung
