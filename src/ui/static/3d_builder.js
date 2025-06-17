@@ -198,21 +198,21 @@ class Simple3DBuilder {
     updateInitialUI() {
         // UI-Elemente entsprechend dem initialen editMode aktualisieren
         const btn = document.getElementById('edit-mode-btn');
-        const info = document.getElementById('edit-mode-info');
         
         if (this.editMode) {
             if (btn) {
                 btn.classList.add('active');
-                btn.textContent = '✏️ Bearbeitung AUS';
+                btn.textContent = '✏️ Bearbeiten deaktivieren';
             }
-            if (info) info.style.display = 'block';
         } else {
             if (btn) {
                 btn.classList.remove('active');
-                btn.textContent = '✏️ Bearbeitung AN';
+                btn.textContent = '✏️ Bearbeiten aktivieren';
             }
-            if (info) info.style.display = 'none';
         }
+        
+        // Tool-Buttons initial aktualisieren
+        this.updateToolButtons();
     }
 
     // Bearbeitungsmodus Funktionen
@@ -222,21 +222,38 @@ class Simple3DBuilder {
         
         // UI aktualisieren
         const btn = document.getElementById('edit-mode-btn');
-        const info = document.getElementById('edit-mode-info');
         
         if (this.editMode) {
             btn.classList.add('active');
-            btn.textContent = '✏️ Bearbeitung AUS';
-            if (info) info.style.display = 'block';
+            btn.textContent = '✏️ Bearbeiten deaktivieren';
         } else {
             btn.classList.remove('active');
-            btn.textContent = '✏️ Bearbeitung AN';
-            if (info) info.style.display = 'none';
+            btn.textContent = '✏️ Bearbeiten aktivieren';
             this.clearSelection();
             this.clearGhost();
         }
         
+        // Tool-Buttons aktivieren/deaktivieren
+        this.updateToolButtons();
+        
         this.needsRender = true;
+    }
+    
+    updateToolButtons() {
+        const toolButtons = document.querySelectorAll('.tool-btn');
+        toolButtons.forEach(btn => {
+            if (this.editMode) {
+                btn.classList.remove('disabled');
+                btn.disabled = false;
+            } else {
+                btn.classList.add('disabled');
+                btn.disabled = true;
+                // Nur Auswählen-Button bleibt aktiv
+                if (btn.dataset.tool !== 'select') {
+                    btn.classList.remove('active');
+                }
+            }
+        });
     }
     
     setTool(toolType) {
@@ -894,16 +911,13 @@ function toggleEditMode() {
         builder3d.toggleEditMode();
         
         const btn = document.getElementById('edit-mode-btn');
-        const info = document.getElementById('edit-mode-info');
         
         if (builder3d.editMode) {
             btn.classList.add('active');
-            btn.textContent = '✏️ Bearbeitung AUS';
-            info.style.display = 'block';
+            btn.textContent = '✏️ Bearbeiten deaktivieren';
         } else {
             btn.classList.remove('active');
-            btn.textContent = '✏️ Bearbeitung AN';
-            info.style.display = 'none';
+            btn.textContent = '✏️ Bearbeiten aktivieren';
         }
     }
 }

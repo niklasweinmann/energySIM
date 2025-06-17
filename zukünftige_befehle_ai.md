@@ -1,7 +1,8 @@
-Ich will die größe des "verschieben" buttons verändern und rechts daneben einen zweiten button einfügen. Dieser soll die "Einrasten"-Funktion ermöglichen und standardmäßig an sein. Wenn ich ein Fenster oder eine Tür bewege, sollen diese automatisch automatisch nur in wänden platziert werden können. Wenn ich eine Wand bewege, soll diese automatische an die nächste wand nahtlos "andocken" / bzw. einrasten. so entstehen keine lücken.
+mache unter den bearbeiten button eine import und export funktion für das gebäude und ein "Gebäude löschen" button statt dem Löschen Button bei "Bauteile" 
+
+Ich will die größe des "verschieben" buttons verändern und rechts daneben einen zweiten button einfügen. Dieser soll die "Einrasten"-Funktion ermöglichen und standardmäßig an sein. Wenn ich ein Fenster oder eine Tür bewege, sollen diese automatisch automatisch nur in wänden platziert werden können. Wenn ich eine Wand bewege, soll diese automatische an die nächste wand nahtlos "andocken" / bzw. einrasten.
 
 Der Löschen Button im Eigenschaften-Panel funktioniert noch nicht.
-
 
 
 
