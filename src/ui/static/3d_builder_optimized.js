@@ -1,21 +1,13 @@
 /**
- * Schlanker 3D Builder für energyOS
- * Optimiert für minimale CPU-Last
+ * Schlanker 3D Builder für energyOS - Optimiert
  */
 
 // Debug-Logging
 function debugLog(message, type = 'info') {
     const timestamp = new Date().toLocaleTimeString();
-    const typeLabel = {
-        'info': '[INFO]',
-        'warn': '[WARN]',
-        'error': '[ERROR]',
-        'success': '[SUCCESS]'
-    }[type] || '[LOG]';
-    
+    const typeLabel = { 'info': '[INFO]', 'warn': '[WARN]', 'error': '[ERROR]', 'success': '[SUCCESS]' }[type] || '[LOG]';
     console.log(`${timestamp} ${typeLabel} ${message}`);
     
-    // Debug-Panel-Output wenn vorhanden
     const debugContent = document.getElementById('debug-content');
     if (debugContent) {
         const entry = document.createElement('div');
@@ -24,15 +16,11 @@ function debugLog(message, type = 'info') {
         debugContent.appendChild(entry);
         debugContent.scrollTop = debugContent.scrollHeight;
         
-        // Limitiere Einträge auf 50
         const entries = debugContent.querySelectorAll('.debug-log-entry');
-        if (entries.length > 50) {
-            entries[0].remove();
-        }
+        if (entries.length > 50) entries[0].remove();
     }
 }
 
-// Einfacher 3D Builder
 class Simple3DBuilder {
     constructor(containerId) {
         this.container = document.getElementById(containerId);
@@ -48,20 +36,20 @@ class Simple3DBuilder {
         this.editMode = false;
         this.selectedObject = null;
         this.ghostObject = null;
-        this.isDragging = false;
         this.moveMode = false;
+        this.isDragging = false;
+        this.justDragged = false;
         this.mouse = new THREE.Vector2();
         this.raycaster = new THREE.Raycaster();
         this.dragStart = new THREE.Vector2();
-        this.justDragged = false;
         
-        // Standardwerte für Komponenten
+        // Default-Werte für Komponenten
         this.componentDefaults = {
-            wall: { width: 300, height: 250, depth: 20, uValue: 0.18 },
-            door: { width: 90, height: 200, depth: 5, uValue: 1.2 },
-            window: { width: 120, height: 120, depth: 5, uValue: 0.9 },
-            roof: { width: 400, height: 20, depth: 400, uValue: 0.14 },
-            floor: { width: 400, height: 20, depth: 400, uValue: 0.25 }
+            wall: { width: 200, height: 250, depth: 20, uValue: 0.24, color: 0x8BC34A },
+            door: { width: 80, height: 200, depth: 5, uValue: 1.8, color: 0x795548 },
+            window: { width: 120, height: 100, depth: 5, uValue: 1.3, color: 0x2196F3 },
+            roof: { width: 300, height: 20, depth: 300, uValue: 0.18, color: 0x9E9E9E },
+            floor: { width: 300, height: 20, depth: 300, uValue: 0.35, color: 0x607D8B }
         };
         
         this.init();
@@ -69,7 +57,6 @@ class Simple3DBuilder {
     
     init() {
         debugLog('Initialisiere 3D-Builder...', 'info');
-        
         try {
             this.setupScene();
             this.setupCamera();
@@ -79,7 +66,6 @@ class Simple3DBuilder {
             this.setupLighting();
             this.setupEventListeners();
             this.startRenderLoop();
-            
             debugLog('3D-Builder erfolgreich initialisiert', 'success');
         } catch (error) {
             debugLog(`Fehler bei Initialisierung: ${error.message}`, 'error');
@@ -96,25 +82,17 @@ class Simple3DBuilder {
     setupCamera() {
         const width = this.container.clientWidth;
         const height = this.container.clientHeight;
-        
         this.camera = new THREE.PerspectiveCamera(50, width / height, 1, 10000);
         this.camera.position.set(500, 800, 1300);
         this.camera.lookAt(0, 0, 0);
     }
     
     setupRenderer() {
-        this.renderer = new THREE.WebGLRenderer({ 
-            antialias: false, // Deaktiviert für Performance
-            alpha: false,
-            powerPreference: "high-performance"
-        });
-        
-        // Performance-Optimierungen
+        this.renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false, powerPreference: "high-performance" });
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
-        this.renderer.shadowMap.enabled = false; // Schatten deaktiviert für Performance
+        this.renderer.shadowMap.enabled = false;
         this.renderer.outputEncoding = THREE.sRGBEncoding;
-        
         this.container.appendChild(this.renderer.domElement);
     }
     
@@ -126,11 +104,7 @@ class Simple3DBuilder {
         this.controls.minDistance = 100;
         this.controls.maxDistance = 5000;
         this.controls.maxPolarAngle = Math.PI / 2;
-        
-        // Nur rendern wenn sich etwas ändert
-        this.controls.addEventListener('change', () => {
-            this.needsRender = true;
-        });
+        this.controls.addEventListener('change', () => { this.needsRender = true; });
     }
     
     setupGrid() {
@@ -140,10 +114,8 @@ class Simple3DBuilder {
     }
     
     setupLighting() {
-        // Einfache Beleuchtung für Performance
         const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
         this.scene.add(ambientLight);
-        
         const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
         directionalLight.position.set(100, 100, 50);
         this.scene.add(directionalLight);
@@ -151,31 +123,22 @@ class Simple3DBuilder {
     
     setupEventListeners() {
         window.addEventListener('resize', () => this.onWindowResize(), false);
-        
-        // Mouse events für Bearbeitungsmodus
-        this.container.addEventListener('mousedown', (event) => this.onMouseDown(event), false);
-        this.container.addEventListener('mousemove', (event) => this.onMouseMove(event), false);
-        this.container.addEventListener('mouseup', (event) => this.onMouseUp(event), false);
-        this.container.addEventListener('click', (event) => this.onClick(event), false);
+        this.container.addEventListener('mousedown', (e) => this.onMouseDown(e), false);
+        this.container.addEventListener('mousemove', (e) => this.onMouseMove(e), false);
+        this.container.addEventListener('mouseup', (e) => this.onMouseUp(e), false);
+        this.container.addEventListener('click', (e) => this.onClick(e), false);
     }
     
     startRenderLoop() {
         const animate = () => {
             if (!this.isAnimating) return;
-            
             requestAnimationFrame(animate);
-            
-            if (this.controls) {
-                this.controls.update();
-            }
-            
-            // Nur rendern wenn nötig
+            if (this.controls) this.controls.update();
             if (this.needsRender) {
                 this.renderer.render(this.scene, this.camera);
                 this.needsRender = false;
             }
         };
-        
         this.isAnimating = true;
         this.needsRender = true;
         animate();
@@ -184,94 +147,11 @@ class Simple3DBuilder {
     onWindowResize() {
         const width = this.container.clientWidth;
         const height = this.container.clientHeight;
-        
         this.camera.aspect = width / height;
         this.camera.updateProjectionMatrix();
-        
         this.renderer.setSize(width, height);
         this.needsRender = true;
-        
         debugLog(`Fenstergröße geändert: ${width}x${height}`, 'info');
-    }
-    
-    // Bearbeitungsmodus Funktionen
-    toggleEditMode() {
-        this.editMode = !this.editMode;
-        debugLog(`Bearbeitungsmodus: ${this.editMode ? 'AN' : 'AUS'}`, 'info');
-        
-        // UI aktualisieren
-        const btn = document.getElementById('edit-mode-btn');
-        const info = document.getElementById('edit-mode-info');
-        
-        if (this.editMode) {
-            btn.classList.add('active');
-            btn.textContent = '✏️ Bearbeitung AUS';
-            if (info) info.style.display = 'block';
-        } else {
-            btn.classList.remove('active');
-            btn.textContent = '✏️ Bearbeitung AN';
-            if (info) info.style.display = 'none';
-            this.clearSelection();
-            this.clearGhost();
-        }
-        
-        this.needsRender = true;
-    }
-    
-    setTool(toolType) {
-        this.currentTool = toolType;
-        this.clearGhost();
-        
-        if (this.editMode && toolType !== 'select') {
-            this.createGhost(toolType);
-        }
-        
-        this.updateToolButtons();
-        
-        debugLog(`Tool gewechselt zu: ${toolType}`, 'info');
-    }
-    
-    updateToolButtons() {
-        const toolButtons = document.querySelectorAll('.tool-btn');
-        toolButtons.forEach(btn => {
-            btn.classList.remove('active', 'selected');
-            
-            if (btn.dataset.tool === this.currentTool) {
-                btn.classList.add('active');
-            }
-            
-            // Markiere Button als "selected" wenn entsprechendes Objekt ausgewählt ist
-            if (this.selectedObject && btn.dataset.tool === this.selectedObject.userData.type) {
-                btn.classList.add('selected');
-            }
-        });
-    }
-    
-    createGhost(toolType) {
-        this.clearGhost();
-        
-        const defaults = this.componentDefaults[toolType];
-        const geometry = new THREE.BoxGeometry(defaults.width, defaults.height, defaults.depth);
-        const material = new THREE.MeshLambertMaterial({ 
-            color: 0x4CAF50, 
-            transparent: true, 
-            opacity: 0.3 
-        });
-        
-        this.ghostObject = new THREE.Mesh(geometry, material);
-        this.ghostObject.visible = false;
-        this.scene.add(this.ghostObject);
-        
-        debugLog(`Ghost-Objekt für ${toolType} erstellt`, 'info');
-    }
-    
-    clearGhost() {
-        if (this.ghostObject) {
-            this.scene.remove(this.ghostObject);
-            if (this.ghostObject.geometry) this.ghostObject.geometry.dispose();
-            if (this.ghostObject.material) this.ghostObject.material.dispose();
-            this.ghostObject = null;
-        }
     }
     
     updateMousePosition(event) {
@@ -282,10 +162,8 @@ class Simple3DBuilder {
     
     onMouseDown(event) {
         if (!this.editMode) return;
-        
         this.updateMousePosition(event);
         this.dragStart.copy(this.mouse);
-        
         if (this.selectedObject && this.moveMode && event.button === 0) {
             this.isDragging = true;
             this.controls.enabled = false;
@@ -296,13 +174,9 @@ class Simple3DBuilder {
         this.updateMousePosition(event);
         
         if (this.editMode && this.ghostObject && this.currentTool !== 'select') {
-            // Ghost-Objekt an Mausposition bewegen
             this.raycaster.setFromCamera(this.mouse, this.camera);
-            
-            // Schnitt mit Grundebene (y=0)
             const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
             const intersection = new THREE.Vector3();
-            
             if (this.raycaster.ray.intersectPlane(plane, intersection)) {
                 this.ghostObject.position.copy(intersection);
                 this.ghostObject.position.y += this.componentDefaults[this.currentTool].height / 2;
@@ -312,11 +186,9 @@ class Simple3DBuilder {
         }
         
         if (this.isDragging && this.selectedObject) {
-            // Ausgewähltes Objekt bewegen
             this.raycaster.setFromCamera(this.mouse, this.camera);
             const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), this.selectedObject.position.y);
             const intersection = new THREE.Vector3();
-            
             if (this.raycaster.ray.intersectPlane(plane, intersection)) {
                 this.selectedObject.position.x = intersection.x;
                 this.selectedObject.position.z = intersection.z;
@@ -331,51 +203,83 @@ class Simple3DBuilder {
             this.isDragging = false;
             this.controls.enabled = true;
             this.justDragged = true;
+            setTimeout(() => { this.justDragged = false; }, 100);
             debugLog('Objekt verschoben', 'info');
-            
-            // Reset nach kurzer Zeit
-            setTimeout(() => {
-                this.justDragged = false;
-            }, 100);
         }
     }
     
     onClick(event) {
-        // Vermeide Klick nach Drag
-        if (this.justDragged) {
-            return;
-        }
-        
+        if (!this.editMode || this.justDragged) return;
         this.updateMousePosition(event);
         this.raycaster.setFromCamera(this.mouse, this.camera);
         
         if (this.currentTool === 'select') {
-            // Objekt auswählen (funktioniert immer)
             const intersects = this.raycaster.intersectObjects(this.scene.children, false);
             const clickedObject = intersects.find(i => i.object.userData.isComponent);
-            
             if (clickedObject) {
                 this.selectObject(clickedObject.object);
             } else {
                 this.clearSelection();
             }
-        } else if (this.editMode && this.ghostObject && this.ghostObject.visible) {
-            // Neues Objekt platzieren (nur im EditMode)
+        } else if (this.ghostObject && this.ghostObject.visible) {
             this.placeComponent(this.currentTool, this.ghostObject.position.clone());
+        }
+    }
+    
+    toggleEditMode() {
+        this.editMode = !this.editMode;
+        const btn = document.getElementById('edit-mode-btn');
+        const info = document.getElementById('edit-mode-info');
+        
+        if (this.editMode) {
+            btn.classList.add('active');
+            btn.textContent = '✏️ Bearbeitung AUS';
+            info.style.display = 'block';
+        } else {
+            btn.classList.remove('active');
+            btn.textContent = '✏️ Bearbeitung AN';
+            info.style.display = 'none';
+            this.clearSelection();
+            this.clearGhost();
+        }
+        
+        this.needsRender = true;
+        debugLog(`Bearbeitungsmodus: ${this.editMode ? 'AN' : 'AUS'}`, 'info');
+    }
+    
+    setTool(toolType) {
+        this.currentTool = toolType;
+        this.clearGhost();
+        if (this.editMode && toolType !== 'select') {
+            this.createGhost(toolType);
+        }
+        this.updateToolButtons();
+        debugLog(`Tool gewechselt zu: ${toolType}`, 'info');
+    }
+    
+    createGhost(toolType) {
+        const defaults = this.componentDefaults[toolType];
+        const geometry = new THREE.BoxGeometry(defaults.width, defaults.height, defaults.depth);
+        const material = new THREE.MeshLambertMaterial({ color: 0x4CAF50, transparent: true, opacity: 0.3 });
+        this.ghostObject = new THREE.Mesh(geometry, material);
+        this.ghostObject.visible = false;
+        this.scene.add(this.ghostObject);
+        debugLog(`Ghost-Objekt für ${toolType} erstellt`, 'info');
+    }
+    
+    clearGhost() {
+        if (this.ghostObject) {
+            this.scene.remove(this.ghostObject);
+            if (this.ghostObject.geometry) this.ghostObject.geometry.dispose();
+            if (this.ghostObject.material) this.ghostObject.material.dispose();
+            this.ghostObject = null;
         }
     }
     
     placeComponent(type, position) {
         const defaults = this.componentDefaults[type];
         const geometry = new THREE.BoxGeometry(defaults.width, defaults.height, defaults.depth);
-        
-        let color = 0x8BC34A; // Standard grün
-        if (type === 'door') color = 0x795548;
-        else if (type === 'window') color = 0x2196F3;
-        else if (type === 'roof') color = 0x9E9E9E;
-        else if (type === 'floor') color = 0x607D8B;
-        
-        const material = new THREE.MeshLambertMaterial({ color });
+        const material = new THREE.MeshLambertMaterial({ color: defaults.color });
         const component = new THREE.Mesh(geometry, material);
         
         component.position.copy(position);
@@ -394,35 +298,24 @@ class Simple3DBuilder {
         
         this.scene.add(component);
         this.selectObject(component);
-        
-        // Tool auf "select" zurücksetzen nach Platzierung
         this.setTool('select');
-        
         this.needsRender = true;
-        
         debugLog(`${type} bei (${Math.round(position.x)}, ${Math.round(position.y)}, ${Math.round(position.z)}) platziert`, 'success');
     }
     
     selectObject(object) {
         this.clearSelection();
-        
         this.selectedObject = object;
-        
-        // Highlight-Effekt
         if (object.material.emissive) {
             object.material.emissive.setHex(0x444444);
         }
-        
-        this.updateToolButtons();
         this.showPropertiesPanel();
         this.needsRender = true;
-        
         debugLog(`${object.userData.type} ausgewählt`, 'info');
     }
     
     clearSelection() {
         if (this.selectedObject) {
-            // Highlight entfernen
             if (this.selectedObject.material.emissive) {
                 this.selectedObject.material.emissive.setHex(0x000000);
             }
@@ -432,62 +325,10 @@ class Simple3DBuilder {
         }
     }
     
-    toggleMoveMode() {
-        this.moveMode = !this.moveMode;
-        debugLog(`Verschieben-Modus: ${this.moveMode ? 'AN' : 'AUS'}`, 'info');
-        
-        const btn = document.getElementById('move-btn');
-        if (btn) {
-            if (this.moveMode) {
-                btn.classList.add('active');
-                btn.textContent = 'Stopp';
-            } else {
-                btn.classList.remove('active');
-                btn.textContent = 'Verschieben';
-            }
-        }
-    }
-    
-    clearScene() {
-        const objectsToRemove = [];
-        this.scene.traverse((child) => {
-            if (child.isMesh && child.geometry.type === 'BoxGeometry') {
-                objectsToRemove.push(child);
-            }
-        });
-        
-        objectsToRemove.forEach(obj => {
-            this.scene.remove(obj);
-            if (obj.geometry) obj.geometry.dispose();
-            if (obj.material) obj.material.dispose();
-        });
-        
-        this.needsRender = true;
-        debugLog('Szene geleert', 'info');
-    }
-    
-    dispose() {
-        this.isAnimating = false;
-        
-        if (this.controls) {
-            this.controls.dispose();
-        }
-        
-        if (this.renderer) {
-            this.renderer.dispose();
-        }
-        
-        debugLog('3D-Builder entsorgt', 'info');
-    }
-    
     showPropertiesPanel() {
         if (!this.selectedObject) return;
-        
         const panel = document.getElementById('properties-panel');
         const content = document.getElementById('properties-content');
-        
-        if (!panel || !content) return;
-        
         const props = this.selectedObject.userData.properties;
         const type = this.selectedObject.userData.type;
         const defaults = this.componentDefaults[type];
@@ -501,122 +342,98 @@ class Simple3DBuilder {
             <div class="property-group">
                 <div class="property-label">Abmessungen (cm)</div>
                 <div class="property-row">
-                    <input type="number" class="property-input" id="prop-width" value="${props.width}" placeholder="Breite">
-                    <input type="number" class="property-input" id="prop-height" value="${props.height}" placeholder="Höhe">
-                    <input type="number" class="property-input" id="prop-depth" value="${props.depth}" placeholder="Tiefe">
+                    <input type="number" class="property-input ${props.width === defaults.width ? 'default' : ''}" id="prop-width" value="${props.width}" placeholder="Breite">
+                    <input type="number" class="property-input ${props.height === defaults.height ? 'default' : ''}" id="prop-height" value="${props.height}" placeholder="Höhe">
+                    <input type="number" class="property-input ${props.depth === defaults.depth ? 'default' : ''}" id="prop-depth" value="${props.depth}" placeholder="Tiefe">
                 </div>
             </div>
             
             <div class="property-group">
                 <div class="property-label">U-Wert (W/m²K)</div>
-                <input type="number" class="property-input" id="prop-uvalue" value="${props.uValue}" step="0.01" placeholder="U-Wert">
+                <input type="number" class="property-input ${props.uValue === defaults.uValue ? 'default' : ''}" id="prop-uvalue" value="${props.uValue}" step="0.01" placeholder="U-Wert">
             </div>
             
             <div class="property-group">
                 <div class="property-label">Position (cm)</div>
-                <div class="property-row">
+                <div class="property-row two-col">
                     <input type="number" class="property-input" id="prop-pos-x" value="${Math.round(props.position.x)}" placeholder="X">
                     <input type="number" class="property-input" id="prop-pos-y" value="${Math.round(props.position.y)}" placeholder="Y">
                     <input type="number" class="property-input" id="prop-pos-z" value="${Math.round(props.position.z)}" placeholder="Z">
+                    <button class="move-btn ${this.moveMode ? 'active' : ''}" id="move-btn" onclick="toggleMoveMode()">↔️</button>
                 </div>
-                <button class="move-btn" id="move-btn" onclick="toggleMoveMode()">
-                    📍 Verschieben
-                </button>
             </div>
             
             <div class="property-group">
-                <div class="property-label">Rotation (Grad)</div>
+                <div class="property-label">Rotation (°)</div>
                 <div class="property-row">
-                    <input type="number" class="property-input" id="prop-rot-x" value="0" placeholder="X">
-                    <input type="number" class="property-input" id="prop-rot-y" value="0" placeholder="Y">
-                    <input type="number" class="property-input" id="prop-rot-z" value="0" placeholder="Z">
+                    <input type="number" class="property-input" id="prop-rot-x" value="${Math.round(props.rotation.x * 180 / Math.PI)}" placeholder="X">
+                    <input type="number" class="property-input" id="prop-rot-y" value="${Math.round(props.rotation.y * 180 / Math.PI)}" placeholder="Y">
+                    <input type="number" class="property-input" id="prop-rot-z" value="${Math.round(props.rotation.z * 180 / Math.PI)}" placeholder="Z">
                 </div>
             </div>
             
             <div class="property-actions">
-                <button class="delete-btn" onclick="deleteSelectedComponent()">🗑️ Löschen</button>
+                <button class="delete-btn" onclick="deleteSelected()">🗑️ Löschen</button>
             </div>
         `;
         
-        // Standardwerte-Styling setzen
-        this.setDefaultStyles(defaults);
-        
-        // Auto-Update Events hinzufügen
-        this.setupAutoUpdate();
-        
         panel.style.display = 'block';
+        this.setupAutoUpdate();
     }
     
     hidePropertiesPanel() {
         const panel = document.getElementById('properties-panel');
-        if (panel) {
-            panel.style.display = 'none';
-        }
-    }
-    
-    setDefaultStyles(defaults) {
-        const inputs = ['prop-width', 'prop-height', 'prop-depth', 'prop-uvalue'];
-        const defaultValues = [defaults.width, defaults.height, defaults.depth, defaults.uValue];
-        
-        inputs.forEach((id, index) => {
-            const input = document.getElementById(id);
-            if (input && parseFloat(input.value) === defaultValues[index]) {
-                input.classList.add('default');
-            }
-        });
+        panel.style.display = 'none';
     }
     
     setupAutoUpdate() {
-        const inputs = ['prop-width', 'prop-height', 'prop-depth', 'prop-uvalue', 
-                       'prop-pos-x', 'prop-pos-y', 'prop-pos-z',
-                       'prop-rot-x', 'prop-rot-y', 'prop-rot-z'];
-        
+        const inputs = ['prop-width', 'prop-height', 'prop-depth', 'prop-uvalue', 'prop-pos-x', 'prop-pos-y', 'prop-pos-z', 'prop-rot-x', 'prop-rot-y', 'prop-rot-z'];
         inputs.forEach(id => {
             const input = document.getElementById(id);
             if (input) {
                 input.addEventListener('input', () => {
                     input.classList.remove('default');
-                    this.applyPropertiesAuto();
+                    this.applyProperties();
                 });
             }
         });
     }
     
-    applyPropertiesAuto() {
+    updatePropertiesPanel() {
         if (!this.selectedObject) return;
-        
+        const props = this.selectedObject.userData.properties;
+        const posX = document.getElementById('prop-pos-x');
+        const posY = document.getElementById('prop-pos-y');
+        const posZ = document.getElementById('prop-pos-z');
+        if (posX) posX.value = Math.round(props.position.x);
+        if (posY) posY.value = Math.round(props.position.y);
+        if (posZ) posZ.value = Math.round(props.position.z);
+    }
+    
+    applyProperties() {
+        if (!this.selectedObject) return;
         const props = this.selectedObject.userData.properties;
         
-        // Abmessungen
-        const width = parseFloat(document.getElementById('prop-width')?.value) || props.width;
-        const height = parseFloat(document.getElementById('prop-height')?.value) || props.height;
-        const depth = parseFloat(document.getElementById('prop-depth')?.value) || props.depth;
+        const width = parseFloat(document.getElementById('prop-width').value) || props.width;
+        const height = parseFloat(document.getElementById('prop-height').value) || props.height;
+        const depth = parseFloat(document.getElementById('prop-depth').value) || props.depth;
+        const posX = parseFloat(document.getElementById('prop-pos-x').value) || props.position.x;
+        const posY = parseFloat(document.getElementById('prop-pos-y').value) || props.position.y;
+        const posZ = parseFloat(document.getElementById('prop-pos-z').value) || props.position.z;
+        const rotX = (parseFloat(document.getElementById('prop-rot-x').value) || 0) * Math.PI / 180;
+        const rotY = (parseFloat(document.getElementById('prop-rot-y').value) || 0) * Math.PI / 180;
+        const rotZ = (parseFloat(document.getElementById('prop-rot-z').value) || 0) * Math.PI / 180;
+        const uValue = parseFloat(document.getElementById('prop-uvalue').value) || props.uValue;
         
-        // Position
-        const posX = parseFloat(document.getElementById('prop-pos-x')?.value) || props.position.x;
-        const posY = parseFloat(document.getElementById('prop-pos-y')?.value) || props.position.y;
-        const posZ = parseFloat(document.getElementById('prop-pos-z')?.value) || props.position.z;
-        
-        // Rotation
-        const rotX = (parseFloat(document.getElementById('prop-rot-x')?.value) || 0) * Math.PI / 180;
-        const rotY = (parseFloat(document.getElementById('prop-rot-y')?.value) || 0) * Math.PI / 180;
-        const rotZ = (parseFloat(document.getElementById('prop-rot-z')?.value) || 0) * Math.PI / 180;
-        
-        // U-Wert
-        const uValue = parseFloat(document.getElementById('prop-uvalue')?.value) || props.uValue;
-        
-        // Geometrie aktualisieren wenn Abmessungen geändert
         if (width !== props.width || height !== props.height || depth !== props.depth) {
             const newGeometry = new THREE.BoxGeometry(width, height, depth);
             this.selectedObject.geometry.dispose();
             this.selectedObject.geometry = newGeometry;
         }
         
-        // Position und Rotation setzen
         this.selectedObject.position.set(posX, posY, posZ);
         this.selectedObject.rotation.set(rotX, rotY, rotZ);
         
-        // Properties aktualisieren
         props.width = width;
         props.height = height;
         props.depth = depth;
@@ -627,37 +444,38 @@ class Simple3DBuilder {
         this.needsRender = true;
     }
     
-    toggleMoveMode() {
-        if (!this.selectedObject) return;
-        
-        this.moveMode = !this.moveMode;
-        const btn = document.getElementById('move-btn');
-        
-        if (this.moveMode) {
-            btn.classList.add('active');
-            btn.textContent = '✋ Stopp';
-            debugLog('Verschieben-Modus aktiviert', 'info');
-        } else {
+    updateToolButtons() {
+        const toolButtons = document.querySelectorAll('.tool-btn');
+        toolButtons.forEach(btn => {
             btn.classList.remove('active');
-            btn.textContent = '📍 Verschieben';
-            debugLog('Verschieben-Modus deaktiviert', 'info');
-        }
+            if (btn.dataset.tool === this.currentTool) {
+                btn.classList.add('active');
+            }
+        });
     }
     
-    deleteSelected() {
-        if (this.selectedObject) {
-            const type = this.selectedObject.userData.type;
-            this.scene.remove(this.selectedObject);
-            
-            if (this.selectedObject.geometry) this.selectedObject.geometry.dispose();
-            if (this.selectedObject.material) this.selectedObject.material.dispose();
-            
-            this.selectedObject = null;
-            this.hidePropertiesPanel();
-            this.needsRender = true;
-            
-            debugLog(`${type} gelöscht`, 'info');
-        }
+    clearScene() {
+        const objectsToRemove = [];
+        this.scene.traverse((child) => {
+            if (child.userData && child.userData.isComponent) {
+                objectsToRemove.push(child);
+            }
+        });
+        objectsToRemove.forEach(obj => {
+            this.scene.remove(obj);
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) obj.material.dispose();
+        });
+        this.clearSelection();
+        this.needsRender = true;
+        debugLog('Szene geleert', 'info');
+    }
+    
+    dispose() {
+        this.isAnimating = false;
+        if (this.controls) this.controls.dispose();
+        if (this.renderer) this.renderer.dispose();
+        debugLog('3D-Builder entsorgt', 'info');
     }
 }
 
@@ -667,26 +485,15 @@ let builder3d = null;
 // Initialisierung
 document.addEventListener('DOMContentLoaded', () => {
     debugLog('DOM geladen, starte 3D-Builder...', 'info');
-    
     try {
-        if (typeof THREE === 'undefined') {
-            throw new Error('Three.js nicht geladen');
-        }
-        
-        if (typeof THREE.OrbitControls === 'undefined') {
-            throw new Error('OrbitControls nicht geladen');
-        }
+        if (typeof THREE === 'undefined') throw new Error('Three.js nicht geladen');
+        if (typeof THREE.OrbitControls === 'undefined') throw new Error('OrbitControls nicht geladen');
         
         builder3d = new Simple3DBuilder('building-3d');
-        
-        // Tool-Buttons setup
         setupToolButtons();
-        
         debugLog('3D-Builder bereit', 'success');
-        
     } catch (error) {
         debugLog(`Fehler beim Laden: ${error.message}`, 'error');
-        
         const container = document.getElementById('building-3d');
         if (container) {
             container.innerHTML = `
@@ -709,34 +516,69 @@ function setupToolButtons() {
         btn.addEventListener('click', () => {
             const tool = btn.dataset.tool;
             if (tool && builder3d) {
-                // Alle Buttons deaktivieren
                 toolButtons.forEach(b => b.classList.remove('active'));
-                
-                // Aktuellen Button aktivieren
                 btn.classList.add('active');
-                
-                // Tool setzen
                 builder3d.setTool(tool);
-                
-                // Spezielle Aktionen
-                if (tool === 'wall') {
-                    builder3d.addCube(0, 0, 0);
-                } else if (tool === 'clear') {
-                    builder3d.clearScene();
-                }
             }
         });
     });
 }
 
-// Debug-Panel Funktionen
+// Globale Funktionen
+function toggleEditMode() {
+    if (builder3d) builder3d.toggleEditMode();
+}
+
+function toggleMoveMode() {
+    if (builder3d) {
+        builder3d.moveMode = !builder3d.moveMode;
+        const btn = document.getElementById('move-btn');
+        if (btn) {
+            btn.classList.toggle('active', builder3d.moveMode);
+        }
+        debugLog(`Verschieben-Modus: ${builder3d.moveMode ? 'AN' : 'AUS'}`, 'info');
+    }
+}
+
+function deleteSelected() {
+    if (builder3d && builder3d.selectedObject) {
+        const type = builder3d.selectedObject.userData.type;
+        builder3d.scene.remove(builder3d.selectedObject);
+        if (builder3d.selectedObject.geometry) builder3d.selectedObject.geometry.dispose();
+        if (builder3d.selectedObject.material) builder3d.selectedObject.material.dispose();
+        builder3d.selectedObject = null;
+        builder3d.hidePropertiesPanel();
+        builder3d.needsRender = true;
+        debugLog(`${type} gelöscht`, 'info');
+    }
+}
+
+function clearScene() {
+    if (builder3d) builder3d.clearScene();
+}
+
+function saveBuilding() {
+    if (!builder3d) return;
+    const components = [];
+    builder3d.scene.traverse((child) => {
+        if (child.userData && child.userData.isComponent) {
+            components.push({
+                type: child.userData.type,
+                properties: child.userData.properties,
+                position: { x: child.position.x, y: child.position.y, z: child.position.z },
+                rotation: { x: child.rotation.x, y: child.rotation.y, z: child.rotation.z }
+            });
+        }
+    });
+    localStorage.setItem('energyOS_building', JSON.stringify(components));
+    debugLog('Gebäude gespeichert', 'success');
+}
+
 function toggleDebugPanel() {
     const panel = document.getElementById('debug-panel');
     const toggle = document.getElementById('debug-toggle');
-    
     if (panel && toggle) {
         const isOpen = panel.classList.contains('open');
-        
         if (isOpen) {
             panel.classList.remove('open');
             toggle.textContent = 'Debug-Log';
@@ -744,7 +586,6 @@ function toggleDebugPanel() {
             panel.classList.add('open');
             toggle.textContent = 'Debug schließen';
         }
-        
         debugLog(`Debug-Panel ${isOpen ? 'geschlossen' : 'geöffnet'}`, 'info');
     }
 }
@@ -757,59 +598,12 @@ function clearDebugLog() {
     }
 }
 
-// Globale Funktionen
-window.debugLog = debugLog;
-window.toggleDebugPanel = toggleDebugPanel;
-window.clearDebugLog = clearDebugLog;
-
-// Edit Mode Toggle
-function toggleEditMode() {
-    if (builder3d) {
-        builder3d.toggleEditMode();
-        
-        const btn = document.getElementById('edit-mode-btn');
-        const info = document.getElementById('edit-mode-info');
-        
-        if (builder3d.editMode) {
-            btn.classList.add('active');
-            btn.textContent = '✏️ Bearbeitung AUS';
-            info.style.display = 'block';
-        } else {
-            btn.classList.remove('active');
-            btn.textContent = '✏️ Bearbeitung AN';
-            info.style.display = 'none';
-        }
-    }
-}
-
-window.toggleEditMode = toggleEditMode;
-
-// Globale Funktionen für Properties-Panel
-// Globale Funktionen
-function toggleEditMode() {
-    if (builder3d) {
-        builder3d.toggleEditMode();
-    }
-}
-
-function toggleMoveMode() {
-    if (builder3d && builder3d.selectedObject) {
-        builder3d.toggleMoveMode();
-    }
-}
-
-function deleteSelectedComponent() {
-    if (builder3d) {
-        builder3d.deleteSelected();
-    }
-}
-
 // Globale Funktionen verfügbar machen
+window.debugLog = debugLog;
 window.toggleEditMode = toggleEditMode;
 window.toggleMoveMode = toggleMoveMode;
-window.deleteSelectedComponent = deleteSelectedComponent;
-function deleteSelected() {
-    if (builder3d) {
-        builder3d.deleteSelected();
-    }
-}
+window.deleteSelected = deleteSelected;
+window.clearScene = clearScene;
+window.saveBuilding = saveBuilding;
+window.toggleDebugPanel = toggleDebugPanel;
+window.clearDebugLog = clearDebugLog;
