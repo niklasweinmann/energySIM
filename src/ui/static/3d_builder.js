@@ -329,8 +329,15 @@ class Simple3DBuilder {
             if (this.raycaster.ray.intersectPlane(plane, intersection)) {
                 let finalPosition = intersection;
                 
-                // Nur bei aktiviertem Snap-Modus anwenden
-                if (this.snapMode) {
+                // Spezial-Snap für Fenster/Türen - immer zur nächsten Wand
+                if (this.currentTool === 'window' || this.currentTool === 'door') {
+                    const wallSnap = this.findNearestWallPosition(intersection);
+                    if (wallSnap) {
+                        finalPosition = wallSnap;
+                    }
+                }
+                // Standard Snap-Modus für andere Bauteile
+                else if (this.snapMode) {
                     finalPosition = this.snapToNearestWall(intersection, this.currentTool);
                 }
                 
@@ -405,6 +412,24 @@ class Simple3DBuilder {
     
     placeComponent(type, position) {
         const defaults = this.componentDefaults[type];
+        
+        // Spezialbehandlung für Fenster und Türen - sie schneiden Wände auf
+        if (type === 'window' || type === 'door') {
+            const result = this.cutWallForOpening(type, position, defaults);
+            if (result) {
+                this.selectObject(result);
+                this.setTool('select');
+                this.updateComponentOverview();
+                this.needsRender = true;
+                debugLog(`${type} in Wand eingeschnitten`, 'success');
+                return;
+            } else {
+                // Fallback: Normale Platzierung wenn keine Wand gefunden
+                debugLog(`Keine Wand gefunden - ${type} wird normal platziert`, 'warning');
+            }
+        }
+        
+        // Standard-Platzierung für alle Bauteile
         const geometry = new THREE.BoxGeometry(defaults.width, defaults.height, defaults.depth);
         
         let color = 0x8BC34A; // Standard grün
@@ -440,12 +465,8 @@ class Simple3DBuilder {
         this.scene.add(component);
         this.selectObject(component);
         
-        // Tool auf "select" zurücksetzen nach Platzierung
         this.setTool('select');
-        
-        // Bauteilübersicht aktualisieren
         this.updateComponentOverview();
-        
         this.needsRender = true;
         
         debugLog(`${type} bei (${Math.round(position.x)}, ${Math.round(position.y)}, ${Math.round(position.z)}) platziert`, 'success');
@@ -536,468 +557,48 @@ class Simple3DBuilder {
     // Intelligentes Constraint-basiertes Snap-System
     snapToNearestWall(position, componentType) {
         if (!this.snapMode) {
-            // Kein Snap-Modus - verstecke Feedback
-            this.showSnapFeedback(false, false, null);
             return position;
         }
         
         const snappedPosition = position.clone();
-        const snapDistance = 100; // 100cm Snap-Reichweite
-        const glideThreshold = 150; // 150cm Gleiten-Reichweite (größer als Snap)
+        const snapDistance = 100;
         const allComponents = this.getAllComponents();
         
-        let snapResult = null;
-        let snapType = '';
-        
-        // FENSTER & TÜREN: Entlang Wandflächen bewegen und gleiten
+        // FENSTER & TÜREN: Nur innerhalb ihrer Mutterwand bewegen
         if (componentType === 'window' || componentType === 'door') {
-            snapResult = this.snapAndGlideToWallSurface(position, allComponents, snapDistance, glideThreshold);
-            snapType = 'wall-surface';
-            if (snapResult) {
-                snappedPosition.set(
-                    snapResult.x, 
-                    snapResult.y + (componentType === 'window' ? snapResult.wallHeight * 0.2 : -snapResult.wallHeight * 0.4), 
-                    snapResult.z
-                );
-                debugLog(`${componentType} entlang Wand bewegt`, 'success');
+            if (this.selectedObject && this.selectedObject.userData.constraints) {
+                const result = this.constrainToParentWall(position, this.selectedObject);
+                if (result) {
+                    snappedPosition.set(result.x, result.y, result.z);
+                }
             }
         }
         
-        // WÄNDE: Entlang anderen Wänden bewegen und gleiten (Kante-an-Kante)
+        // WÄNDE: Entlang anderen Wänden bewegen
         else if (componentType === 'wall') {
-            snapResult = this.snapAndGlideToWallEdge(position, allComponents, snapDistance, glideThreshold);
-            snapType = 'wall-edge';
-            if (snapResult) {
-                snappedPosition.set(snapResult.x, snapResult.y, snapResult.z);
-                debugLog('Wand entlang Kante bewegt', 'success');
+            const result = this.snapAndGlideToWallEdge(position, allComponents, snapDistance, 150);
+            if (result) {
+                snappedPosition.set(result.x, result.y, result.z);
             }
         }
         
-        // DÄCHER: Entlang Wand-Oberkanten bewegen und gleiten
+        // DÄCHER: Über Wänden bewegen
         else if (componentType === 'roof') {
-            snapResult = this.snapAndGlideToWallTops(position, allComponents, snapDistance, glideThreshold);
-            snapType = 'wall-tops';
-            if (snapResult) {
-                snappedPosition.set(snapResult.x, snapResult.y, snapResult.z);
-                debugLog('Dach entlang Wänden bewegt', 'success');
+            const result = this.snapAndGlideToWallTops(position, allComponents, snapDistance, 150);
+            if (result) {
+                snappedPosition.set(result.x, result.y, result.z);
             }
         }
         
-        // BÖDEN: Entlang Wand-Unterkanten bewegen und gleiten
+        // BÖDEN: Unter Wänden bewegen
         else if (componentType === 'floor') {
-            snapResult = this.snapAndGlideToWallBottoms(position, allComponents, snapDistance, glideThreshold);
-            snapType = 'wall-bottoms';
-            if (snapResult) {
-                snappedPosition.set(snapResult.x, snapResult.y, snapResult.z);
-                debugLog('Boden entlang Wänden bewegt', 'success');
+            const result = this.snapAndGlideToWallBottoms(position, allComponents, snapDistance, 150);
+            if (result) {
+                snappedPosition.set(result.x, result.y, result.z);
             }
-        }
-        
-        // Zeige visuelles Feedback
-        if (snapResult) {
-            this.showSnapFeedback(snapResult.isGliding === false, snapResult.isGliding === true, snapType);
-        } else {
-            this.showSnapFeedback(false, false, null);
         }
         
         return snappedPosition;
-    }
-    
-    // Magnetisches Gleiten: Entlang Wandfläche bewegen
-    snapAndGlideToWallSurface(position, allComponents, snapDistance, glideThreshold) {
-        const walls = allComponents.filter(obj => obj.userData.type === 'wall');
-        let bestConstraint = null;
-        let minDistance = Infinity;
-        let isGliding = false;
-        
-        walls.forEach(wall => {
-            const wallPos = wall.position;
-            const wallWidth = wall.userData.width || this.componentDefaults.wall.width;
-            const wallDepth = wall.userData.depth || this.componentDefaults.wall.depth;
-            const wallHeight = wall.userData.height || this.componentDefaults.wall.height;
-            
-            // Prüfe alle 4 Wandflächen
-            const surfaces = [
-                { // Nord (Vorne)
-                    normal: { x: 0, z: 1 },
-                    surfacePos: { x: wallPos.x, z: wallPos.z + wallDepth/2 },
-                    constraint: { // Bewegung entlang X-Achse
-                        axis: 'x',
-                        fixedZ: wallPos.z + wallDepth/2,
-                        minX: wallPos.x - wallWidth/2,
-                        maxX: wallPos.x + wallWidth/2
-                    }
-                },
-                { // Süd (Hinten)
-                    normal: { x: 0, z: -1 },
-                    surfacePos: { x: wallPos.x, z: wallPos.z - wallDepth/2 },
-                    constraint: {
-                        axis: 'x',
-                        fixedZ: wallPos.z - wallDepth/2,
-                        minX: wallPos.x - wallWidth/2,
-                        maxX: wallPos.x + wallWidth/2
-                    }
-                },
-                { // Ost (Rechts)
-                    normal: { x: 1, z: 0 },
-                    surfacePos: { x: wallPos.x + wallWidth/2, z: wallPos.z },
-                    constraint: { // Bewegung entlang Z-Achse
-                        axis: 'z',
-                        fixedX: wallPos.x + wallWidth/2,
-                        minZ: wallPos.z - wallDepth/2,
-                        maxZ: wallPos.z + wallDepth/2
-                    }
-                },
-                { // West (Links)
-                    normal: { x: -1, z: 0 },
-                    surfacePos: { x: wallPos.x - wallWidth/2, z: wallPos.z },
-                    constraint: {
-                        axis: 'z',
-                        fixedX: wallPos.x - wallWidth/2,
-                        minZ: wallPos.z - wallDepth/2,
-                        maxZ: wallPos.z + wallDepth/2
-                    }
-                }
-            ];
-            
-            surfaces.forEach(surface => {
-                const distanceToSurface = Math.abs(
-                    (position.x - surface.surfacePos.x) * surface.normal.x +
-                    (position.z - surface.surfacePos.z) * surface.normal.z
-                );
-                
-                // Erweiterte Reichweite für Gleiten
-                const effectiveThreshold = isGliding ? glideThreshold : snapDistance;
-                
-                if (distanceToSurface < effectiveThreshold && distanceToSurface < minDistance) {
-                    minDistance = distanceToSurface;
-                    
-                    // Berechne Position mit Gleiten-Constraint
-                    let constrainedPos = { x: position.x, z: position.z };
-                    
-                    if (surface.constraint.axis === 'x') {
-                        // Gleiten entlang X-Achse, Z fixiert
-                        constrainedPos.z = surface.constraint.fixedZ;
-                        constrainedPos.x = Math.max(surface.constraint.minX, 
-                                                  Math.min(surface.constraint.maxX, position.x));
-                        
-                        // Prüfe ob wir am Ende der Wand angelangt sind
-                        if (position.x < surface.constraint.minX - 50 || position.x > surface.constraint.maxX + 50) {
-                            isGliding = false; // Loslassen der Wand
-                            return null;
-                        }
-                    } else {
-                        // Gleiten entlang Z-Achse, X fixiert
-                        constrainedPos.x = surface.constraint.fixedX;
-                        constrainedPos.z = Math.max(surface.constraint.minZ, 
-                                                  Math.min(surface.constraint.maxZ, position.z));
-                        
-                        // Prüfe ob wir am Ende der Wand angelangt sind
-                        if (position.z < surface.constraint.minZ - 50 || position.z > surface.constraint.maxZ + 50) {
-                            isGliding = false; // Loslassen der Wand
-                            return null;
-                        }
-                    }
-                    
-                    bestConstraint = {
-                        x: constrainedPos.x,
-                        y: wallPos.y,
-                        z: constrainedPos.z,
-                        wallHeight: wallHeight,
-                        isGliding: distanceToSurface < snapDistance
-                    };
-                }
-            });
-        });
-        
-        return bestConstraint;
-    }
-    
-    // Magnetisches Gleiten: Entlang Wandkante bewegen
-    snapAndGlideToWallEdge(position, allComponents, snapDistance, glideThreshold) {
-        const otherWalls = allComponents.filter(obj => obj.userData.type === 'wall' && obj !== this.selectedObject);
-        let bestConstraint = null;
-        let minDistance = Infinity;
-        let isGliding = false;
-        
-        otherWalls.forEach(wall => {
-            const wallPos = wall.position;
-            const wallWidth = wall.userData.width || this.componentDefaults.wall.width;
-            const wallDepth = wall.userData.depth || this.componentDefaults.wall.depth;
-            
-            // Kanten der existierenden Wand
-            const edges = [
-                { // Rechte Kante - Gleiten nach vorne/hinten
-                    name: 'right',
-                    point: { x: wallPos.x + wallWidth/2, z: wallPos.z },
-                    constraint: {
-                        fixedX: wallPos.x + wallWidth/2,
-                        minZ: wallPos.z - wallDepth/2,
-                        maxZ: wallPos.z + wallDepth/2,
-                        axis: 'z'
-                    }
-                },
-                { // Linke Kante
-                    name: 'left',
-                    point: { x: wallPos.x - wallWidth/2, z: wallPos.z },
-                    constraint: {
-                        fixedX: wallPos.x - wallWidth/2,
-                        minZ: wallPos.z - wallDepth/2,
-                        maxZ: wallPos.z + wallDepth/2,
-                        axis: 'z'
-                    }
-                },
-                { // Vordere Kante - Gleiten nach links/rechts
-                    name: 'front',
-                    point: { x: wallPos.x, z: wallPos.z + wallDepth/2 },
-                    constraint: {
-                        fixedZ: wallPos.z + wallDepth/2,
-                        minX: wallPos.x - wallWidth/2,
-                        maxX: wallPos.x + wallWidth/2,
-                        axis: 'x'
-                    }
-                },
-                { // Hintere Kante
-                    name: 'back',
-                    point: { x: wallPos.x, z: wallPos.z - wallDepth/2 },
-                    constraint: {
-                        fixedZ: wallPos.z - wallDepth/2,
-                        minX: wallPos.x - wallWidth/2,
-                        maxX: wallPos.x + wallWidth/2,
-                        axis: 'x'
-                    }
-                }
-            ];
-            
-            edges.forEach(edge => {
-                const distance = Math.sqrt(
-                    Math.pow(position.x - edge.point.x, 2) + 
-                    Math.pow(position.z - edge.point.z, 2)
-                );
-                
-                // Erweiterte Reichweite für Gleiten
-                const effectiveThreshold = isGliding ? glideThreshold : snapDistance;
-                
-                if (distance < effectiveThreshold && distance < minDistance) {
-                    minDistance = distance;
-                    
-                    // Berechne Constraint-Position mit Gleiten
-                    let constrainedPos = { x: position.x, z: position.z };
-                    
-                    if (edge.constraint.axis === 'z') {
-                        // Gleiten entlang Z-Achse (bei rechten/linken Kanten)
-                        constrainedPos.x = edge.constraint.fixedX;
-                        constrainedPos.z = Math.max(edge.constraint.minZ, 
-                                                  Math.min(edge.constraint.maxZ, position.z));
-                        
-                        // Prüfe ob wir am Ende der Kante angelangt sind
-                        if (position.z < edge.constraint.minZ - 50 || position.z > edge.constraint.maxZ + 50) {
-                            isGliding = false; // Loslassen der Kante
-                            return null;
-                        }
-                    } else {
-                        // Gleiten entlang X-Achse (bei vorderen/hinteren Kanten)
-                        constrainedPos.z = edge.constraint.fixedZ;
-                        constrainedPos.x = Math.max(edge.constraint.minX, 
-                                                  Math.min(edge.constraint.maxX, position.x));
-                        
-                        // Prüfe ob wir am Ende der Kante angelangt sind
-                        if (position.x < edge.constraint.minX - 50 || position.x > edge.constraint.maxX + 50) {
-                            isGliding = false; // Loslassen der Kante
-                            return null;
-                        }
-                    }
-                    
-                    bestConstraint = {
-                        x: constrainedPos.x,
-                        y: wallPos.y,
-                        z: constrainedPos.z,
-                        isGliding: distance < snapDistance,
-                        edgeName: edge.name
-                    };
-                }
-            });
-        });
-        
-        return bestConstraint;
-    }
-    
-    // Magnetisches Gleiten: Entlang Wand-Oberkanten bewegen (für Dächer)
-    snapAndGlideToWallTops(position, allComponents, snapDistance, glideThreshold) {
-        const walls = allComponents.filter(obj => obj.userData.type === 'wall');
-        if (walls.length === 0) return null;
-        
-        // Berechne erweiterte Bounding Box aller Wände für Gleiten
-        let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, maxY = -Infinity;
-        
-        walls.forEach(wall => {
-            const wallPos = wall.position;
-            const wallWidth = wall.userData.width || this.componentDefaults.wall.width;
-            const wallDepth = wall.userData.depth || this.componentDefaults.wall.depth;
-            const wallHeight = wall.userData.height || this.componentDefaults.wall.height;
-            
-            minX = Math.min(minX, wallPos.x - wallWidth/2);
-            maxX = Math.max(maxX, wallPos.x + wallWidth/2);
-            minZ = Math.min(minZ, wallPos.z - wallDepth/2);
-            maxZ = Math.max(maxZ, wallPos.z + wallDepth/2);
-            maxY = Math.max(maxY, wallPos.y + wallHeight/2);
-        });
-        
-        // Prüfe ob Position innerhalb oder nahe der Wand-Bounding-Box ist
-        const marginX = 100; // 100cm Spielraum zum Gleiten
-        const marginZ = 100;
-        
-        const extMinX = minX - marginX;
-        const extMaxX = maxX + marginX;
-        const extMinZ = minZ - marginZ;
-        const extMaxZ = maxZ + marginZ;
-        
-        // Gleiten: Wenn außerhalb der Grundfläche, aber innerhalb der erweiterten Zone
-        let constrainedX = position.x;
-        let constrainedZ = position.z;
-        let isGliding = false;
-        
-        if (position.x >= extMinX && position.x <= extMaxX && position.z >= extMinZ && position.z <= extMaxZ) {
-            // Innerhalb der Gleit-Zone - begrenzen auf Wand-Bounding-Box
-            if (position.x < minX) {
-                constrainedX = minX;
-                isGliding = true;
-            } else if (position.x > maxX) {
-                constrainedX = maxX;
-                isGliding = true;
-            }
-            
-            if (position.z < minZ) {
-                constrainedZ = minZ;
-                isGliding = true;
-            } else if (position.z > maxZ) {
-                constrainedZ = maxZ;
-                isGliding = true;
-            }
-            
-            return {
-                x: constrainedX,
-                y: maxY + (this.componentDefaults.roof.height || 20) / 2,
-                z: constrainedZ,
-                isGliding: isGliding
-            };
-        }
-        
-        return null;
-    }
-    
-    // Magnetisches Gleiten: Entlang Wand-Unterkanten bewegen (für Böden)
-    snapAndGlideToWallBottoms(position, allComponents, snapDistance, glideThreshold) {
-        const walls = allComponents.filter(obj => obj.userData.type === 'wall');
-        if (walls.length === 0) return null;
-        
-        // Berechne erweiterte Bounding Box aller Wände für Gleiten
-        let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, minY = Infinity;
-        
-        walls.forEach(wall => {
-            const wallPos = wall.position;
-            const wallWidth = wall.userData.width || this.componentDefaults.wall.width;
-            const wallDepth = wall.userData.depth || this.componentDefaults.wall.depth;
-            const wallHeight = wall.userData.height || this.componentDefaults.wall.height;
-            
-            minX = Math.min(minX, wallPos.x - wallWidth/2);
-            maxX = Math.max(maxX, wallPos.x + wallWidth/2);
-            minZ = Math.min(minZ, wallPos.z - wallDepth/2);
-            maxZ = Math.max(maxZ, wallPos.z + wallDepth/2);
-            minY = Math.min(minY, wallPos.y - wallHeight/2);
-        });
-        
-        // Prüfe ob Position innerhalb oder nahe der Wand-Bounding-Box ist
-        const marginX = 100; // 100cm Spielraum zum Gleiten
-        const marginZ = 100;
-        
-        const extMinX = minX - marginX;
-        const extMaxX = maxX + marginX;
-        const extMinZ = minZ - marginZ;
-        const extMaxZ = maxZ + marginZ;
-        
-        // Gleiten: Wenn außerhalb der Grundfläche, aber innerhalb der erweiterten Zone
-        let constrainedX = position.x;
-        let constrainedZ = position.z;
-        let isGliding = false;
-        
-        if (position.x >= extMinX && position.x <= extMaxX && position.z >= extMinZ && position.z <= extMaxZ) {
-            // Innerhalb der Gleit-Zone - begrenzen auf Wand-Bounding-Box
-            if (position.x < minX) {
-                constrainedX = minX;
-                isGliding = true;
-            } else if (position.x > maxX) {
-                constrainedX = maxX;
-                isGliding = true;
-            }
-            
-            if (position.z < minZ) {
-                constrainedZ = minZ;
-                isGliding = true;
-            } else if (position.z > maxZ) {
-                constrainedZ = maxZ;
-                isGliding = true;
-            }
-            
-            return {
-                x: constrainedX,
-                y: minY - (this.componentDefaults.floor.height || 20) / 2,
-                z: constrainedZ,
-                isGliding: isGliding
-            };
-        }
-        
-        return null;
-    }
-    
-    // Visuelles Feedback für das Kleben/Gleiten
-    showSnapFeedback(isSnapped, isGliding, snapType) {
-        const feedbackDiv = document.getElementById('snap-feedback') || this.createSnapFeedback();
-        
-        if (isSnapped || isGliding) {
-            let message = '';
-            let color = '';
-            
-            if (isSnapped) {
-                message = '🧲 Magnetisch angeklebt';
-                color = '#ff6b35'; // Orange für angeklebt
-            } else if (isGliding) {
-                message = '⟷ Gleitet entlang der Kante';
-                color = '#ffa500'; // Hellorange für gleiten
-            }
-            
-            feedbackDiv.textContent = message;
-            feedbackDiv.style.backgroundColor = color;
-            feedbackDiv.style.opacity = '1';
-            feedbackDiv.style.transform = 'translateY(0)';
-        } else {
-            feedbackDiv.style.opacity = '0';
-            feedbackDiv.style.transform = 'translateY(-10px)';
-        }
-    }
-    
-    // Erstelle Feedback-Element
-    createSnapFeedback() {
-        const feedbackDiv = document.createElement('div');
-        feedbackDiv.id = 'snap-feedback';
-        feedbackDiv.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 10px 20px;
-            border-radius: 25px;
-            color: white;
-            font-weight: bold;
-            font-size: 14px;
-            z-index: 1000;
-            opacity: 0;
-            transform: translateY(-10px);
-            transition: all 0.3s ease;
-            pointer-events: none;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        `;
-        document.body.appendChild(feedbackDiv);
-        return feedbackDiv;
     }
     
     dispose() {
@@ -1318,20 +919,23 @@ class Simple3DBuilder {
 
     deleteSelected() {
         if (this.selectedObject && this.selectedObject.userData.isComponent) {
-            this.scene.remove(this.selectedObject);
+            const objectToDelete = this.selectedObject;
             
-            // Ressourcen freigeben
-            if (this.selectedObject.geometry) this.selectedObject.geometry.dispose();
-            if (this.selectedObject.material) this.selectedObject.material.dispose();
+            // Wenn es ein Fenster/Tür ist, setze die Wandfarbe zurück
+            if ((objectToDelete.userData.type === 'window' || objectToDelete.userData.type === 'door') 
+                && objectToDelete.userData.parentWall) {
+                const parentWall = objectToDelete.userData.parentWall;
+                parentWall.material.color.setHex(0x8BC34A); // Zurück zu grün
+            }
             
-            debugLog(`${this.selectedObject.userData.type} gelöscht`, 'info');
+            // Das Objekt löschen
+            this.scene.remove(objectToDelete);
+            if (objectToDelete.geometry) objectToDelete.geometry.dispose();
+            if (objectToDelete.material) objectToDelete.material.dispose();
             
             this.clearSelection();
             this.hidePropertiesPanel();
-            
-            // Bauteilübersicht aktualisieren
             this.updateComponentOverview();
-            
             this.needsRender = true;
         }
     }
@@ -1413,6 +1017,366 @@ class Simple3DBuilder {
             floor: 'Boden'
         };
         return names[type] || type;
+    }
+    
+    // Schneide Wand für Fenster/Türen auf (vereinfacht)
+    cutWallForOpening(type, position, defaults) {
+        const walls = this.getAllComponents().filter(obj => obj.userData.type === 'wall');
+        let targetWall = null;
+        let minDistance = Infinity;
+        
+        // Finde die nächste Wand (einfache Distanz-Berechnung)
+        walls.forEach(wall => {
+            const wallPos = wall.position;
+            const distance = Math.sqrt(
+                Math.pow(position.x - wallPos.x, 2) + 
+                Math.pow(position.z - wallPos.z, 2)
+            );
+            
+            if (distance < 200 && distance < minDistance) { // 200cm Reichweite
+                minDistance = distance;
+                targetWall = wall;
+            }
+        });
+        
+        if (!targetWall) {
+            return null; // Keine Wand in der Nähe
+        }
+        
+        // Erstelle das aufgeschnittene Wand-System
+        return this.createSimpleWallWithOpening(targetWall, type, position, defaults);
+    }
+    
+    // Echtes Wand-Ausschneiden mit Loch
+    createSimpleWallWithOpening(wall, type, position, defaults) {
+        const wallPos = wall.position;
+        const wallGeometry = wall.geometry;
+        const wallMaterial = wall.material;
+        
+        // Bestimme Wandabmessungen
+        const wallWidth = wall.userData.properties.width;
+        const wallHeight = wall.userData.properties.height;
+        const wallDepth = wall.userData.properties.depth;
+        
+        // Position für das Fenster/die Tür - genau in der Wandmitte
+        const finalPosition = new THREE.Vector3(wallPos.x, wallPos.y, wallPos.z);
+        
+        // Entferne die alte Wand
+        this.scene.remove(wall);
+        wall.geometry.dispose();
+        wall.material.dispose();
+        
+        // Erstelle neue Wand mit Aussparung
+        this.createWallWithHole(wallPos, wallWidth, wallHeight, wallDepth, 
+                               defaults.width, defaults.height, wallMaterial.color.getHex());
+        
+        // Erstelle das Fenster/die Tür
+        const openingGeometry = new THREE.BoxGeometry(defaults.width, defaults.height, defaults.depth);
+        let color = (type === 'window') ? 0x2196F3 : 0x795548;
+        const openingMaterial = new THREE.MeshLambertMaterial({ color, transparent: true, opacity: 0.8 });
+        const opening = new THREE.Mesh(openingGeometry, openingMaterial);
+        
+        opening.position.copy(finalPosition);
+        
+        const existingComponents = this.getAllComponents().filter(c => c.userData.type === type);
+        const defaultName = this.getComponentTypeName(type) + ' ' + (existingComponents.length + 1);
+        
+        opening.userData = {
+            isComponent: true,
+            type: type,
+            name: defaultName,
+            originalColor: color,
+            properties: {
+                width: defaults.width,
+                height: defaults.height,
+                depth: defaults.depth,
+                uValue: defaults.uValue,
+                position: { x: finalPosition.x, y: finalPosition.y, z: finalPosition.z },
+                rotation: { x: 0, y: 0, z: 0 }
+            }
+        };
+        
+        this.scene.add(opening);
+        
+        debugLog(`${type} mit Loch in Wand erstellt`, 'success');
+        
+        return opening;
+    }
+    
+    // Erstelle Wand mit echtem Loch in der Mitte
+    createWallWithHole(wallPos, wallWidth, wallHeight, wallDepth, openingWidth, openingHeight, wallColor) {
+        // Berechne Segmente um das zentrale Loch
+        const leftWidth = (wallWidth - openingWidth) / 2;
+        const rightWidth = leftWidth;
+        const topHeight = (wallHeight - openingHeight) / 2;
+        const bottomHeight = topHeight;
+        
+        // Linker Teil
+        if (leftWidth > 10) {
+            this.createWallSegment(
+                wallPos.x - wallWidth/2 + leftWidth/2,
+                wallPos.y,
+                wallPos.z,
+                leftWidth, wallHeight, wallDepth, wallColor
+            );
+        }
+        
+        // Rechter Teil
+        if (rightWidth > 10) {
+            this.createWallSegment(
+                wallPos.x + wallWidth/2 - rightWidth/2,
+                wallPos.y,
+                wallPos.z,
+                rightWidth, wallHeight, wallDepth, wallColor
+            );
+        }
+        
+        // Oberer Teil
+        if (topHeight > 10) {
+            this.createWallSegment(
+                wallPos.x,
+                wallPos.y + wallHeight/2 - topHeight/2,
+                wallPos.z,
+                openingWidth, topHeight, wallDepth, wallColor
+            );
+        }
+        
+        // Unterer Teil (nur bei Fenstern, Türen gehen bis zum Boden)
+        if (bottomHeight > 10) {
+            this.createWallSegment(
+                wallPos.x,
+                wallPos.y - wallHeight/2 + bottomHeight/2,
+                wallPos.z,
+                openingWidth, bottomHeight, wallDepth, wallColor
+            );
+        }
+    }
+    
+    // Erstelle Wandsegment
+    createWallSegment(x, y, z, width, height, depth, color) {
+        const geometry = new THREE.BoxGeometry(width, height, depth);
+        const material = new THREE.MeshLambertMaterial({ color });
+        const segment = new THREE.Mesh(geometry, material);
+        
+        segment.position.set(x, y, z);
+        segment.userData = {
+            isComponent: true,
+            type: 'wall',
+            name: 'Wandsegment',
+            originalColor: color,
+            properties: {
+                width: width,
+                height: height,
+                depth: depth,
+                uValue: 0.3,
+                position: { x: x, y: y, z: z },
+                rotation: { x: 0, y: 0, z: 0 }
+            }
+        };
+        
+        this.scene.add(segment);
+        return segment;
+    }
+    
+    // Einfache Constraint-Funktion für Fenster/Türen
+    constrainToParentWall(position, opening) {
+        if (!opening.userData.parentWall) return null;
+        
+        const wall = opening.userData.parentWall;
+        const wallPos = wall.position;
+        
+        // Halte das Fenster/die Tür nahe der Wand
+        return {
+            x: wallPos.x,
+            y: wallPos.y,
+            z: wallPos.z
+        };
+    }
+    
+    // Einfache Snap-Funktionen (ohne Gleiten für Performance)
+    snapAndGlideToWallEdge(position, allComponents, snapDistance, glideThreshold) {
+        const otherWalls = allComponents.filter(obj => obj.userData.type === 'wall' && obj !== this.selectedObject);
+        let bestConstraint = null;
+        let minDistance = Infinity;
+        
+        otherWalls.forEach(wall => {
+            const wallPos = wall.position;
+            const wallWidth = wall.userData.width || this.componentDefaults.wall.width;
+            const wallDepth = wall.userData.depth || this.componentDefaults.wall.depth;
+            
+            const edges = [
+                { point: { x: wallPos.x + wallWidth/2, z: wallPos.z }, fixedX: wallPos.x + wallWidth/2 },
+                { point: { x: wallPos.x - wallWidth/2, z: wallPos.z }, fixedX: wallPos.x - wallWidth/2 },
+                { point: { x: wallPos.x, z: wallPos.z + wallDepth/2 }, fixedZ: wallPos.z + wallDepth/2 },
+                { point: { x: wallPos.x, z: wallPos.z - wallDepth/2 }, fixedZ: wallPos.z - wallDepth/2 }
+            ];
+            
+            edges.forEach(edge => {
+                const distance = Math.sqrt(
+                    Math.pow(position.x - edge.point.x, 2) + 
+                    Math.pow(position.z - edge.point.z, 2)
+                );
+                
+                if (distance < snapDistance && distance < minDistance) {
+                    minDistance = distance;
+                    let constrainedPos = { x: position.x, z: position.z };
+                    
+                    if (edge.fixedX !== undefined) {
+                        constrainedPos.x = edge.fixedX;
+                    } else {
+                        constrainedPos.z = edge.fixedZ;
+                    }
+                    
+                    bestConstraint = {
+                        x: constrainedPos.x,
+                        y: wallPos.y,
+                        z: constrainedPos.z
+                    };
+                }
+            });
+        });
+        
+        return bestConstraint;
+    }
+    
+    snapAndGlideToWallTops(position, allComponents, snapDistance, glideThreshold) {
+        const walls = allComponents.filter(obj => obj.userData.type === 'wall');
+        if (walls.length === 0) return null;
+        
+        let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, maxY = -Infinity;
+        
+        walls.forEach(wall => {
+            const wallPos = wall.position;
+            const wallWidth = wall.userData.width || this.componentDefaults.wall.width;
+            const wallDepth = wall.userData.depth || this.componentDefaults.wall.depth;
+            const wallHeight = wall.userData.height || this.componentDefaults.wall.height;
+            
+            minX = Math.min(minX, wallPos.x - wallWidth/2);
+            maxX = Math.max(maxX, wallPos.x + wallWidth/2);
+            minZ = Math.min(minZ, wallPos.z - wallDepth/2);
+            maxZ = Math.max(maxZ, wallPos.z + wallDepth/2);
+            maxY = Math.max(maxY, wallPos.y + wallHeight/2);
+        });
+        
+        const constrainedX = Math.max(minX, Math.min(maxX, position.x));
+        const constrainedZ = Math.max(minZ, Math.min(maxZ, position.z));
+        
+        return {
+            x: constrainedX,
+            y: maxY + (this.componentDefaults.roof.height || 20) / 2,
+            z: constrainedZ
+        };
+    }
+    
+    snapAndGlideToWallBottoms(position, allComponents, snapDistance, glideThreshold) {
+        const walls = allComponents.filter(obj => obj.userData.type === 'wall');
+        if (walls.length === 0) return null;
+        
+        let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, minY = Infinity;
+        
+        walls.forEach(wall => {
+            const wallPos = wall.position;
+            const wallWidth = wall.userData.width || this.componentDefaults.wall.width;
+            const wallDepth = wall.userData.depth || this.componentDefaults.wall.depth;
+            const wallHeight = wall.userData.height || this.componentDefaults.wall.height;
+            
+            minX = Math.min(minX, wallPos.x - wallWidth/2);
+            maxX = Math.max(maxX, wallPos.x + wallWidth/2);
+            minZ = Math.min(minZ, wallPos.z - wallDepth/2);
+            maxZ = Math.max(maxZ, wallPos.z + wallDepth/2);
+            minY = Math.min(minY, wallPos.y - wallHeight/2);
+        });
+        
+        const constrainedX = Math.max(minX, Math.min(maxX, position.x));
+        const constrainedZ = Math.max(minZ, Math.min(maxZ, position.z));
+        
+        return {
+            x: constrainedX,
+            y: minY - (this.componentDefaults.floor.height || 20) / 2,
+            z: constrainedZ
+        };
+    }
+    
+    // Finde die nächste Wand für Ghost-Object mit freier Bewegung
+    findNearestWallPosition(position) {
+        const walls = this.getAllComponents().filter(obj => obj.userData.type === 'wall');
+        let nearestWall = null;
+        let minDistance = Infinity;
+        let bestPosition = null;
+        
+        walls.forEach(wall => {
+            const wallPos = wall.position;
+            const wallWidth = wall.userData.properties.width;
+            const wallHeight = wall.userData.properties.height;
+            const wallDepth = wall.userData.properties.depth;
+            
+            // Berechne Distanz zur Wand
+            const distance = Math.sqrt(
+                Math.pow(position.x - wallPos.x, 2) + 
+                Math.pow(position.z - wallPos.z, 2)
+            );
+            
+            if (distance < 300 && distance < minDistance) { // 300cm Reichweite
+                minDistance = distance;
+                nearestWall = wall;
+                
+                // Bestimme die nächste Wandfläche
+                const surfaces = [
+                    { x: wallPos.x, z: wallPos.z + wallDepth/2, normal: 'north' }, // Vorne
+                    { x: wallPos.x, z: wallPos.z - wallDepth/2, normal: 'south' }, // Hinten
+                    { x: wallPos.x + wallWidth/2, z: wallPos.z, normal: 'east' },  // Rechts
+                    { x: wallPos.x - wallWidth/2, z: wallPos.z, normal: 'west' }   // Links
+                ];
+                
+                let closestSurface = surfaces[0];
+                let minSurfaceDistance = Infinity;
+                
+                surfaces.forEach(surface => {
+                    const surfaceDistance = Math.sqrt(
+                        Math.pow(position.x - surface.x, 2) + 
+                        Math.pow(position.z - surface.z, 2)
+                    );
+                    if (surfaceDistance < minSurfaceDistance) {
+                        minSurfaceDistance = surfaceDistance;
+                        closestSurface = surface;
+                    }
+                });
+                
+                // Freie Bewegung über die Wandfläche mit Begrenzung
+                const openingWidth = this.componentDefaults[this.currentTool].width;
+                const openingHeight = this.componentDefaults[this.currentTool].height;
+                
+                let constrainedX = position.x;
+                let constrainedZ = position.z;
+                let constrainedY = position.y;
+                
+                if (closestSurface.normal === 'north' || closestSurface.normal === 'south') {
+                    // Nord/Süd-Wand - X kann frei bewegt werden, Z ist fixiert
+                    constrainedZ = closestSurface.z;
+                    constrainedX = Math.max(wallPos.x - wallWidth/2 + openingWidth/2,
+                                          Math.min(wallPos.x + wallWidth/2 - openingWidth/2, position.x));
+                } else {
+                    // Ost/West-Wand - Z kann frei bewegt werden, X ist fixiert
+                    constrainedX = closestSurface.x;
+                    constrainedZ = Math.max(wallPos.z - wallDepth/2 + openingWidth/2,
+                                          Math.min(wallPos.z + wallDepth/2 - openingWidth/2, position.z));
+                }
+                
+                // Y-Position für Türen vs Fenster
+                if (this.currentTool === 'door') {
+                    // Tür geht bis zum Boden
+                    constrainedY = wallPos.y - wallHeight/2 + openingHeight/2;
+                } else {
+                    // Fenster kann in der Höhe frei bewegt werden
+                    constrainedY = Math.max(wallPos.y - wallHeight/2 + openingHeight/2,
+                                          Math.min(wallPos.y + wallHeight/2 - openingHeight/2, position.y));
+                }
+                
+                bestPosition = new THREE.Vector3(constrainedX, constrainedY, constrainedZ);
+            }
+        });
+        
+        return bestPosition;
     }
 }
 
@@ -1586,3 +1550,92 @@ window.toggleMoveMode = toggleMoveMode;
 window.toggleSnapMode = toggleSnapMode;
 window.deleteSelectedComponent = deleteSelectedComponent;
 window.closePropertiesPanel = closePropertiesPanel;
+
+// Tool-Button Setup
+function setupToolButtons() {
+    const toolButtons = document.querySelectorAll('.tool-btn');
+    toolButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tool = btn.dataset.tool;
+            if (tool && builder3d) {
+                // Alle Buttons deaktivieren
+                toolButtons.forEach(b => b.classList.remove('active'));
+                
+                // Aktuellen Button aktivieren
+                btn.classList.add('active');
+                
+                // Tool setzen
+                builder3d.setTool(tool);
+                
+                // Eigenschaften-Panel für Ghost-Objekt anzeigen wenn Bauteil-Tool gewählt
+                if (tool !== 'select') {
+                    builder3d.showGhostPropertiesPanel(tool);
+                } else {
+                    // Bei "select" Tool Properties Panel nur anzeigen wenn Objekt ausgewählt
+                    if (!builder3d.selectedObject) {
+                        builder3d.hidePropertiesPanel();
+                    }
+                }
+                
+                // Spezielle Aktionen
+                if (tool === 'wall') {
+                    builder3d.addCube(0, 0, 0);
+                } else if (tool === 'clear') {
+                    builder3d.clearScene();
+                }
+            }
+        });
+    });
+}
+
+// Debug-Panel Funktionen
+function toggleDebugPanel() {
+    const panel = document.getElementById('debug-panel');
+    const toggle = document.getElementById('debug-toggle');
+    
+    if (panel && toggle) {
+        const isOpen = panel.classList.contains('open');
+        
+        if (isOpen) {
+            panel.classList.remove('open');
+            toggle.textContent = 'Debug-Log';
+        } else {
+            panel.classList.add('open');
+            toggle.textContent = 'Debug schließen';
+        }
+        
+        debugLog(`Debug-Panel ${isOpen ? 'geschlossen' : 'geöffnet'}`, 'info');
+    }
+}
+
+function clearDebugLog() {
+    const debugContent = document.getElementById('debug-content');
+    if (debugContent) {
+        debugContent.innerHTML = '';
+        debugLog('Debug-Log geleert', 'info');
+    }
+}
+
+// Globale Funktionen
+window.debugLog = debugLog;
+window.toggleDebugPanel = toggleDebugPanel;
+window.clearDebugLog = clearDebugLog;
+
+// Edit Mode Toggle
+function toggleEditMode() {
+    if (builder3d) {
+        builder3d.toggleEditMode();
+        
+        const btn = document.getElementById('edit-mode-btn');
+        
+        if (builder3d.editMode) {
+            btn.classList.add('active');
+            btn.textContent = '✏️ Bearbeiten deaktivieren';
+        } else {
+            btn.classList.remove('active');
+            btn.textContent = '✏️ Bearbeiten aktivieren';
+        }
+    }
+}
+
+window.toggleEditMode = toggleEditMode;

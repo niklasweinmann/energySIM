@@ -1,3 +1,8 @@
+Das Dach soll auch dreidimensional entlang der Kante geschoben werden. 
+
+Das Dach soll auch schräg entlang von Wänden geschoben werden.
+
+Bei der ersten eingabe der Position wird diese noch nicht verändert, erst bei der zweiten eingabe. versuche eine ressourcen
 Das Import und Export Emoji geht nicht mehr, das davor war super und ging. Mache die Seitenleiste etwas kompakter. vorallem leeren Abstände nehmen etwas Platz weg. Du kannst auch alle Abschnitte immer ganz leicht hellgrau hinterlegen, damit man sieht dass es zusammengehört (also zB Gebäude, Neues Bauteil, Bauteil-Übersicht).
 
 Statt Eigenschaften soll beim Ghost und beim normalen Eigenschaftsfenster jetzt der Typ auf deutsch stehen. Dann kann die alte Typ-Box weg.
