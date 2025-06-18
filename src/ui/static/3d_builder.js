@@ -1063,16 +1063,24 @@ class Simple3DBuilder {
         return this.createWandWithLiveLoch(targetWall, type, position, defaults);
     }
     
-    // Erstelle Wand mit Live-Loch-System
+    // Erstelle Wand mit Live-Loch-System (nach Ziel.md Vorbild)
     createWandWithLiveLoch(wall, type, position, defaults) {
-        const wallProps = wall.userData;
+        const wallProps = wall.userData.properties;
         const wallPos = wall.position;
         
-        // Berechne lokale Koordinaten für das Loch
-        const localX = position.x - wallPos.x;
-        const localY = position.y - wallPos.y;
+        // Verwende die aktuelle Ghost-Position für das finale Loch
+        let finalPosition = position;
         
-        // Erstelle Wand-Shape
+        // Falls Ghost vorhanden, verwende dessen Position
+        if (this.ghostObject && this.ghostObject.visible) {
+            finalPosition = this.ghostObject.position.clone();
+        }
+        
+        // Berechne lokale Koordinaten für das Loch (relativ zur Wand)
+        const localX = finalPosition.x - wallPos.x;
+        const localY = finalPosition.y - wallPos.y;
+        
+        // Erstelle Wand-Shape (Basis-Rechteck)
         const wallShape = new THREE.Shape()
             .moveTo(-wallProps.width / 2, -wallProps.height / 2)
             .lineTo(wallProps.width / 2, -wallProps.height / 2)
@@ -1080,7 +1088,7 @@ class Simple3DBuilder {
             .lineTo(-wallProps.width / 2, wallProps.height / 2)
             .lineTo(-wallProps.width / 2, -wallProps.height / 2);
         
-        // Erstelle Loch-Shape (in lokalen Koordinaten)
+        // Erstelle Loch-Shape (lokale Koordinaten)
         const holeShape = new THREE.Path()
             .moveTo(localX - defaults.width / 2, localY - defaults.height / 2)
             .lineTo(localX + defaults.width / 2, localY - defaults.height / 2)
@@ -1088,24 +1096,27 @@ class Simple3DBuilder {
             .lineTo(localX - defaults.width / 2, localY + defaults.height / 2)
             .lineTo(localX - defaults.width / 2, localY - defaults.height / 2);
         
-        // Füge Loch zur Wand hinzu
+        // Füge Loch zur Wand hinzu (Shape mit Holes)
         wallShape.holes = [holeShape];
         
-        // Erstelle neue Geometrie mit echtem Loch
+        // Erstelle finale Geometrie mit echtem Loch
         const newGeometry = new THREE.ExtrudeGeometry(wallShape, {
             depth: wallProps.depth,
             bevelEnabled: false
         });
         
-        // Ersetze Wand-Geometrie
+        // Ersetze Wand-Geometrie dauerhaft
         const oldGeometry = wall.geometry;
         wall.geometry = newGeometry;
         oldGeometry.dispose();
         
-        // Position für das Fenster/die Tür - genau in der Wandmitte
-        const finalPosition = new THREE.Vector3(wallPos.x, wallPos.y, wallPos.z);
+        // Bereinige temporäre originalGeometry
+        if (wall.userData.originalGeometry) {
+            wall.userData.originalGeometry.dispose();
+            delete wall.userData.originalGeometry;
+        }
         
-        // Erstelle das Fenster/die Tür
+        // Erstelle das Fenster/die Tür an der finalen Position
         const openingGeometry = new THREE.BoxGeometry(defaults.width, defaults.height, defaults.depth);
         let color = (type === 'window') ? 0x2196F3 : 0x795548;
         const openingMaterial = new THREE.MeshLambertMaterial({ 
@@ -1115,7 +1126,13 @@ class Simple3DBuilder {
         });
         const opening = new THREE.Mesh(openingGeometry, openingMaterial);
         
+        // Positioniere das Fenster/die Tür an der Ghost-Position
         opening.position.copy(finalPosition);
+        
+        // Richte Rotation aus (optional - falls Ghost rotiert war)
+        if (this.ghostObject && this.ghostObject.visible) {
+            opening.quaternion.copy(this.ghostObject.quaternion);
+        }
         
         const existingComponents = this.getAllComponents().filter(c => c.userData.type === type);
         const defaultName = this.getComponentTypeName(type) + ' ' + (existingComponents.length + 1);
