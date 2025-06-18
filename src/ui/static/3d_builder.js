@@ -57,6 +57,16 @@ class Simple3DBuilder {
         this.dragStart = new THREE.Vector2();
         this.justDragged = false;
         
+        // Ghost-Fenster System für Live-Vorschau
+        this.ghostWindow = null;
+        this.ghostDoor = null;
+        this.currentGhost = null;
+        this.targetWall = null;
+        this.originalWallGeometry = null;
+        this.isGhostDragging = false;
+        this.wallHoles = new Map(); // Speichert Löcher pro Wand
+        this.dragPlane = new THREE.Plane(); // Ebene für Drag-Bewegung
+        
         // Standardwerte für Komponenten
         this.componentDefaults = {
             wall: { width: 300, height: 250, depth: 20, uValue: 0.18 },
@@ -213,6 +223,8 @@ class Simple3DBuilder {
             btn.classList.add('active');
         } else {
             btn.classList.remove('active');
+            // Bereinige Live-Wand-Vorschau beim Beenden des Edit-Modus
+            this.cleanupLiveWallPreview();
             this.clearSelection();
             this.clearGhost();
         }
@@ -227,6 +239,11 @@ class Simple3DBuilder {
     }
     
     setTool(toolType) {
+        // Bereinige vorherige Live-Loch-Vorschau
+        if (this.currentTool === 'window' || this.currentTool === 'door') {
+            this.cleanupLiveWallPreview();
+        }
+        
         this.currentTool = toolType;
         this.clearGhost();
         
@@ -329,11 +346,13 @@ class Simple3DBuilder {
             if (this.raycaster.ray.intersectPlane(plane, intersection)) {
                 let finalPosition = intersection;
                 
-                // Freie Bewegung für Fenster/Türen über Wandflächen
+                // Live-Ghost-Vorschau für Fenster/Türen mit Wandprojektion
                 if (this.currentTool === 'window' || this.currentTool === 'door') {
                     const wallProjection = this.projectToNearestWallSurface(intersection);
                     if (wallProjection) {
-                        finalPosition = wallProjection;
+                        finalPosition = wallProjection.position;
+                        // Aktualisiere Live-Loch-Vorschau
+                        this.updateLiveWallHole(wallProjection.wall, finalPosition);
                     }
                 }
                 // Standard Snap-Modus für andere Bauteile
@@ -412,23 +431,20 @@ class Simple3DBuilder {
     placeComponent(type, position) {
         const defaults = this.componentDefaults[type];
         
-        // Spezialbehandlung für Fenster und Türen - sie schneiden Wände auf
+        // Spezialbehandlung für Fenster und Türen - Live-Loch-System
         if (type === 'window' || type === 'door') {
-            const result = this.cutWallForOpening(type, position, defaults);
+            const result = this.placeOpeningWithLivePreview(type, position, defaults);
             if (result) {
                 this.selectObject(result);
                 this.setTool('select');
                 this.updateComponentOverview();
                 this.needsRender = true;
-                debugLog(`${type} in Wand eingeschnitten`, 'success');
+                debugLog(`${type} mit Live-Loch platziert`, 'success');
                 return;
-            } else {
-                // Fallback: Normale Platzierung wenn keine Wand gefunden
-                debugLog(`Keine Wand gefunden - ${type} wird normal platziert`, 'warning');
             }
         }
         
-        // Standard-Platzierung für alle Bauteile
+        // Standard-Platzierung für alle anderen Bauteile
         const geometry = new THREE.BoxGeometry(defaults.width, defaults.height, defaults.depth);
         
         let color = 0x8BC34A; // Standard grün
@@ -1018,13 +1034,13 @@ class Simple3DBuilder {
         return names[type] || type;
     }
     
-    // Schneide Wand für Fenster/Türen auf (vereinfacht)
-    cutWallForOpening(type, position, defaults) {
+    // Platziere Fenster/Tür mit Live-Loch-Vorschau
+    placeOpeningWithLivePreview(type, position, defaults) {
+        // Finde die nächste Wand
         const walls = this.getAllComponents().filter(obj => obj.userData.type === 'wall');
         let targetWall = null;
         let minDistance = Infinity;
         
-        // Finde die nächste Wand (einfache Distanz-Berechnung)
         walls.forEach(wall => {
             const wallPos = wall.position;
             const distance = Math.sqrt(
@@ -1032,18 +1048,99 @@ class Simple3DBuilder {
                 Math.pow(position.z - wallPos.z, 2)
             );
             
-            if (distance < 200 && distance < minDistance) { // 200cm Reichweite
+            if (distance < 200 && distance < minDistance) {
                 minDistance = distance;
                 targetWall = wall;
             }
         });
         
         if (!targetWall) {
-            return null; // Keine Wand in der Nähe
+            debugLog(`Keine Wand für ${type} gefunden`, 'warning');
+            return null;
         }
         
-        // Erstelle das aufgeschnittene Wand-System
-        return this.createSimpleWallWithOpening(targetWall, type, position, defaults);
+        // Erstelle Wand mit Live-Loch (ExtrudeGeometry + Shape-Holes)
+        return this.createWandWithLiveLoch(targetWall, type, position, defaults);
+    }
+    
+    // Erstelle Wand mit Live-Loch-System
+    createWandWithLiveLoch(wall, type, position, defaults) {
+        const wallProps = wall.userData;
+        const wallPos = wall.position;
+        
+        // Berechne lokale Koordinaten für das Loch
+        const localX = position.x - wallPos.x;
+        const localY = position.y - wallPos.y;
+        
+        // Erstelle Wand-Shape
+        const wallShape = new THREE.Shape()
+            .moveTo(-wallProps.width / 2, -wallProps.height / 2)
+            .lineTo(wallProps.width / 2, -wallProps.height / 2)
+            .lineTo(wallProps.width / 2, wallProps.height / 2)
+            .lineTo(-wallProps.width / 2, wallProps.height / 2)
+            .lineTo(-wallProps.width / 2, -wallProps.height / 2);
+        
+        // Erstelle Loch-Shape (in lokalen Koordinaten)
+        const holeShape = new THREE.Path()
+            .moveTo(localX - defaults.width / 2, localY - defaults.height / 2)
+            .lineTo(localX + defaults.width / 2, localY - defaults.height / 2)
+            .lineTo(localX + defaults.width / 2, localY + defaults.height / 2)
+            .lineTo(localX - defaults.width / 2, localY + defaults.height / 2)
+            .lineTo(localX - defaults.width / 2, localY - defaults.height / 2);
+        
+        // Füge Loch zur Wand hinzu
+        wallShape.holes = [holeShape];
+        
+        // Erstelle neue Geometrie mit echtem Loch
+        const newGeometry = new THREE.ExtrudeGeometry(wallShape, {
+            depth: wallProps.depth,
+            bevelEnabled: false
+        });
+        
+        // Ersetze Wand-Geometrie
+        const oldGeometry = wall.geometry;
+        wall.geometry = newGeometry;
+        oldGeometry.dispose();
+        
+        // Position für das Fenster/die Tür - genau in der Wandmitte
+        const finalPosition = new THREE.Vector3(wallPos.x, wallPos.y, wallPos.z);
+        
+        // Erstelle das Fenster/die Tür
+        const openingGeometry = new THREE.BoxGeometry(defaults.width, defaults.height, defaults.depth);
+        let color = (type === 'window') ? 0x2196F3 : 0x795548;
+        const openingMaterial = new THREE.MeshLambertMaterial({ 
+            color, 
+            transparent: true, 
+            opacity: 0.8 
+        });
+        const opening = new THREE.Mesh(openingGeometry, openingMaterial);
+        
+        opening.position.copy(finalPosition);
+        
+        const existingComponents = this.getAllComponents().filter(c => c.userData.type === type);
+        const defaultName = this.getComponentTypeName(type) + ' ' + (existingComponents.length + 1);
+        
+        opening.userData = {
+            isComponent: true,
+            type: type,
+            name: defaultName,
+            originalColor: color,
+            parentWall: wall,
+            properties: {
+                width: defaults.width,
+                height: defaults.height,
+                depth: defaults.depth,
+                uValue: defaults.uValue,
+                position: { x: finalPosition.x, y: finalPosition.y, z: finalPosition.z },
+                rotation: { x: 0, y: 0, z: 0 }
+            }
+        };
+        
+        this.scene.add(opening);
+        
+        debugLog(`${type} mit echtem Loch in Wand erstellt`, 'success');
+        
+        return opening;
     }
     
     // Echtes Wand-Ausschneiden mit Loch
@@ -1378,115 +1475,118 @@ class Simple3DBuilder {
         return bestPosition;
     }
     
-    projectToNearestWallSurface(mousePosition) {
+    // Projiziere Position auf nächste Wandfläche (für Ghost-Vorschau)
+    projectToNearestWallSurface(position) {
         const walls = this.getAllComponents().filter(obj => obj.userData.type === 'wall');
-        let nearestWall = null;
+        if (walls.length === 0) return null;
+        
+        // Verwende Raycasting um nächste Wand zu finden
+        const directions = [
+            new THREE.Vector3(0, 0, 1),   // Vorne
+            new THREE.Vector3(0, 0, -1),  // Hinten
+            new THREE.Vector3(1, 0, 0),   // Rechts
+            new THREE.Vector3(-1, 0, 0)   // Links
+        ];
+        
+        let closestWall = null;
         let minDistance = Infinity;
         let bestPosition = null;
         
-        walls.forEach(wall => {
-            const wallPos = wall.position;
-            const wallWidth = wall.userData.properties.width;
-            const wallHeight = wall.userData.properties.height;
-            const wallDepth = wall.userData.properties.depth;
+        directions.forEach(direction => {
+            const raycaster = new THREE.Raycaster(position, direction);
+            const intersects = raycaster.intersectObjects(walls);
             
-            // Berechne Distanz zur Wand (2D)
-            const distance = Math.sqrt(
-                Math.pow(mousePosition.x - wallPos.x, 2) + 
-                Math.pow(mousePosition.z - wallPos.z, 2)
-            );
-            
-            if (distance < 400 && distance < minDistance) { // 400cm Reichweite
-                minDistance = distance;
-                nearestWall = wall;
-                
-                // Bestimme die vier Wandflächen
-                const surfaces = [
-                    { 
-                        x: wallPos.x, 
-                        z: wallPos.z + wallDepth/2, 
-                        normal: 'north',
-                        minX: wallPos.x - wallWidth/2,
-                        maxX: wallPos.x + wallWidth/2
-                    },
-                    { 
-                        x: wallPos.x, 
-                        z: wallPos.z - wallDepth/2, 
-                        normal: 'south',
-                        minX: wallPos.x - wallWidth/2,
-                        maxX: wallPos.x + wallWidth/2
-                    },
-                    { 
-                        x: wallPos.x + wallWidth/2, 
-                        z: wallPos.z, 
-                        normal: 'east',
-                        minZ: wallPos.z - wallDepth/2,
-                        maxZ: wallPos.z + wallDepth/2
-                    },
-                    { 
-                        x: wallPos.x - wallWidth/2, 
-                        z: wallPos.z, 
-                        normal: 'west',
-                        minZ: wallPos.z - wallDepth/2,
-                        maxZ: wallPos.z + wallDepth/2
-                    }
-                ];
-                
-                // Finde die nächste Wandfläche
-                let closestSurface = null;
-                let minSurfaceDistance = Infinity;
-                
-                surfaces.forEach(surface => {
-                    const surfaceDistance = Math.sqrt(
-                        Math.pow(mousePosition.x - surface.x, 2) + 
-                        Math.pow(mousePosition.z - surface.z, 2)
-                    );
-                    if (surfaceDistance < minSurfaceDistance) {
-                        minSurfaceDistance = surfaceDistance;
-                        closestSurface = surface;
-                    }
-                });
-                
-                if (closestSurface) {
-                    const openingWidth = this.componentDefaults[this.currentTool].width;
-                    const openingHeight = this.componentDefaults[this.currentTool].height;
-                    
-                    let projectedX, projectedZ, projectedY;
-                    
-                    if (closestSurface.normal === 'north' || closestSurface.normal === 'south') {
-                        // Nord/Süd-Wand - Mouse X wird auf Wandlänge projiziert
-                        projectedZ = closestSurface.z;
-                        projectedX = Math.max(
-                            closestSurface.minX + openingWidth/2,
-                            Math.min(closestSurface.maxX - openingWidth/2, mousePosition.x)
-                        );
-                    } else {
-                        // Ost/West-Wand - Mouse Z wird auf Wandlänge projiziert  
-                        projectedX = closestSurface.x;
-                        projectedZ = Math.max(
-                            closestSurface.minZ + openingWidth/2,
-                            Math.min(closestSurface.maxZ - openingWidth/2, mousePosition.z)
-                        );
-                    }
-                    
-                    // Y-Position je nach Bauteil-Typ
-                    if (this.currentTool === 'door') {
-                        // Tür auf Boden
-                        projectedY = wallPos.y - wallHeight/2 + openingHeight/2;
-                    } else {
-                        // Fenster - folgt Mouse Y mit Begrenzung auf Wandhöhe
-                        projectedY = Math.max(
-                            wallPos.y - wallHeight/2 + openingHeight/2,
-                            Math.min(wallPos.y + wallHeight/2 - openingHeight/2, mousePosition.y)
-                        );
-                    }
-                    
-                    bestPosition = new THREE.Vector3(projectedX, projectedY, projectedZ);
+            if (intersects.length > 0) {
+                const hit = intersects[0];
+                if (hit.distance < minDistance) {
+                    minDistance = hit.distance;
+                    closestWall = hit.object;
+                    // Positioniere leicht vor der Wandoberfläche
+                    bestPosition = hit.point.clone().add(hit.face.normal.multiplyScalar(2));
                 }
             }
         });
         
-        return bestPosition;
+        if (closestWall && bestPosition) {
+            return {
+                wall: closestWall,
+                position: bestPosition
+            };
+        }
+        
+        return null;
+    }
+    
+    // Aktualisiere Live-Loch-Vorschau in Wand
+    updateLiveWallHole(wall, ghostPosition) {
+        if (!wall || !this.ghostObject) return;
+        
+        const wallProps = wall.userData.properties;
+        const wallPos = wall.position;
+        const ghostData = this.componentDefaults[this.currentTool];
+        
+        // Speichere ursprüngliche Geometrie beim ersten Mal
+        if (!wall.userData.originalGeometry) {
+            wall.userData.originalGeometry = wall.geometry.clone();
+        }
+        
+        // Berechne lokale Koordinaten für das Loch
+        const localX = ghostPosition.x - wallPos.x;
+        const localY = ghostPosition.y - wallPos.y;
+        
+        // Erstelle Wand-Shape
+        const wallShape = new THREE.Shape()
+            .moveTo(-wallProps.width / 2, -wallProps.height / 2)
+            .lineTo(wallProps.width / 2, -wallProps.height / 2)
+            .lineTo(wallProps.width / 2, wallProps.height / 2)
+            .lineTo(-wallProps.width / 2, wallProps.height / 2)
+            .lineTo(-wallProps.width / 2, -wallProps.height / 2);
+        
+        // Erstelle Loch-Shape
+        const holeShape = new THREE.Path()
+            .moveTo(localX - ghostData.width / 2, localY - ghostData.height / 2)
+            .lineTo(localX + ghostData.width / 2, localY - ghostData.height / 2)
+            .lineTo(localX + ghostData.width / 2, localY + ghostData.height / 2)
+            .lineTo(localX - ghostData.width / 2, localY + ghostData.height / 2)
+            .lineTo(localX - ghostData.width / 2, localY - ghostData.height / 2);
+        
+        // Füge Loch zur Wand hinzu
+        wallShape.holes = [holeShape];
+        
+        // Erstelle neue Geometrie mit Live-Loch
+        const newGeometry = new THREE.ExtrudeGeometry(wallShape, {
+            depth: wallProps.depth,
+            bevelEnabled: false
+        });
+        
+        // Ersetze Wand-Geometrie temporär
+        const oldGeometry = wall.geometry;
+        wall.geometry = newGeometry;
+        oldGeometry.dispose();
+        
+        debugLog('Live-Loch-Vorschau aktualisiert', 'info');
+    }
+    
+    // Stelle ursprüngliche Wand-Geometrie wieder her
+    restoreLiveWallGeometry(wall) {
+        if (wall && wall.userData.originalGeometry) {
+            const oldGeometry = wall.geometry;
+            wall.geometry = wall.userData.originalGeometry.clone();
+            oldGeometry.dispose();
+            debugLog('Wand-Geometrie wiederhergestellt', 'info');
+        }
+    }
+    
+    // Bereinige Live-Wand-Vorschau
+    cleanupLiveWallPreview() {
+        const walls = this.getAllComponents().filter(obj => obj.userData.type === 'wall');
+        walls.forEach(wall => {
+            if (wall.userData.originalGeometry) {
+                this.restoreLiveWallGeometry(wall);
+                delete wall.userData.originalGeometry;
+            }
+        });
+        debugLog('Live-Wand-Vorschau bereinigt', 'info');
     }
 }
 
