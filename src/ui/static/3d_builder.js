@@ -1143,137 +1143,6 @@ class Simple3DBuilder {
         return opening;
     }
     
-    // Echtes Wand-Ausschneiden mit Loch
-    createSimpleWallWithOpening(wall, type, position, defaults) {
-        const wallPos = wall.position;
-        const wallGeometry = wall.geometry;
-        const wallMaterial = wall.material;
-        
-        // Bestimme Wandabmessungen
-        const wallWidth = wall.userData.properties.width;
-        const wallHeight = wall.userData.properties.height;
-        const wallDepth = wall.userData.properties.depth;
-        
-        // Position für das Fenster/die Tür - genau in der Wandmitte
-        const finalPosition = new THREE.Vector3(wallPos.x, wallPos.y, wallPos.z);
-        
-        // Entferne die alte Wand
-        this.scene.remove(wall);
-        wall.geometry.dispose();
-        wall.material.dispose();
-        
-        // Erstelle neue Wand mit Aussparung
-        this.createWallWithHole(wallPos, wallWidth, wallHeight, wallDepth, 
-                               defaults.width, defaults.height, wallMaterial.color.getHex());
-        
-        // Erstelle das Fenster/die Tür
-        const openingGeometry = new THREE.BoxGeometry(defaults.width, defaults.height, defaults.depth);
-        let color = (type === 'window') ? 0x2196F3 : 0x795548;
-        const openingMaterial = new THREE.MeshLambertMaterial({ color, transparent: true, opacity: 0.8 });
-        const opening = new THREE.Mesh(openingGeometry, openingMaterial);
-        
-        opening.position.copy(finalPosition);
-        
-        const existingComponents = this.getAllComponents().filter(c => c.userData.type === type);
-        const defaultName = this.getComponentTypeName(type) + ' ' + (existingComponents.length + 1);
-        
-        opening.userData = {
-            isComponent: true,
-            type: type,
-            name: defaultName,
-            originalColor: color,
-            properties: {
-                width: defaults.width,
-                height: defaults.height,
-                depth: defaults.depth,
-                uValue: defaults.uValue,
-                position: { x: finalPosition.x, y: finalPosition.y, z: finalPosition.z },
-                rotation: { x: 0, y: 0, z: 0 }
-            }
-        };
-        
-        this.scene.add(opening);
-        
-        debugLog(`${type} mit Loch in Wand erstellt`, 'success');
-        
-        return opening;
-    }
-    
-    // Erstelle Wand mit echtem Loch in der Mitte
-    createWallWithHole(wallPos, wallWidth, wallHeight, wallDepth, openingWidth, openingHeight, wallColor) {
-        // Berechne Segmente um das zentrale Loch
-        const leftWidth = (wallWidth - openingWidth) / 2;
-        const rightWidth = leftWidth;
-        const topHeight = (wallHeight - openingHeight) / 2;
-        const bottomHeight = topHeight;
-        
-        // Linker Teil
-        if (leftWidth > 10) {
-            this.createWallSegment(
-                wallPos.x - wallWidth/2 + leftWidth/2,
-                wallPos.y,
-                wallPos.z,
-                leftWidth, wallHeight, wallDepth, wallColor
-            );
-        }
-        
-        // Rechter Teil
-        if (rightWidth > 10) {
-            this.createWallSegment(
-                wallPos.x + wallWidth/2 - rightWidth/2,
-                wallPos.y,
-                wallPos.z,
-                rightWidth, wallHeight, wallDepth, wallColor
-            );
-        }
-        
-        // Oberer Teil
-        if (topHeight > 10) {
-            this.createWallSegment(
-                wallPos.x,
-                wallPos.y + wallHeight/2 - topHeight/2,
-                wallPos.z,
-                openingWidth, topHeight, wallDepth, wallColor
-            );
-        }
-        
-        // Unterer Teil (nur bei Fenstern, Türen gehen bis zum Boden)
-        if (bottomHeight > 10) {
-            this.createWallSegment(
-                wallPos.x,
-                wallPos.y - wallHeight/2 + bottomHeight/2,
-                wallPos.z,
-                openingWidth, bottomHeight, wallDepth, wallColor
-            );
-        }
-    }
-    
-    // Erstelle Wandsegment
-    createWallSegment(x, y, z, width, height, depth, color) {
-        const geometry = new THREE.BoxGeometry(width, height, depth);
-        const material = new THREE.MeshLambertMaterial({ color });
-        const segment = new THREE.Mesh(geometry, material);
-        
-        segment.position.set(x, y, z);
-        segment.userData = {
-            isComponent: true,
-            type: 'wall',
-            name: 'Wandsegment',
-            originalColor: color,
-            properties: {
-                width: width,
-                height: height,
-                depth: depth,
-                uValue: 0.3,
-                position: { x: x, y: y, z: z },
-                rotation: { x: 0, y: 0, z: 0 }
-            }
-        };
-        
-        this.scene.add(segment);
-        return segment;
-    }
-    
     // Einfache Constraint-Funktion für Fenster/Türen
     constrainToParentWall(position, opening) {
         if (!opening.userData.parentWall) return null;
@@ -1696,6 +1565,80 @@ function clearDebugLog() {
     }
 }
 
+// Hamburger-Menü und Tab-Funktionen
+function toggleHamburgerMenu() {
+    const menuContent = document.getElementById('hamburger-menu-content');
+    if (menuContent) {
+        menuContent.classList.toggle('show');
+    }
+}
+
+function switchTab(tabName) {
+    // Verstecke alle Tab-Inhalte
+    const allTabs = document.querySelectorAll('.tab-content');
+    allTabs.forEach(tab => {
+        tab.style.display = 'none';
+        tab.classList.remove('active');
+    });
+    
+    // Zeige ausgewählten Tab
+    const selectedTab = document.getElementById(`tab-${tabName}`);
+    if (selectedTab) {
+        selectedTab.style.display = 'block';
+        selectedTab.classList.add('active');
+    }
+    
+    // Aktualisiere Tab-Buttons
+    const allTabItems = document.querySelectorAll('.tab-item');
+    allTabItems.forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    const selectedTabItem = document.querySelector(`[data-tab="${tabName}"]`);
+    if (selectedTabItem) {
+        selectedTabItem.classList.add('active');
+    }
+    
+    // Schließe Hamburger-Menü
+    const menuContent = document.getElementById('hamburger-menu-content');
+    if (menuContent) {
+        menuContent.classList.remove('show');
+    }
+    
+    debugLog(`Tab gewechselt zu: ${tabName}`, 'info');
+}
+
+function toggleComponentGroup(groupName) {
+    const group = document.getElementById(`${groupName}-group`);
+    if (group) {
+        group.classList.toggle('expanded');
+    }
+}
+
+// Gebäude-Management-Funktionen
+function importBuilding() {
+    debugLog('Import-Funktion noch nicht implementiert', 'warn');
+}
+
+function exportBuilding() {
+    debugLog('Export-Funktion noch nicht implementiert', 'warn');
+}
+
+function clearBuilding() {
+    if (builder3d && confirm('Möchten Sie wirklich alle Bauteile löschen?')) {
+        builder3d.clearAll();
+        debugLog('Gebäude gelöscht', 'success');
+    }
+}
+
+// Globale Funktionen verfügbar machen
+window.toggleHamburgerMenu = toggleHamburgerMenu;
+window.switchTab = switchTab;
+window.toggleComponentGroup = toggleComponentGroup;
+window.importBuilding = importBuilding;
+window.exportBuilding = exportBuilding;
+window.clearBuilding = clearBuilding;
+
 // Globale Funktionen
 window.debugLog = debugLog;
 window.toggleDebugPanel = toggleDebugPanel;
@@ -1710,10 +1653,8 @@ function toggleEditMode() {
         
         if (builder3d.editMode) {
             btn.classList.add('active');
-            btn.textContent = '✏️ Bearbeiten deaktivieren';
         } else {
             btn.classList.remove('active');
-            btn.textContent = '✏️ Bearbeiten aktivieren';
         }
     }
 }
@@ -1721,13 +1662,6 @@ function toggleEditMode() {
 window.toggleEditMode = toggleEditMode;
 
 // Globale Funktionen für Properties-Panel
-// Globale Funktionen
-function toggleEditMode() {
-    if (builder3d) {
-        builder3d.toggleEditMode();
-    }
-}
-
 function toggleMoveMode() {
     if (builder3d && builder3d.selectedObject) {
         builder3d.toggleMoveMode();
@@ -1826,26 +1760,76 @@ function clearDebugLog() {
     }
 }
 
-// Globale Funktionen
-window.debugLog = debugLog;
-window.toggleDebugPanel = toggleDebugPanel;
-window.clearDebugLog = clearDebugLog;
-
-// Edit Mode Toggle
-function toggleEditMode() {
-    if (builder3d) {
-        builder3d.toggleEditMode();
-        
-        const btn = document.getElementById('edit-mode-btn');
-        
-        if (builder3d.editMode) {
-            btn.classList.add('active');
-            btn.textContent = '✏️ Bearbeiten deaktivieren';
-        } else {
-            btn.classList.remove('active');
-            btn.textContent = '✏️ Bearbeiten aktivieren';
-        }
+// Hamburger-Menü und Tab-Funktionen
+function toggleHamburgerMenu() {
+    const menuContent = document.getElementById('hamburger-menu-content');
+    if (menuContent) {
+        menuContent.classList.toggle('show');
     }
 }
 
-window.toggleEditMode = toggleEditMode;
+function switchTab(tabName) {
+    // Verstecke alle Tab-Inhalte
+    const allTabs = document.querySelectorAll('.tab-content');
+    allTabs.forEach(tab => {
+        tab.style.display = 'none';
+        tab.classList.remove('active');
+    });
+    
+    // Zeige ausgewählten Tab
+    const selectedTab = document.getElementById(`tab-${tabName}`);
+    if (selectedTab) {
+        selectedTab.style.display = 'block';
+        selectedTab.classList.add('active');
+    }
+    
+    // Aktualisiere Tab-Buttons
+    const allTabItems = document.querySelectorAll('.tab-item');
+    allTabItems.forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    const selectedTabItem = document.querySelector(`[data-tab="${tabName}"]`);
+    if (selectedTabItem) {
+        selectedTabItem.classList.add('active');
+    }
+    
+    // Schließe Hamburger-Menü
+    const menuContent = document.getElementById('hamburger-menu-content');
+    if (menuContent) {
+        menuContent.classList.remove('show');
+    }
+    
+    debugLog(`Tab gewechselt zu: ${tabName}`, 'info');
+}
+
+function toggleComponentGroup(groupName) {
+    const group = document.getElementById(`${groupName}-group`);
+    if (group) {
+        group.classList.toggle('expanded');
+    }
+}
+
+// Gebäude-Management-Funktionen
+function importBuilding() {
+    debugLog('Import-Funktion noch nicht implementiert', 'warn');
+}
+
+function exportBuilding() {
+    debugLog('Export-Funktion noch nicht implementiert', 'warn');
+}
+
+function clearBuilding() {
+    if (builder3d && confirm('Möchten Sie wirklich alle Bauteile löschen?')) {
+        builder3d.clearAll();
+        debugLog('Gebäude gelöscht', 'success');
+    }
+}
+
+// Globale Funktionen verfügbar machen
+window.toggleHamburgerMenu = toggleHamburgerMenu;
+window.switchTab = switchTab;
+window.toggleComponentGroup = toggleComponentGroup;
+window.importBuilding = importBuilding;
+window.exportBuilding = exportBuilding;
+window.clearBuilding = clearBuilding;
