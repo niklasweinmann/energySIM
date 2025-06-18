@@ -48,6 +48,7 @@ class Simple3DBuilder {
         this.editMode = false;
         this.selectedObject = null;
         this.ghostObject = null;
+        this.currentPreviewWall = null; // Aktuelle Wand für Live-Vorschau
         this.isDragging = false;
         this.moveMode = false;
         this.snapMode = true; // Standardmäßig aktiviert
@@ -229,6 +230,7 @@ class Simple3DBuilder {
     setTool(toolType) {
         this.currentTool = toolType;
         this.clearGhost();
+        this.clearWallCutPreview(); // Bereinige Live-Vorschau
         
         if (this.editMode && toolType !== 'select') {
             this.createGhost(toolType);
@@ -322,18 +324,44 @@ class Simple3DBuilder {
             // Ghost-Objekt an Mausposition bewegen
             this.raycaster.setFromCamera(this.mouse, this.camera);
             
-            // Schnitt mit Grundebene (y=0)
-            const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-            const intersection = new THREE.Vector3();
+            // Schnitt mit verschiedenen Ebenen je nach Tool
+            let intersection = new THREE.Vector3();
             
-            if (this.raycaster.ray.intersectPlane(plane, intersection)) {
+            if (this.currentTool === 'window' || this.currentTool === 'door') {
+                // Für Fenster/Türen: Schnitt mit allen möglichen Wandflächen
+                const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+                let found = false;
+                
+                for (let intersect of intersects) {
+                    if (intersect.object.userData.type === 'wall') {
+                        intersection = intersect.point;
+                        found = true;
+                        break;
+                    }
+                }
+                
+                // Fallback: Schnitt mit Grundebene
+                if (!found) {
+                    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+                    this.raycaster.ray.intersectPlane(plane, intersection);
+                }
+            } else {
+                // Für andere Tools: Schnitt mit Grundebene
+                const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+                this.raycaster.ray.intersectPlane(plane, intersection);
+            }
+            
+            if (intersection) {
                 let finalPosition = intersection;
                 
-                // Spezial-Snap für Fenster/Türen - immer zur nächsten Wand
+                // Spezial-Snap für Fenster/Türen - freie Positionierung auf Wandfläche
                 if (this.currentTool === 'window' || this.currentTool === 'door') {
                     const wallSnap = this.findNearestWallPosition(intersection);
                     if (wallSnap) {
                         finalPosition = wallSnap;
+                        
+                        // Live-Ausschneiden: Zeige Vorschau des Lochs
+                        this.showWallCutPreview(finalPosition);
                     }
                 }
                 // Standard Snap-Modus für andere Bauteile
@@ -342,7 +370,12 @@ class Simple3DBuilder {
                 }
                 
                 this.ghostObject.position.copy(finalPosition);
-                this.ghostObject.position.y += this.componentDefaults[this.currentTool].height / 2;
+                
+                // Nur für Non-Wand-Tools die Y-Position anpassen
+                if (this.currentTool !== 'window' && this.currentTool !== 'door') {
+                    this.ghostObject.position.y += this.componentDefaults[this.currentTool].height / 2;
+                }
+                
                 this.ghostObject.visible = true;
                 this.needsRender = true;
             }
@@ -901,6 +934,202 @@ class Simple3DBuilder {
         debugLog(`Ghost ${toolType} Eigenschaften aktualisiert`, 'info');
     }
     
+    // Live-Ausschnitt-Vorschau für Fenster/Türen
+    showWallCutPreview(position) {
+        // Finde die Zielwand
+        const targetWall = this.findWallAtPosition(position);
+        if (!targetWall) {
+            this.clearWallCutPreview();
+            return;
+        }
+        
+        // Prüfe ob sich die Wand geändert hat
+        if (this.currentPreviewWall && this.currentPreviewWall !== targetWall) {
+            this.clearWallCutPreview();
+        }
+        
+        // Erstelle temporäre Vorschau der ausgeschnittenen Wand
+        if (!this.currentPreviewWall || this.currentPreviewWall !== targetWall) {
+            this.createWallCutPreview(targetWall, position);
+            this.currentPreviewWall = targetWall;
+        } else {
+            // Update nur die Vorschau-Position wenn es die gleiche Wand ist
+            this.updateWallCutPreview(targetWall, position);
+        }
+    }
+    
+    clearWallCutPreview() {
+        // Entferne alle Vorschau-Objekte
+        const previewObjects = this.scene.children.filter(obj => obj.userData.isPreview);
+        previewObjects.forEach(obj => {
+            this.scene.remove(obj);
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) obj.material.dispose();
+        });
+        
+        // Mache alle Wände wieder sichtbar
+        const walls = this.getAllComponents().filter(obj => obj.userData.type === 'wall');
+        walls.forEach(wall => {
+            wall.visible = true;
+        });
+        
+        // Reset der aktuellen Vorschau-Wand
+        this.currentPreviewWall = null;
+    }
+    
+    updateWallCutPreview(wall, position) {
+        // Entferne nur die aktuellen Vorschau-Segmente
+        const previewObjects = this.scene.children.filter(obj => obj.userData.isPreview);
+        previewObjects.forEach(obj => {
+            this.scene.remove(obj);
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) obj.material.dispose();
+        });
+        
+        // Erstelle neue Vorschau-Segmente an der neuen Position
+        const wallPos = wall.position;
+        const wallWidth = wall.userData.properties.width;
+        const wallHeight = wall.userData.properties.height;
+        const wallDepth = wall.userData.properties.depth;
+        const wallColor = wall.material.color.getHex();
+        
+        const openingWidth = this.componentDefaults[this.currentTool].width;
+        const openingHeight = this.componentDefaults[this.currentTool].height;
+        
+        // Erstelle neue Wandsegmente mit Loch an der aktuellen Position
+        this.createWallWithHoleAtPosition(wallPos, wallWidth, wallHeight, wallDepth, 
+                                         position, openingWidth, openingHeight, wallColor, true);
+    }
+    
+    findWallAtPosition(position) {
+        const walls = this.getAllComponents().filter(obj => obj.userData.type === 'wall');
+        let targetWall = null;
+        let minDistance = Infinity;
+        
+        walls.forEach(wall => {
+            const wallPos = wall.position;
+            const distance = Math.sqrt(
+                Math.pow(position.x - wallPos.x, 2) + 
+                Math.pow(position.z - wallPos.z, 2)
+            );
+            
+            if (distance < 200 && distance < minDistance) {
+                minDistance = distance;
+                targetWall = wall;
+            }
+        });
+        
+        return targetWall;
+    }
+    
+    createWallCutPreview(wall, position) {
+        const wallPos = wall.position;
+        const wallWidth = wall.userData.properties.width;
+        const wallHeight = wall.userData.properties.height;
+        const wallDepth = wall.userData.properties.depth;
+        const wallColor = wall.material.color.getHex();
+        
+        const openingWidth = this.componentDefaults[this.currentTool].width;
+        const openingHeight = this.componentDefaults[this.currentTool].height;
+        
+        // Verstecke die originale Wand temporär
+        wall.visible = false;
+        
+        // Erstelle Vorschau der Wandsegmente mit Loch an der Ghost-Position
+        this.createWallWithHoleAtPosition(wallPos, wallWidth, wallHeight, wallDepth, 
+                                         position, openingWidth, openingHeight, wallColor, true);
+    }
+    
+    createWallWithHoleAtPosition(wallPos, wallWidth, wallHeight, wallDepth, 
+                                openingPos, openingWidth, openingHeight, wallColor, isPreview = false) {
+        // Berechne relative Position des Lochs zur Wand
+        const relativeX = openingPos.x - wallPos.x;
+        const relativeY = openingPos.y - wallPos.y;
+        
+        // Erstelle Wandsegmente um das Loch herum
+        const segments = this.calculateWallSegments(wallPos, wallWidth, wallHeight, wallDepth,
+                                                   relativeX, relativeY, openingWidth, openingHeight);
+        
+        segments.forEach(segment => {
+            const segmentGeometry = new THREE.BoxGeometry(segment.width, segment.height, segment.depth);
+            const segmentMaterial = new THREE.MeshLambertMaterial({ 
+                color: wallColor,
+                transparent: isPreview,
+                opacity: isPreview ? 0.7 : 1.0
+            });
+            const segmentMesh = new THREE.Mesh(segmentGeometry, segmentMaterial);
+            
+            segmentMesh.position.set(segment.x, segment.y, segment.z);
+            segmentMesh.userData = {
+                isComponent: !isPreview,
+                isPreview: isPreview,
+                type: 'wall_segment',
+                originalWall: !isPreview
+            };
+            
+            this.scene.add(segmentMesh);
+        });
+    }
+    
+    calculateWallSegments(wallPos, wallWidth, wallHeight, wallDepth, 
+                         relativeX, relativeY, openingWidth, openingHeight) {
+        const segments = [];
+        
+        // Linker Teil
+        const leftWidth = (wallWidth / 2) + relativeX - (openingWidth / 2);
+        if (leftWidth > 10) {
+            segments.push({
+                x: wallPos.x - wallWidth/2 + leftWidth/2,
+                y: wallPos.y,
+                z: wallPos.z,
+                width: leftWidth,
+                height: wallHeight,
+                depth: wallDepth
+            });
+        }
+        
+        // Rechter Teil
+        const rightWidth = (wallWidth / 2) - relativeX - (openingWidth / 2);
+        if (rightWidth > 10) {
+            segments.push({
+                x: wallPos.x + wallWidth/2 - rightWidth/2,
+                y: wallPos.y,
+                z: wallPos.z,
+                width: rightWidth,
+                height: wallHeight,
+                depth: wallDepth
+            });
+        }
+        
+        // Oberer Teil
+        const topHeight = (wallHeight / 2) - relativeY - (openingHeight / 2);
+        if (topHeight > 10) {
+            segments.push({
+                x: wallPos.x + relativeX,
+                y: wallPos.y + wallHeight/2 - topHeight/2,
+                z: wallPos.z,
+                width: openingWidth,
+                height: topHeight,
+                depth: wallDepth
+            });
+        }
+        
+        // Unterer Teil  
+        const bottomHeight = (wallHeight / 2) + relativeY - (openingHeight / 2);
+        if (bottomHeight > 10) {
+            segments.push({
+                x: wallPos.x + relativeX,
+                y: wallPos.y - wallHeight/2 + bottomHeight/2,
+                z: wallPos.z,
+                width: openingWidth,
+                height: bottomHeight,
+                depth: wallDepth
+            });
+        }
+        
+        return segments;
+    }
+
     // Building Management
     getAllComponents() {
         if (!this.scene) return [];
@@ -1058,17 +1287,18 @@ class Simple3DBuilder {
         const wallHeight = wall.userData.properties.height;
         const wallDepth = wall.userData.properties.depth;
         
-        // Position für das Fenster/die Tür - genau in der Wandmitte
-        const finalPosition = new THREE.Vector3(wallPos.x, wallPos.y, wallPos.z);
+        // Position für das Fenster/die Tür - verwende die exakte Ghost-Position
+        const finalPosition = position.clone();
         
         // Entferne die alte Wand
         this.scene.remove(wall);
         wall.geometry.dispose();
         wall.material.dispose();
         
-        // Erstelle neue Wand mit Aussparung
-        this.createWallWithHole(wallPos, wallWidth, wallHeight, wallDepth, 
-                               defaults.width, defaults.height, wallMaterial.color.getHex());
+        // Erstelle neue Wand mit Aussparung an der exakten Position
+        this.createWallWithHoleAtPosition(wallPos, wallWidth, wallHeight, wallDepth, 
+                                        position, defaults.width, defaults.height, 
+                                        wallMaterial.color.getHex(), false);
         
         // Erstelle das Fenster/die Tür
         const openingGeometry = new THREE.BoxGeometry(defaults.width, defaults.height, defaults.depth);
@@ -1342,34 +1572,46 @@ class Simple3DBuilder {
                     }
                 });
                 
-                // Freie Bewegung über die Wandfläche mit Begrenzung
+                // Freie Bewegung über die Wandfläche - folgt der Mausposition
                 const openingWidth = this.componentDefaults[this.currentTool].width;
                 const openingHeight = this.componentDefaults[this.currentTool].height;
+                const minOverlap = 10; // Mindestens 10cm Überlappung
                 
                 let constrainedX = position.x;
                 let constrainedZ = position.z;
                 let constrainedY = position.y;
                 
                 if (closestSurface.normal === 'north' || closestSurface.normal === 'south') {
-                    // Nord/Süd-Wand - X kann frei bewegt werden, Z ist fixiert
+                    // Nord/Süd-Wand - X kann frei bewegt werden, Z ist fixiert auf Wandfläche
                     constrainedZ = closestSurface.z;
-                    constrainedX = Math.max(wallPos.x - wallWidth/2 + openingWidth/2,
-                                          Math.min(wallPos.x + wallWidth/2 - openingWidth/2, position.x));
+                    
+                    // Freie X-Bewegung - folgt der Maus, mit weichen Begrenzungen
+                    const leftLimit = wallPos.x - wallWidth/2 + minOverlap;
+                    const rightLimit = wallPos.x + wallWidth/2 - minOverlap;
+                    constrainedX = Math.max(leftLimit, Math.min(rightLimit, position.x));
+                    
                 } else {
-                    // Ost/West-Wand - Z kann frei bewegt werden, X ist fixiert
+                    // Ost/West-Wand - Z kann frei bewegt werden, X ist fixiert auf Wandfläche
                     constrainedX = closestSurface.x;
-                    constrainedZ = Math.max(wallPos.z - wallDepth/2 + openingWidth/2,
-                                          Math.min(wallPos.z + wallDepth/2 - openingWidth/2, position.z));
+                    
+                    // Freie Z-Bewegung - folgt der Maus, mit weichen Begrenzungen
+                    const frontLimit = wallPos.z - wallDepth/2 + minOverlap;
+                    const backLimit = wallPos.z + wallDepth/2 - minOverlap;
+                    constrainedZ = Math.max(frontLimit, Math.min(backLimit, position.z));
                 }
                 
-                // Y-Position für Türen vs Fenster
+                // Y-Position - freie Bewegung entsprechend der Mausposition
                 if (this.currentTool === 'door') {
-                    // Tür geht bis zum Boden
+                    // Tür steht immer auf dem Boden
                     constrainedY = wallPos.y - wallHeight/2 + openingHeight/2;
                 } else {
-                    // Fenster kann in der Höhe frei bewegt werden
-                    constrainedY = Math.max(wallPos.y - wallHeight/2 + openingHeight/2,
-                                          Math.min(wallPos.y + wallHeight/2 - openingHeight/2, position.y));
+                    // Fenster folgt der Maus-Y-Position in der Wand
+                    const bottomLimit = wallPos.y - wallHeight/2 + openingHeight/2 + minOverlap;
+                    const topLimit = wallPos.y + wallHeight/2 - openingHeight/2 - minOverlap;
+                    
+                    // Verwende die ursprüngliche Y-Position vom Raycaster (nicht die begrenzte)
+                    const mouseY = position.y;
+                    constrainedY = Math.max(bottomLimit, Math.min(topLimit, mouseY));
                 }
                 
                 bestPosition = new THREE.Vector3(constrainedX, constrainedY, constrainedZ);
