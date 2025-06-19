@@ -73,15 +73,6 @@ def kill_port_processes(port):
         print(f"   ⚠️ Fehler beim Prüfen von Port {port}: {e}")
     return False
 
-def is_port_free(port):
-    """Prüft ob ein Port frei ist"""
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(('127.0.0.1', port))
-            return True
-    except OSError:
-        return False
-
 def check_port_status(port):
     """Prüft detailliert den Status eines Ports"""
     try:

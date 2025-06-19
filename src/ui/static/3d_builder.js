@@ -27,7 +27,9 @@ function debugLog(message, type = 'info') {
         // Limitiere Einträge auf 50
         const entries = debugContent.querySelectorAll('.debug-log-entry');
         if (entries.length > 50) {
-            entries[0].remove();
+            for (let i = 0; i < entries.length - 50; i++) {
+                entries[i].remove();
+            }
         }
     }
 }
@@ -1019,7 +1021,7 @@ class Simple3DBuilder {
                 moveBtn.classList.remove('active');
             }
             // Text bleibt konstant
-            moveBtn.innerHTML = '� Verschieben';
+            moveBtn.innerHTML = '📍 Verschieben';
         }
     }
     
@@ -1569,108 +1571,35 @@ function clearDebugLog() {
 function toggleHamburgerMenu() {
     const menuContent = document.getElementById('hamburger-menu-content');
     if (menuContent) {
-        menuContent.classList.toggle('show');
+        const isOpen = menuContent.style.display === 'block';
+        
+        menuContent.style.display = isOpen ? 'none' : 'block';
+        
+        debugLog(`Hamburger-Menü ${isOpen ? 'geschlossen' : 'geöffnet'}`, 'info');
     }
 }
 
 function switchTab(tabName) {
-    // Verstecke alle Tab-Inhalte
-    const allTabs = document.querySelectorAll('.tab-content');
-    allTabs.forEach(tab => {
-        tab.style.display = 'none';
-        tab.classList.remove('active');
+    const tabs = document.querySelectorAll('.tab-content');
+    tabs.forEach(tab => {
+        tab.style.display = tab.dataset.tab === tabName ? 'block' : 'none';
     });
     
-    // Zeige ausgewählten Tab
-    const selectedTab = document.getElementById(`tab-${tabName}`);
-    if (selectedTab) {
-        selectedTab.style.display = 'block';
-        selectedTab.classList.add('active');
-    }
-    
-    // Aktualisiere Tab-Buttons
-    const allTabItems = document.querySelectorAll('.tab-item');
-    allTabItems.forEach(item => {
-        item.classList.remove('active');
-    });
-    
-    const selectedTabItem = document.querySelector(`[data-tab="${tabName}"]`);
-    if (selectedTabItem) {
-        selectedTabItem.classList.add('active');
-    }
-    
-    // Schließe Hamburger-Menü
-    const menuContent = document.getElementById('hamburger-menu-content');
-    if (menuContent) {
-        menuContent.classList.remove('show');
-    }
-    
-    debugLog(`Tab gewechselt zu: ${tabName}`, 'info');
-}
-
-function toggleComponentGroup(groupName) {
-    const group = document.getElementById(`${groupName}-group`);
-    if (group) {
-        group.classList.toggle('expanded');
-    }
-}
-
-// Gebäude-Management-Funktionen
-function importBuilding() {
-    debugLog('Import-Funktion noch nicht implementiert', 'warn');
-}
-
-function exportBuilding() {
-    debugLog('Export-Funktion noch nicht implementiert', 'warn');
-}
-
-function clearBuilding() {
-    if (builder3d && confirm('Möchten Sie wirklich alle Bauteile löschen?')) {
-        builder3d.clearAll();
-        debugLog('Gebäude gelöscht', 'success');
-    }
-}
-
-// Globale Funktionen verfügbar machen
-window.toggleHamburgerMenu = toggleHamburgerMenu;
-window.switchTab = switchTab;
-window.toggleComponentGroup = toggleComponentGroup;
-window.importBuilding = importBuilding;
-window.exportBuilding = exportBuilding;
-window.clearBuilding = clearBuilding;
-
-// Globale Funktionen
-window.debugLog = debugLog;
-window.toggleDebugPanel = toggleDebugPanel;
-window.clearDebugLog = clearDebugLog;
-
-// Edit Mode Toggle
-function toggleEditMode() {
-    if (builder3d) {
-        builder3d.toggleEditMode();
-        
-        const btn = document.getElementById('edit-mode-btn');
-        
-        if (builder3d.editMode) {
+    const tabButtons = document.querySelectorAll('.tab-button');
+    tabButtons.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.tab === tabName) {
             btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
         }
-    }
+    });
+    
+    debugLog(`Wechsel zu Tab: ${tabName}`, 'info');
 }
 
-window.toggleEditMode = toggleEditMode;
-
-// Globale Funktionen für Properties-Panel
+// Globale Funktionen für HTML-Buttons
 function toggleMoveMode() {
-    if (builder3d && builder3d.selectedObject) {
-        builder3d.toggleMoveMode();
-    }
-}
-
-function deleteSelectedComponent() {
     if (builder3d) {
-        builder3d.deleteSelected();
+        builder3d.toggleMoveMode();
     }
 }
 
@@ -1680,156 +1609,28 @@ function toggleSnapMode() {
     }
 }
 
-// Close Properties Panel
-function closePropertiesPanel() {
+function clearScene() {
     if (builder3d) {
-        builder3d.hidePropertiesPanel();
-        builder3d.clearSelection();
+        builder3d.clearScene();
     }
 }
 
-// Globale Funktionen verfügbar machen
-window.toggleEditMode = toggleEditMode;
-window.toggleMoveMode = toggleMoveMode;
-window.toggleSnapMode = toggleSnapMode;
-window.deleteSelectedComponent = deleteSelectedComponent;
-window.closePropertiesPanel = closePropertiesPanel;
-
-// Tool-Button Setup
-function setupToolButtons() {
-    const toolButtons = document.querySelectorAll('.tool-btn');
-    toolButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const tool = btn.dataset.tool;
-            if (tool && builder3d) {
-                // Alle Buttons deaktivieren
-                toolButtons.forEach(b => b.classList.remove('active'));
-                
-                // Aktuellen Button aktivieren
-                btn.classList.add('active');
-                
-                // Tool setzen
-                builder3d.setTool(tool);
-                
-                // Eigenschaften-Panel für Ghost-Objekt anzeigen wenn Bauteil-Tool gewählt
-                if (tool !== 'select') {
-                    builder3d.showGhostPropertiesPanel(tool);
-                } else {
-                    // Bei "select" Tool Properties Panel nur anzeigen wenn Objekt ausgewählt
-                    if (!builder3d.selectedObject) {
-                        builder3d.hidePropertiesPanel();
-                    }
-                }
-                
-                // Spezielle Aktionen
-                if (tool === 'wall') {
-                    builder3d.addCube(0, 0, 0);
-                } else if (tool === 'clear') {
-                    builder3d.clearScene();
-                }
-            }
-        });
-    });
-}
-
-// Debug-Panel Funktionen
-function toggleDebugPanel() {
-    const panel = document.getElementById('debug-panel');
-    const toggle = document.getElementById('debug-toggle');
-    
-    if (panel && toggle) {
-        const isOpen = panel.classList.contains('open');
-        
-        if (isOpen) {
-            panel.classList.remove('open');
-            toggle.textContent = 'Debug-Log';
-        } else {
-            panel.classList.add('open');
-            toggle.textContent = 'Debug schließen';
-        }
-        
-        debugLog(`Debug-Panel ${isOpen ? 'geschlossen' : 'geöffnet'}`, 'info');
+function deleteSelectedComponent() {
+    if (builder3d) {
+        builder3d.deleteSelected();
     }
 }
 
-function clearDebugLog() {
-    const debugContent = document.getElementById('debug-content');
-    if (debugContent) {
-        debugContent.innerHTML = '';
-        debugLog('Debug-Log geleert', 'info');
-    }
-}
+// Initialisierung
+defineGlobalFunctions();
 
-// Hamburger-Menü und Tab-Funktionen
-function toggleHamburgerMenu() {
-    const menuContent = document.getElementById('hamburger-menu-content');
-    if (menuContent) {
-        menuContent.classList.toggle('show');
-    }
+function defineGlobalFunctions() {
+    window.toggleEditMode = function() {
+        if (builder3d) builder3d.toggleEditMode();
+    };
+    window.toggleMoveMode = toggleMoveMode;
+    window.toggleSnapMode = toggleSnapMode;
+    window.clearScene = clearScene;
+    window.deleteSelectedComponent = deleteSelectedComponent;
 }
-
-function switchTab(tabName) {
-    // Verstecke alle Tab-Inhalte
-    const allTabs = document.querySelectorAll('.tab-content');
-    allTabs.forEach(tab => {
-        tab.style.display = 'none';
-        tab.classList.remove('active');
-    });
-    
-    // Zeige ausgewählten Tab
-    const selectedTab = document.getElementById(`tab-${tabName}`);
-    if (selectedTab) {
-        selectedTab.style.display = 'block';
-        selectedTab.classList.add('active');
-    }
-    
-    // Aktualisiere Tab-Buttons
-    const allTabItems = document.querySelectorAll('.tab-item');
-    allTabItems.forEach(item => {
-        item.classList.remove('active');
-    });
-    
-    const selectedTabItem = document.querySelector(`[data-tab="${tabName}"]`);
-    if (selectedTabItem) {
-        selectedTabItem.classList.add('active');
-    }
-    
-    // Schließe Hamburger-Menü
-    const menuContent = document.getElementById('hamburger-menu-content');
-    if (menuContent) {
-        menuContent.classList.remove('show');
-    }
-    
-    debugLog(`Tab gewechselt zu: ${tabName}`, 'info');
-}
-
-function toggleComponentGroup(groupName) {
-    const group = document.getElementById(`${groupName}-group`);
-    if (group) {
-        group.classList.toggle('expanded');
-    }
-}
-
-// Gebäude-Management-Funktionen
-function importBuilding() {
-    debugLog('Import-Funktion noch nicht implementiert', 'warn');
-}
-
-function exportBuilding() {
-    debugLog('Export-Funktion noch nicht implementiert', 'warn');
-}
-
-function clearBuilding() {
-    if (builder3d && confirm('Möchten Sie wirklich alle Bauteile löschen?')) {
-        builder3d.clearAll();
-        debugLog('Gebäude gelöscht', 'success');
-    }
-}
-
-// Globale Funktionen verfügbar machen
-window.toggleHamburgerMenu = toggleHamburgerMenu;
-window.switchTab = switchTab;
-window.toggleComponentGroup = toggleComponentGroup;
-window.importBuilding = importBuilding;
-window.exportBuilding = exportBuilding;
-window.clearBuilding = clearBuilding;
+//# sourceMappingURL=builder3d.js.map

@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>energyOS - 3D-Gebäudemodellierung</title>
-    
     <!-- Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r127/three.min.js"></script>
     <script>
@@ -352,7 +351,6 @@
             THREE.OrbitControls.prototype.constructor = THREE.OrbitControls;
         })();
     </script>
-    
     <style>
         * {
             margin: 0;
@@ -1191,10 +1189,10 @@
                             
                             <div class="building-action-row">
                                 <button class="building-btn" onclick="importBuilding()">
-                                    � Import
+                                    📥 Import
                                 </button>
                                 <button class="building-btn" onclick="exportBuilding()">
-                                    � Export
+                                    📤 Export
                                 </button>
                             </div>
                         </div>
@@ -1214,54 +1212,41 @@
                     <div class="component-overview">
                         <h3>📋 Bauteil-Übersicht</h3>
                         <div id="component-list" class="component-list">
+                            <!-- Dynamische Komponenten-Gruppen -->
                             <div class="component-group">
                                 <div class="component-group-header" onclick="toggleComponentGroup('walls')">
                                     <span>🧱 Wände</span>
                                     <span class="component-count" id="walls-count">0</span>
                                 </div>
-                                <div id="walls-group" class="component-group-content">
-                                    <!-- Wände werden hier dynamisch hinzugefügt -->
-                                </div>
+                                <div id="walls-group" class="component-group-content"></div>
                             </div>
-                            
                             <div class="component-group">
                                 <div class="component-group-header" onclick="toggleComponentGroup('doors')">
                                     <span>🚪 Türen</span>
                                     <span class="component-count" id="doors-count">0</span>
                                 </div>
-                                <div id="doors-group" class="component-group-content">
-                                    <!-- Türen werden hier dynamisch hinzugefügt -->
-                                </div>
+                                <div id="doors-group" class="component-group-content"></div>
                             </div>
-                            
                             <div class="component-group">
                                 <div class="component-group-header" onclick="toggleComponentGroup('windows')">
                                     <span>🪟 Fenster</span>
                                     <span class="component-count" id="windows-count">0</span>
                                 </div>
-                                <div id="windows-group" class="component-group-content">
-                                    <!-- Fenster werden hier dynamisch hinzugefügt -->
-                                </div>
+                                <div id="windows-group" class="component-group-content"></div>
                             </div>
-                            
                             <div class="component-group">
                                 <div class="component-group-header" onclick="toggleComponentGroup('roofs')">
                                     <span>🏠 Dächer</span>
                                     <span class="component-count" id="roofs-count">0</span>
                                 </div>
-                                <div id="roofs-group" class="component-group-content">
-                                    <!-- Dächer werden hier dynamisch hinzugefügt -->
-                                </div>
+                                <div id="roofs-group" class="component-group-content"></div>
                             </div>
-                            
                             <div class="component-group">
                                 <div class="component-group-header" onclick="toggleComponentGroup('floors')">
                                     <span>🟫 Böden</span>
                                     <span class="component-count" id="floors-count">0</span>
                                 </div>
-                                <div id="floors-group" class="component-group-content">
-                                    <!-- Böden werden hier dynamisch hinzugefügt -->
-                                </div>
+                                <div id="floors-group" class="component-group-content"></div>
                             </div>
                         </div>
                     </div>
@@ -1429,13 +1414,7 @@
     
     <!-- Debug Panel -->
     <div id="debug-panel" class="debug-panel">
-        <div class="debug-header">
-            <span>Debug-Log</span>
-            <div class="debug-controls">
-                <button class="debug-btn" onclick="clearDebugLog()">Clear</button>
-                <button class="debug-btn" onclick="toggleDebugPanel()">×</button>
-            </div>
-        </div>
+        <div class="debug-header"></div>
         <div id="debug-content" class="debug-content"></div>
     </div>
     
@@ -1447,331 +1426,6 @@
         energyOS 3D-Builder | Bereit
     </div>
     
-    <!-- Sidebar JavaScript -->
-    <script>
-        let currentTab = 'building';
-        
-        function toggleHamburgerMenu() {
-            const menu = document.getElementById('hamburger-menu-content');
-            menu.classList.toggle('show');
-        }
-        
-        function switchTab(tabName) {
-            // Deactivate edit mode when switching tabs
-            if (typeof editMode !== 'undefined' && editMode) {
-                toggleEditMode();
-            }
-            
-            // Update edit button visual state
-            const editBtn = document.getElementById('edit-mode-btn');
-            if (editBtn) {
-                editBtn.classList.remove('active');
-                editBtn.textContent = '✏️ Bearbeiten aktivieren';
-            }
-            
-            // Hide current tab content
-            const currentTabContent = document.getElementById(`tab-${currentTab}`);
-            if (currentTabContent) {
-                currentTabContent.style.display = 'none';
-            }
-            
-            // Remove active class from current tab item
-            const currentTabItem = document.querySelector(`.tab-item[data-tab="${currentTab}"]`);
-            if (currentTabItem) {
-                currentTabItem.classList.remove('active');
-            }
-            
-            // Show new tab content
-            const newTabContent = document.getElementById(`tab-${tabName}`);
-            if (newTabContent) {
-                newTabContent.style.display = 'block';
-            }
-            
-            // Add active class to new tab item
-            const newTabItem = document.querySelector(`.tab-item[data-tab="${tabName}"]`);
-            if (newTabItem) {
-                newTabItem.classList.add('active');
-            }
-            
-            // Update current tab
-            currentTab = tabName;
-            
-            // Hide hamburger menu
-            const menu = document.getElementById('hamburger-menu-content');
-            menu.classList.remove('show');
-            
-            // Update status bar
-            const statusBar = document.querySelector('.status-bar');
-            const tabNames = {
-                'building': 'Gebäude',
-                'pv': 'PV-Anlage',
-                'inverter': 'Wechselrichter',
-                'battery': 'Batteriespeicher',
-                'simulation': 'Simulation',
-                'results': 'Ergebnisse'
-            };
-            statusBar.textContent = `energySIM | ${tabNames[tabName]}`;
-        }
-        
-        // Close hamburger menu when clicking outside
-        document.addEventListener('click', function(event) {
-            const menu = document.getElementById('hamburger-menu-content');
-            const hamburgerBtn = document.querySelector('.hamburger-btn');
-            
-            if (!menu.contains(event.target) && !hamburgerBtn.contains(event.target)) {
-                menu.classList.remove('show');
-            }
-        });
-        
-        // Update range input displays
-        document.addEventListener('DOMContentLoaded', function() {
-            // PV tilt angle
-            const pvTilt = document.getElementById('pv-tilt');
-            const pvTiltValue = document.getElementById('pv-tilt-value');
-            if (pvTilt && pvTiltValue) {
-                pvTilt.addEventListener('input', function() {
-                    pvTiltValue.textContent = this.value + '°';
-                });
-            }
-            
-            // Inverter efficiency
-            const inverterEff = document.getElementById('inverter-efficiency');
-            const inverterEffValue = document.getElementById('inverter-efficiency-value');
-            if (inverterEff && inverterEffValue) {
-                inverterEff.addEventListener('input', function() {
-                    inverterEffValue.textContent = this.value + '%';
-                });
-            }
-            
-            // Battery depth of discharge
-            const batteryDod = document.getElementById('battery-dod');
-            const batteryDodValue = document.getElementById('battery-dod-value');
-            if (batteryDod && batteryDodValue) {
-                batteryDod.addEventListener('input', function() {
-                    batteryDodValue.textContent = this.value + '%';
-                });
-            }
-        });
-        
-        // Building Management Functions
-        function importBuilding() {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.json';
-            input.onchange = function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        try {
-                            const buildingData = JSON.parse(e.target.result);
-                            if (builder3d) {
-                                builder3d.importBuilding(buildingData);
-                                alert('Gebäude erfolgreich importiert!');
-                            }
-                        } catch (error) {
-                            alert('Fehler beim Importieren: ' + error.message);
-                        }
-                    };
-                    reader.readAsText(file);
-                }
-            };
-            input.click();
-        }
-        
-        function exportBuilding() {
-            if (builder3d) {
-                const buildingData = builder3d.exportBuilding();
-                const dataStr = JSON.stringify(buildingData, null, 2);
-                const dataBlob = new Blob([dataStr], {type: 'application/json'});
-                
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(dataBlob);
-                link.download = `building_${new Date().toISOString().slice(0,10)}.json`;
-                link.click();
-                
-                alert('Gebäude erfolgreich exportiert!');
-            }
-        }
-        
-        function clearBuilding() {
-            if (confirm('Möchten Sie wirklich das gesamte Gebäude löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
-                if (builder3d) {
-                    builder3d.clearAll();
-                    alert('Gebäude wurde gelöscht.');
-                }
-            }
-        }
-
-        // Placeholder functions for simulation and export
-        function runSimulation() {
-            alert('Simulation wird gestartet... (Funktion noch nicht implementiert)');
-        }
-        
-        function exportResults() {
-            alert('Ergebnisse werden exportiert... (Funktion noch nicht implementiert)');
-        }
-        
-        // Component Overview Functions
-        function toggleComponentGroup(groupType) {
-            const groupContent = document.getElementById(`${groupType}-group`);
-            const groupHeader = document.querySelector(`[onclick="toggleComponentGroup('${groupType}')"]`);
-            
-            if (groupContent && groupHeader) {
-                groupContent.classList.toggle('expanded');
-                groupHeader.classList.toggle('collapsed');
-            }
-        }
-        
-        function updateComponentOverview() {
-            if (!builder3d) {
-                // Initialize empty counts
-                const groups = ['walls', 'doors', 'windows', 'roofs', 'floors'];
-                groups.forEach(groupType => {
-                    const countElement = document.getElementById(`${groupType}-count`);
-                    const groupContent = document.getElementById(`${groupType}-group`);
-                    
-                    if (countElement) {
-                        countElement.textContent = '0';
-                    }
-                    
-                    if (groupContent) {
-                        groupContent.innerHTML = '<div class="component-empty">Keine Bauteile vorhanden</div>';
-                    }
-                });
-                return;
-            }
-            
-            // Get components from builder3d (if method exists)
-            const components = builder3d.getAllComponents ? builder3d.getAllComponents() : [];
-            const groups = {
-                walls: components.filter(c => c.userData && c.userData.type === 'wall'),
-                doors: components.filter(c => c.userData && c.userData.type === 'door'),
-                windows: components.filter(c => c.userData && c.userData.type === 'window'),
-                roofs: components.filter(c => c.userData && c.userData.type === 'roof'),
-                floors: components.filter(c => c.userData && c.userData.type === 'floor')
-            };
-            
-            // Update counts and content for each group
-            Object.keys(groups).forEach(groupType => {
-                const countElement = document.getElementById(`${groupType}-count`);
-                const groupContent = document.getElementById(`${groupType}-group`);
-                
-                if (countElement) {
-                    countElement.textContent = groups[groupType].length;
-                }
-                
-                if (groupContent) {
-                    groupContent.innerHTML = '';
-                    
-                    if (groups[groupType].length === 0) {
-                        groupContent.innerHTML = '<div class="component-empty">Keine Bauteile vorhanden</div>';
-                    } else {
-                        groups[groupType].forEach((component, index) => {
-                            const itemElement = document.createElement('div');
-                            itemElement.className = 'component-item';
-                            itemElement.onclick = () => selectComponent(component);
-                            
-                            const componentType = component.userData ? component.userData.type : 'unknown';
-                            const emoji = getComponentTypeEmoji(componentType);
-                            const typeName = getComponentTypeName(componentType);
-                            const name = (component.userData && component.userData.name) || `${typeName} ${index + 1}`;
-                            
-                            itemElement.innerHTML = `
-                                <span class="component-item-name">${emoji} ${name}</span>
-                            `;
-                            
-                            groupContent.appendChild(itemElement);
-                        });
-                    }
-                }
-            });
-        }
-        
-        function selectComponent(component) {
-            if (builder3d && builder3d.selectComponentById) {
-                builder3d.selectComponentById(component.id);
-                
-                // Visual feedback
-                document.querySelectorAll('.component-item').forEach(item => {
-                    item.classList.remove('selected');
-                });
-                
-                if (event && event.target) {
-                    const targetItem = event.target.closest('.component-item');
-                    if (targetItem) {
-                        targetItem.classList.add('selected');
-                    }
-                }
-            } else if (builder3d && builder3d.selectObject) {
-                // Fallback: direkte Objektauswahl
-                builder3d.selectObject(component);
-                
-                // Visual feedback
-                document.querySelectorAll('.component-item').forEach(item => {
-                    item.classList.remove('selected');
-                });
-                
-                if (event && event.target) {
-                    const targetItem = event.target.closest('.component-item');
-                    if (targetItem) {
-                        targetItem.classList.add('selected');
-                    }
-                }
-            }
-        }
-        
-        function getComponentTypeEmoji(type) {
-            const emojis = {
-                wall: '🧱',
-                door: '🚪',
-                window: '🪟',
-                roof: '🏠',
-                floor: '🟫'
-            };
-            return emojis[type] || '⚪';
-        }
-        
-        function getComponentTypeName(type) {
-            const names = {
-                wall: 'Wand',
-                door: 'Tür',
-                window: 'Fenster',
-                roof: 'Dach',
-                floor: 'Boden'
-            };
-            return names[type] || type;
-        }
-        
-        // Initialize component overview on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Initializing component overview...');
-            
-            // Set initial state - all groups collapsed
-            const groups = ['walls', 'doors', 'windows', 'roofs', 'floors'];
-            groups.forEach(groupType => {
-                const groupHeader = document.querySelector(`[onclick="toggleComponentGroup('${groupType}')"]`);
-                const groupContent = document.getElementById(`${groupType}-group`);
-                
-                if (groupHeader) {
-                    groupHeader.classList.add('collapsed');
-                    console.log(`Set ${groupType} header to collapsed`);
-                }
-                
-                if (groupContent) {
-                    groupContent.classList.remove('expanded');
-                    console.log(`Set ${groupType} content to hidden`);
-                }
-            });
-            
-            // Update component overview after a short delay
-            setTimeout(() => {
-                console.log('Updating component overview...');
-                updateComponentOverview();
-            }, 100);
-        });
-    </script>
-
     <!-- 3D Builder Script -->
     <script src="{{ url_for('static', filename='3d_builder.js') }}"></script>
 </body>
