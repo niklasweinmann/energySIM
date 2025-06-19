@@ -291,19 +291,17 @@ class Simple3DBuilder {
     
     createGhost(toolType) {
         this.clearGhost();
-        
         const defaults = this.componentDefaults[toolType];
         const geometry = new THREE.BoxGeometry(defaults.width, defaults.height, defaults.depth);
+        geometry.translate(defaults.width / 2, defaults.height / 2, defaults.depth / 2);
         const material = new THREE.MeshLambertMaterial({ 
             color: 0x4CAF50, 
             transparent: true, 
             opacity: 0.3 
         });
-        
         this.ghostObject = new THREE.Mesh(geometry, material);
         this.ghostObject.visible = false;
         this.scene.add(this.ghostObject);
-        
         debugLog(`Ghost-Objekt für ${toolType} erstellt`, 'info');
     }
     
@@ -336,35 +334,31 @@ class Simple3DBuilder {
     
     onMouseMove(event) {
         this.updateMousePosition(event);
-        
         if (this.editMode && this.ghostObject && this.currentTool !== 'select') {
             // Ghost-Objekt an Mausposition bewegen
             this.raycaster.setFromCamera(this.mouse, this.camera);
-            
             // Schnitt mit Grundebene (y=0)
             const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
             const intersection = new THREE.Vector3();
-            
             if (this.raycaster.ray.intersectPlane(plane, intersection)) {
                 let finalPosition = intersection;
-                
                 // Live-Ghost-Vorschau für Fenster/Türen mit Wandprojektion
                 if (this.currentTool === 'window' || this.currentTool === 'door') {
                     const wallProjection = this.projectToNearestWallSurface(intersection);
                     if (wallProjection) {
                         finalPosition = wallProjection.position;
-                        // Aktualisiere Live-Loch-Vorschau
                         this.updateLiveWallHole(wallProjection.wall, finalPosition);
                     }
-                }
-                // Standard Snap-Modus für andere Bauteile
-                else if (this.snapMode) {
+                } else if (this.snapMode) {
                     finalPosition = this.snapToNearestWall(intersection, this.currentTool);
                 }
-                
                 this.ghostObject.position.copy(finalPosition);
+                // Ghost-Objekt immer sichtbar im Platzierungsmodus
                 this.ghostObject.visible = true;
                 this.needsRender = true;
+            } else {
+                // Ghost ausblenden, wenn keine gültige Position
+                this.ghostObject.visible = false;
             }
         }
         
@@ -424,46 +418,28 @@ class Simple3DBuilder {
             } else {
                 this.clearSelection();
             }
-        } else if (this.editMode && this.ghostObject && this.ghostObject.visible) {
-            // Neues Objekt platzieren (nur im EditMode)
+        } else if (this.editMode && this.ghostObject) {
+            // Neues Objekt platzieren (nur im EditMode, Ghost muss existieren)
             this.placeComponent(this.currentTool, this.ghostObject.position.clone());
         }
     }
     
     placeComponent(type, position) {
         const defaults = this.componentDefaults[type];
-        
-        // Spezialbehandlung für Fenster und Türen - Live-Loch-System
-        if (type === 'window' || type === 'door') {
-            const result = this.placeOpeningWithLivePreview(type, position, defaults);
-            if (result) {
-                this.selectObject(result);
-                this.setTool('select');
-                this.updateComponentOverview();
-                this.needsRender = true;
-                debugLog(`${type} mit Live-Loch platziert`, 'success');
-                return;
-            }
-        }
-        
-        // Standard-Platzierung für alle anderen Bauteile
+        // Geometrie so verschieben, dass Ursprung in der unteren linken Ecke liegt
         const geometry = new THREE.BoxGeometry(defaults.width, defaults.height, defaults.depth);
-        
+        geometry.translate(defaults.width / 2, defaults.height / 2, defaults.depth / 2);
         let color = 0x8BC34A; // Standard grün
         if (type === 'door') color = 0x795548;
         else if (type === 'window') color = 0x2196F3;
         else if (type === 'roof') color = 0x9E9E9E;
         else if (type === 'floor') color = 0x607D8B;
-        
         const material = new THREE.MeshLambertMaterial({ color });
         const component = new THREE.Mesh(geometry, material);
-        
-        component.position.copy(position);
-        
+        component.position.copy(position); // Position ist jetzt wirklich die untere linke Ecke
         // Generiere einen Standard-Namen basierend auf Typ und Anzahl
         const existingComponents = this.getAllComponents().filter(c => c.userData.type === type);
         const defaultName = this.getComponentTypeName(type) + ' ' + (existingComponents.length + 1);
-        
         component.userData = {
             isComponent: true,
             type: type,
@@ -478,14 +454,13 @@ class Simple3DBuilder {
                 rotation: { x: 0, y: 0, z: 0 }
             }
         };
-        
         this.scene.add(component);
         this.selectObject(component);
-        
+        // Nach Platzierung: Ghost entfernen und auf Auswahl-Tool zurückschalten
+        this.clearGhost();
         this.setTool('select');
         this.updateComponentOverview();
         this.needsRender = true;
-        
         debugLog(`${type} bei (${Math.round(position.x)}, ${Math.round(position.y)}, ${Math.round(position.z)}) platziert`, 'success');
     }
     
@@ -781,7 +756,7 @@ class Simple3DBuilder {
         }
         
         // Position und Rotation setzen
-        this.selectedObject.position.set(posX, posY + height/2, posZ);
+        this.selectedObject.position.set(posX, posY, posZ);
         this.selectedObject.rotation.set(rotX, rotY, rotZ);
         
         // Properties aktualisieren
@@ -805,7 +780,7 @@ class Simple3DBuilder {
         
         // Position aus 3D-Objekt aktualisieren
         props.position.x = Math.round(this.selectedObject.position.x);
-        props.position.y = Math.round(this.selectedObject.position.y - props.height/2);
+        props.position.y = Math.round(this.selectedObject.position.y);
         props.position.z = Math.round(this.selectedObject.position.z);
         
         // Rotation aus 3D-Objekt aktualisieren
