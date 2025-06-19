@@ -147,6 +147,7 @@ class Simple3DBuilder {
         this.controls.minDistance = 100;
         this.controls.maxDistance = 5000;
         this.controls.maxPolarAngle = Math.PI / 2;
+        this.controls.rotateSpeed = 0.12;  // Standard: 1.0, sehr wenig
         
         // Nur rendern wenn sich etwas ändert
         this.controls.addEventListener('change', () => {
