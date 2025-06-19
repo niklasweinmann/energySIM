@@ -305,6 +305,13 @@ class Simple3DBuilder {
         });
         this.ghostObject = new THREE.Mesh(geometry, material);
         this.ghostObject.visible = false;
+        // userData IMMER initialisieren
+        this.ghostObject.userData = {
+            isGhost: true,
+            type: toolType,
+            properties: { ...defaults },
+            name: ''
+        };
         this.scene.add(this.ghostObject);
         debugLog(`Ghost-Objekt für ${toolType} erstellt`, 'info');
     }
@@ -358,6 +365,17 @@ class Simple3DBuilder {
                     finalPosition = this.snapToNearestWall(intersection, this.currentTool);
                 } else if (this.currentTool === 'wall') {
                     finalPosition = intersection;
+                }
+                // Snap für alle Bauteile, wenn snapMode aktiv (z.B. auch Fenster, Türen, Dach, Boden)
+                else if (this.snapMode) {
+                    // Snap für Dach
+                    if (this.currentTool === 'roof') {
+                        finalPosition = this.snapAndGlideToWallTops(intersection, this.getAllComponents(), 100, 150) || intersection;
+                    }
+                    // Snap für Boden
+                    else if (this.currentTool === 'floor') {
+                        finalPosition = this.snapAndGlideToWallBottoms(intersection, this.getAllComponents(), 100, 150) || intersection;
+                    }
                 }
                 this.ghostObject.position.copy(finalPosition);
                 this.ghostObject.visible = true;
@@ -624,20 +642,32 @@ class Simple3DBuilder {
     }
     
     showPropertiesPanel() {
-        // Zeige Eigenschaften für Ghost-Objekt, falls vorhanden und kein moveMode
+        // Debug: Logge, welches Objekt das Panel auslöst
         let obj = this.selectedObject;
         if (this.ghostObject && this.currentTool !== 'select' && !this.moveMode) {
             obj = this.ghostObject;
+            debugLog('Eigenschaften-Panel für Ghost-Objekt getriggert', 'info');
+            debugLog(JSON.stringify(obj.userData), 'info');
             obj.userData = obj.userData || { isGhost: true, type: this.currentTool, properties: { ...this.componentDefaults[this.currentTool] } };
+        } else {
+            debugLog('Eigenschaften-Panel für selectedObject getriggert', 'info');
         }
-        if (!obj) return;
+        if (!obj) {
+            debugLog('showPropertiesPanel: Kein Objekt gefunden!', 'warn');
+            return;
+        }
         const panel = document.getElementById('properties-panel');
         const content = document.getElementById('properties-content');
-        if (!panel || !content) return;
-        const props = obj.userData.properties;
-        const type = obj.userData.type;
-        const defaults = this.componentDefaults[type];
-        const componentName = obj.userData.name || '';
+        if (!panel || !content) {
+            debugLog('showPropertiesPanel: Panel oder Content nicht gefunden!', 'error');
+            return;
+        }
+        // Panel immer öffnen
+        panel.classList.add('open');
+        const props = obj.userData.properties || {};
+        const type = obj.userData.type || '';
+        const defaults = this.componentDefaults[type] || {};
+        const componentName = obj.userData.name ?? '';
         content.innerHTML = `
             <div class="property-group">
                 <div class="property-label">Name</div>
@@ -650,21 +680,21 @@ class Simple3DBuilder {
             <div class="property-group">
                 <div class="property-label">Abmessungen (cm)</div>
                 <div class="property-row">
-                    <input type="number" class="property-input" id="prop-width" value="${props.width}" placeholder="Breite">
-                    <input type="number" class="property-input" id="prop-height" value="${props.height}" placeholder="Höhe">
-                    <input type="number" class="property-input" id="prop-depth" value="${props.depth}" placeholder="Tiefe">
+                    <input type="number" class="property-input" id="prop-width" value="${props.width ?? defaults.width ?? ''}" placeholder="Breite">
+                    <input type="number" class="property-input" id="prop-height" value="${props.height ?? defaults.height ?? ''}" placeholder="Höhe">
+                    <input type="number" class="property-input" id="prop-depth" value="${props.depth ?? defaults.depth ?? ''}" placeholder="Tiefe">
                 </div>
             </div>
             <div class="property-group">
                 <div class="property-label">U-Wert (W/m²K)</div>
-                <input type="number" class="property-input" id="prop-uvalue" value="${props.uValue}" step="0.01" placeholder="U-Wert">
+                <input type="number" class="property-input" id="prop-uvalue" value="${props.uValue ?? defaults.uValue ?? ''}" step="0.01" placeholder="U-Wert">
             </div>
             <div class="property-group">
                 <div class="property-label">Position (cm)</div>
                 <div class="property-row">
-                    <input type="number" class="property-input" id="prop-pos-x" value="${Math.round(props.position?.x || 0)}" placeholder="X">
-                    <input type="number" class="property-input" id="prop-pos-y" value="${Math.round(props.position?.y || 0)}" placeholder="Y">
-                    <input type="number" class="property-input" id="prop-pos-z" value="${Math.round(props.position?.z || 0)}" placeholder="Z">
+                    <input type="number" class="property-input" id="prop-pos-x" value="${Math.round(props.position?.x ?? 0)}" placeholder="X">
+                    <input type="number" class="property-input" id="prop-pos-y" value="${Math.round(props.position?.y ?? 0)}" placeholder="Y">
+                    <input type="number" class="property-input" id="prop-pos-z" value="${Math.round(props.position?.z ?? 0)}" placeholder="Z">
                 </div>
                 <div class="position-controls">
                     <button class="move-btn${this.moveMode ? ' active' : ''}" id="move-btn" onclick="toggleMoveMode()">
@@ -678,9 +708,9 @@ class Simple3DBuilder {
             <div class="property-group">
                 <div class="property-label">Rotation (Grad)</div>
                 <div class="property-row">
-                    <input type="number" class="property-input" id="prop-rot-x" value="0" placeholder="X">
-                    <input type="number" class="property-input" id="prop-rot-y" value="0" placeholder="Y">
-                    <input type="number" class="property-input" id="prop-rot-z" value="0" placeholder="Z">
+                    <input type="number" class="property-input" id="prop-rot-x" value="${Math.round((props.rotation?.x ?? 0) * 180 / Math.PI)}" placeholder="X">
+                    <input type="number" class="property-input" id="prop-rot-y" value="${Math.round((props.rotation?.y ?? 0) * 180 / Math.PI)}" placeholder="Y">
+                    <input type="number" class="property-input" id="prop-rot-z" value="${Math.round((props.rotation?.z ?? 0) * 180 / Math.PI)}" placeholder="Z">
                 </div>
             </div>
             <div class="property-actions">
