@@ -251,7 +251,7 @@ class Simple3DBuilder {
         this.clearGhost();
         if (this.editMode && toolType !== 'select') {
             this.createGhost(toolType);
-            this.showGhostPreviewPanel(toolType);
+            this.showPropertiesPanel(); // Panel für Ghost sofort anzeigen
         } else if (toolType === 'select' && this.selectedObject) {
             this.showPropertiesPanel();
         } else {
@@ -468,19 +468,15 @@ class Simple3DBuilder {
             }
         };
         this.scene.add(component);
-        this.selectObject(component);
-        // Nach Platzierung: Ghost entfernen
+        // Nach Platzierung: Ghost entfernen und auf Auswahl-Tool zurückschalten
         this.clearGhost();
-        // Nur beim ersten Platzieren: auf select schalten und moveMode aus
-        if (!this.firstPlacementDone) {
-            this.setTool('select');
-            this.moveMode = false;
-            setTimeout(() => {
-                const moveBtn = document.getElementById('move-btn');
-                if (moveBtn) moveBtn.classList.remove('active');
-            }, 0);
-            this.firstPlacementDone = true;
-        }
+        this.setTool('select'); // Tool nach Platzierung immer auf select
+        this.selectObject(component); // Panel für neues Objekt anzeigen
+        this.moveMode = false;
+        setTimeout(() => {
+            const moveBtn = document.getElementById('move-btn');
+            if (moveBtn) moveBtn.classList.remove('active');
+        }, 0);
         this.updateComponentOverview();
         this.needsRender = true;
         debugLog(`${type} bei (${Math.round(position.x)}, ${Math.round(position.y)}, ${Math.round(position.z)}) platziert`, 'success');
@@ -634,27 +630,29 @@ class Simple3DBuilder {
     }
     
     showPropertiesPanel() {
-        if (!this.selectedObject) return;
+        // Zeige Eigenschaften für Ghost-Objekt, falls vorhanden und kein moveMode
+        let obj = this.selectedObject;
+        if (this.ghostObject && this.currentTool !== 'select' && !this.moveMode) {
+            obj = this.ghostObject;
+            obj.userData = obj.userData || { isGhost: true, type: this.currentTool, properties: { ...this.componentDefaults[this.currentTool] } };
+        }
+        if (!obj) return;
         const panel = document.getElementById('properties-panel');
         const content = document.getElementById('properties-content');
         if (!panel || !content) return;
-        
-        const props = this.selectedObject.userData.properties;
-        const type = this.selectedObject.userData.type;
+        const props = obj.userData.properties;
+        const type = obj.userData.type;
         const defaults = this.componentDefaults[type];
-        const componentName = this.selectedObject.userData.name || '';
-        
+        const componentName = obj.userData.name || '';
         content.innerHTML = `
             <div class="property-group">
                 <div class="property-label">Name</div>
                 <input type="text" class="property-input" id="prop-name" value="${componentName}" placeholder="Bauteil-Name eingeben">
             </div>
-            
             <div class="property-group">
                 <div class="property-label">Typ</div>
-                <div style="font-weight: 500; color: #333;">${type.toUpperCase()}</div>
+                <div style="font-weight: 500; color: #333;">${type ? type.toUpperCase() : ''}</div>
             </div>
-            
             <div class="property-group">
                 <div class="property-label">Abmessungen (cm)</div>
                 <div class="property-row">
@@ -663,18 +661,16 @@ class Simple3DBuilder {
                     <input type="number" class="property-input" id="prop-depth" value="${props.depth}" placeholder="Tiefe">
                 </div>
             </div>
-            
             <div class="property-group">
                 <div class="property-label">U-Wert (W/m²K)</div>
                 <input type="number" class="property-input" id="prop-uvalue" value="${props.uValue}" step="0.01" placeholder="U-Wert">
             </div>
-            
             <div class="property-group">
                 <div class="property-label">Position (cm)</div>
                 <div class="property-row">
-                    <input type="number" class="property-input" id="prop-pos-x" value="${Math.round(props.position.x)}" placeholder="X">
-                    <input type="number" class="property-input" id="prop-pos-y" value="${Math.round(props.position.y)}" placeholder="Y">
-                    <input type="number" class="property-input" id="prop-pos-z" value="${Math.round(props.position.z)}" placeholder="Z">
+                    <input type="number" class="property-input" id="prop-pos-x" value="${Math.round(props.position?.x || 0)}" placeholder="X">
+                    <input type="number" class="property-input" id="prop-pos-y" value="${Math.round(props.position?.y || 0)}" placeholder="Y">
+                    <input type="number" class="property-input" id="prop-pos-z" value="${Math.round(props.position?.z || 0)}" placeholder="Z">
                 </div>
                 <div class="position-controls">
                     <button class="move-btn" id="move-btn" onclick="toggleMoveMode()">
@@ -685,7 +681,6 @@ class Simple3DBuilder {
                     </button>
                 </div>
             </div>
-            
             <div class="property-group">
                 <div class="property-label">Rotation (Grad)</div>
                 <div class="property-row">
@@ -694,21 +689,14 @@ class Simple3DBuilder {
                     <input type="number" class="property-input" id="prop-rot-z" value="0" placeholder="Z">
                 </div>
             </div>
-            
             <div class="property-actions">
                 <button class="delete-btn" onclick="deleteSelectedComponent()">🗑️ Löschen</button>
             </div>
         `;
-        
-        // Standardwerte-Styling setzen
         this.setDefaultStyles(defaults);
-        
-        // Auto-Update Events hinzufügen
         this.setupAutoUpdate();
-        
         panel.classList.add('open');
         debugLog('Properties-Panel angezeigt', 'success');
-        
         // Nach dem Rendern: Move-Button-Status korrekt setzen
         setTimeout(() => {
             const moveBtn = document.getElementById('move-btn');
@@ -1383,76 +1371,6 @@ class Simple3DBuilder {
             }
         });
         debugLog('Live-Wand-Vorschau bereinigt', 'info');
-    }
-    
-    // Panel für Ghost-Vorschau anzeigen (mit Live-Werten)
-    showGhostPreviewPanel(toolType) {
-        const panel = document.getElementById('properties-panel');
-        const content = document.getElementById('properties-content');
-        if (!panel || !content) return;
-        const defaults = this.componentDefaults[toolType];
-        content.innerHTML = `
-            <div class="property-group">
-                <div class="property-label">Neues ${toolType.toUpperCase()}</div>
-                <div style="font-size: 11px; color: #666; margin-bottom: 12px;">
-                    Eigenschaften für neues Bauteil (Vorschau)
-                </div>
-            </div>
-            <div class="property-group">
-                <div class="property-label">Abmessungen (cm)</div>
-                <div class="property-row">
-                    <input type="number" class="property-input default" id="ghost-width" value="${defaults.width}" placeholder="Breite">
-                    <input type="number" class="property-input default" id="ghost-height" value="${defaults.height}" placeholder="Höhe">
-                    <input type="number" class="property-input default" id="ghost-depth" value="${defaults.depth}" placeholder="Tiefe">
-                </div>
-            </div>
-            <div class="property-group">
-                <div class="property-label">U-Wert (W/m²K)</div>
-                <input type="number" class="property-input default" id="ghost-uvalue" value="${defaults.uValue}" step="0.01" placeholder="U-Wert">
-            </div>
-            <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #eee; font-size: 11px; color: #666;">
-                💡 Klicken Sie in die 3D-Ansicht um das Bauteil zu platzieren
-            </div>
-        `;
-        panel.classList.add('open');
-        // Auto-Update für Ghost-Properties
-        this.setupGhostAutoUpdate(toolType);
-        debugLog(`Eigenschaften-Panel für ${toolType} (Vorschau) angezeigt`, 'info');
-    }
-    setupGhostAutoUpdate(toolType) {
-        const inputs = ['ghost-width', 'ghost-height', 'ghost-depth', 'ghost-uvalue'];
-        inputs.forEach(inputId => {
-            const input = document.getElementById(inputId);
-            if (input) {
-                input.addEventListener('input', () => {
-                    input.classList.remove('default');
-                    this.updateGhostFromInputs(toolType);
-                });
-                input.addEventListener('focus', () => {
-                    input.classList.remove('default');
-                });
-            }
-        });
-    }
-    updateGhostFromInputs(toolType) {
-        if (!this.ghostObject) return;
-        const width = parseFloat(document.getElementById('ghost-width').value) || this.componentDefaults[toolType].width;
-        const height = parseFloat(document.getElementById('ghost-height').value) || this.componentDefaults[toolType].height;
-        const depth = parseFloat(document.getElementById('ghost-depth').value) || this.componentDefaults[toolType].depth;
-        // Ghost-Geometrie aktualisieren
-        const newGeometry = new THREE.BoxGeometry(width, height, depth);
-        this.ghostObject.geometry.dispose();
-        this.ghostObject.geometry = newGeometry;
-        // Defaults für spätere Platzierung aktualisieren
-        this.componentDefaults[toolType].width = width;
-        this.componentDefaults[toolType].height = height;
-        this.componentDefaults[toolType].depth = depth;
-        const uValue = parseFloat(document.getElementById('ghost-uvalue').value);
-        if (uValue) {
-            this.componentDefaults[toolType].uValue = uValue;
-        }
-        this.needsRender = true;
-        debugLog(`Ghost ${toolType} Eigenschaften aktualisiert`, 'info');
     }
 }
 
