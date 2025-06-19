@@ -245,16 +245,13 @@ class Simple3DBuilder {
         if (this.currentTool === 'window' || this.currentTool === 'door') {
             this.cleanupLiveWallPreview();
         }
-        
         this.currentTool = toolType;
         this.clearGhost();
-        
+        // Vorschau (Ghost) wieder aktivieren, wenn nicht select
         if (this.editMode && toolType !== 'select') {
             this.createGhost(toolType);
         }
-        
         this.updateToolButtons();
-        
         debugLog(`Tool gewechselt zu: ${toolType}`, 'info');
     }
     
@@ -322,10 +319,9 @@ class Simple3DBuilder {
     
     onMouseDown(event) {
         if (!this.editMode) return;
-        
         this.updateMousePosition(event);
         this.dragStart.copy(this.mouse);
-        
+        // Nur im Move-Modus: Drag starten
         if (this.selectedObject && this.moveMode && event.button === 0) {
             this.isDragging = true;
             this.controls.enabled = false;
@@ -333,9 +329,9 @@ class Simple3DBuilder {
     }
     
     onMouseMove(event) {
-        // --- Anpassung: Platzierlogik unabhängig von snapMode ---
         this.updateMousePosition(event);
-        if (this.editMode && this.ghostObject && this.currentTool !== 'select') {
+        // Ghost-Vorschau für neue Bauteile (nicht select, nicht moveMode)
+        if (this.editMode && this.ghostObject && this.currentTool !== 'select' && !this.moveMode) {
             this.raycaster.setFromCamera(this.mouse, this.camera);
             const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
             const intersection = new THREE.Vector3();
@@ -354,7 +350,6 @@ class Simple3DBuilder {
                 } else if (this.currentTool === 'wall' && this.snapMode) {
                     finalPosition = this.snapToNearestWall(intersection, this.currentTool);
                 } else if (this.currentTool === 'wall') {
-                    // Wand folgt der Maus, wenn kein Snap aktiv
                     finalPosition = intersection;
                 }
                 this.ghostObject.position.copy(finalPosition);
@@ -364,6 +359,7 @@ class Simple3DBuilder {
                 this.ghostObject.visible = false;
             }
         }
+        // Nur im Move-Modus: Objekt live bewegen
         if (this.isDragging && this.selectedObject) {
             this.raycaster.setFromCamera(this.mouse, this.camera);
             const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), this.selectedObject.position.y);
@@ -398,12 +394,17 @@ class Simple3DBuilder {
             this.isDragging = false;
             this.controls.enabled = true;
             this.justDragged = true;
-            debugLog('Objekt verschoben', 'info');
-            
-            // Reset nach kurzer Zeit
-            setTimeout(() => {
-                this.justDragged = false;
-            }, 100);
+            // Nach Platzierung: Move-Modus aus, Snap bleibt an
+            this.moveMode = false;
+            if (this.selectedObject && this.selectedObject.material) {
+                this.selectedObject.material.transparent = false;
+                this.selectedObject.material.opacity = 1.0;
+            }
+            const btn = document.getElementById('move-btn');
+            if (btn) btn.classList.remove('active');
+            this.showPropertiesPanel();
+            debugLog('Objekt verschoben und Move-Modus beendet', 'info');
+            setTimeout(() => { this.justDragged = false; }, 100);
         }
     }
     
@@ -412,10 +413,8 @@ class Simple3DBuilder {
         if (this.justDragged) {
             return;
         }
-        
         this.updateMousePosition(event);
         this.raycaster.setFromCamera(this.mouse, this.camera);
-        
         if (this.currentTool === 'select') {
             // Objekt auswählen (funktioniert immer)
             const intersects = this.raycaster.intersectObjects(this.scene.children, false);
@@ -426,8 +425,8 @@ class Simple3DBuilder {
             } else {
                 this.clearSelection();
             }
-        } else if (this.editMode && this.ghostObject) {
-            // Neues Objekt platzieren (nur im EditMode, Ghost muss existieren)
+        } else if (this.editMode && this.ghostObject && !this.moveMode) {
+            // Neues Objekt platzieren an aktueller Ghost-Position
             this.placeComponent(this.currentTool, this.ghostObject.position.clone());
         }
     }
@@ -444,7 +443,7 @@ class Simple3DBuilder {
         else if (type === 'floor') color = 0x607D8B;
         const material = new THREE.MeshLambertMaterial({ color });
         const component = new THREE.Mesh(geometry, material);
-        component.position.copy(position); // Position ist jetzt wirklich die untere linke Ecke
+        component.position.copy(position); // Position ist jetzt wirklich die aktuelle Ghost-Position
         // Generiere einen Standard-Namen basierend auf Typ und Anzahl
         const existingComponents = this.getAllComponents().filter(c => c.userData.type === type);
         const defaultName = this.getComponentTypeName(type) + ' ' + (existingComponents.length + 1);
@@ -502,19 +501,35 @@ class Simple3DBuilder {
     }
     
     toggleMoveMode() {
+        // Wenn kein Objekt ausgewählt, nichts tun
+        if (!this.selectedObject) return;
         this.moveMode = !this.moveMode;
         debugLog(`Verschieben-Modus: ${this.moveMode ? 'AN' : 'AUS'}`, 'info');
-        
         const btn = document.getElementById('move-btn');
         if (btn) {
             if (this.moveMode) {
                 btn.classList.add('active');
+                // Objekt in Ghost-Modus versetzen (halbtransparent)
+                if (this.selectedObject.material) {
+                    this.selectedObject.material.transparent = true;
+                    this.selectedObject.material.opacity = 0.3;
+                }
+                // Snap-Button aktivieren
+                const snapBtn = document.getElementById('snap-btn');
+                if (snapBtn) snapBtn.classList.remove('inactive');
+                this.snapMode = true;
             } else {
                 btn.classList.remove('active');
+                // Objekt wieder normal anzeigen
+                if (this.selectedObject.material) {
+                    this.selectedObject.material.transparent = false;
+                    this.selectedObject.material.opacity = 1.0;
+                }
             }
-            // Text bleibt konstant
             btn.innerHTML = '📍 Verschieben';
         }
+        // Panel bleibt immer offen und zeigt aktuelle Eigenschaften
+        this.showPropertiesPanel();
     }
     
     toggleSnapMode() {
@@ -810,95 +825,6 @@ class Simple3DBuilder {
         if (rotX) rotX.value = props.rotation.x;
         if (rotY) rotY.value = props.rotation.y;
         if (rotZ) rotZ.value = props.rotation.z;
-    }
-    
-    showGhostPropertiesPanel(toolType) {
-        const panel = document.getElementById('properties-panel');
-        const content = document.getElementById('properties-content');
-        
-        if (!panel || !content) return;
-        
-        const defaults = this.componentDefaults[toolType];
-        
-        content.innerHTML = `
-            <div class="property-group">
-                <div class="property-label">Neues ${toolType.toUpperCase()}</div>
-                <div style="font-size: 11px; color: #666; margin-bottom: 12px;">
-                    Eigenschaften für neues Bauteil
-                </div>
-            </div>
-            
-            <div class="property-group">
-                <div class="property-label">Abmessungen (cm)</div>
-                <div class="property-row">
-                    <input type="number" class="property-input default" id="ghost-width" value="${defaults.width}" placeholder="Breite">
-                    <input type="number" class="property-input default" id="ghost-height" value="${defaults.height}" placeholder="Höhe">
-                    <input type="number" class="property-input default" id="ghost-depth" value="${defaults.depth}" placeholder="Tiefe">
-                </div>
-            </div>
-            
-            <div class="property-group">
-                <div class="property-label">U-Wert (W/m²K)</div>
-                <input type="number" class="property-input default" id="ghost-uvalue" value="${defaults.uValue}" step="0.01" placeholder="U-Wert">
-            </div>
-            
-            <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #eee; font-size: 11px; color: #666;">
-                💡 Klicken Sie in die 3D-Ansicht um das Bauteil zu platzieren
-            </div>
-        `;
-        
-        panel.classList.add('open');
-        
-        // Auto-Update für Ghost-Properties
-        this.setupGhostAutoUpdate(toolType);
-        
-        debugLog(`Eigenschaften-Panel für ${toolType} angezeigt`, 'info');
-    }
-    
-    setupGhostAutoUpdate(toolType) {
-        const inputs = ['ghost-width', 'ghost-height', 'ghost-depth', 'ghost-uvalue'];
-        
-        inputs.forEach(inputId => {
-            const input = document.getElementById(inputId);
-            if (input) {
-                // Entferne default-Klasse bei Eingabe
-                input.addEventListener('input', () => {
-                    input.classList.remove('default');
-                    this.updateGhostFromInputs(toolType);
-                });
-                
-                // Focus/Blur Events für bessere UX
-                input.addEventListener('focus', () => {
-                    input.classList.remove('default');
-                });
-            }
-        });
-    }
-    
-    updateGhostFromInputs(toolType) {
-        if (!this.ghostObject) return;
-        
-        const width = parseFloat(document.getElementById('ghost-width').value) || this.componentDefaults[toolType].width;
-        const height = parseFloat(document.getElementById('ghost-height').value) || this.componentDefaults[toolType].height;
-        const depth = parseFloat(document.getElementById('ghost-depth').value) || this.componentDefaults[toolType].depth;
-        
-        // Ghost-Geometrie aktualisieren
-        const newGeometry = new THREE.BoxGeometry(width, height, depth);
-        this.ghostObject.geometry.dispose();
-        this.ghostObject.geometry = newGeometry;
-        
-        // Defaults für spätere Platzierung aktualisieren
-        this.componentDefaults[toolType].width = width;
-        this.componentDefaults[toolType].height = height;
-        this.componentDefaults[toolType].depth = depth;
-        
-        const uValue = parseFloat(document.getElementById('ghost-uvalue').value);
-        if (uValue) {
-            this.componentDefaults[toolType].uValue = uValue;
-        }
-        
-        this.needsRender = true;
-        debugLog(`Ghost ${toolType} Eigenschaften aktualisiert`, 'info');
     }
     
     // Building Management
@@ -1495,26 +1421,15 @@ function setupToolButtons() {
         btn.addEventListener('click', () => {
             const tool = btn.dataset.tool;
             if (tool && builder3d) {
-                // Alle Buttons deaktivieren
                 toolButtons.forEach(b => b.classList.remove('active'));
-                
-                // Aktuellen Button aktivieren
                 btn.classList.add('active');
-                
-                // Tool setzen
                 builder3d.setTool(tool);
-                
-                // Eigenschaften-Panel für Ghost-Objekt anzeigen wenn Bauteil-Tool gewählt
-                if (tool !== 'select') {
-                    builder3d.showGhostPropertiesPanel(tool);
-                } else {
-                    // Bei "select" Tool Properties Panel nur anzeigen wenn Objekt ausgewählt
-                    if (!builder3d.selectedObject) {
-                        builder3d.hidePropertiesPanel();
-                    }
+                // Kein Ghost-Panel mehr, nur Eigenschaften-Panel für Auswahl
+                if (tool === 'select' && builder3d.selectedObject) {
+                    builder3d.showPropertiesPanel();
+                } else if (tool !== 'select') {
+                    builder3d.hidePropertiesPanel();
                 }
-                
-                // Spezielle Aktionen
                 if (tool === 'wall') {
                     builder3d.addCube(0, 0, 0);
                 } else if (tool === 'clear') {
@@ -1560,7 +1475,6 @@ function toggleHamburgerMenu() {
         const isOpen = menuContent.style.display === 'block';
         
         menuContent.style.display = isOpen ? 'none' : 'block';
-        
         debugLog(`Hamburger-Menü ${isOpen ? 'geschlossen' : 'geöffnet'}`, 'info');
     }
 }
