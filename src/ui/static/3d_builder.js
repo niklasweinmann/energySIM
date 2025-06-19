@@ -1052,52 +1052,148 @@ class Simple3DBuilder {
         };
     }
     
-    // Einfache Snap-Funktionen (ohne Gleiten für Performance)
+    // Snap-Logik: Wände docken nur an 6 Positionen (4 Kanten, 2 große Flächen) anderer Wände an
     snapAndGlideToWallEdge(position, allComponents, snapDistance, glideThreshold) {
         const otherWalls = allComponents.filter(obj => obj.userData.type === 'wall' && obj !== this.selectedObject);
+        if (!this.selectedObject) return null;
         let bestConstraint = null;
         let minDistance = Infinity;
-        
+
+        // Dimensionen der bewegten Wand
+        const sel = this.selectedObject;
+        const selWidth = sel.userData.width || this.componentDefaults.wall.width;
+        const selDepth = sel.userData.depth || this.componentDefaults.wall.depth;
+        const selHeight = sel.userData.height || this.componentDefaults.wall.height;
+        const selPos = position;
+
+        // Kantenpositionen der bewegten Wand
+        const selLeft   = selPos.x - selWidth/2;
+        const selRight  = selPos.x + selWidth/2;
+        const selFront  = selPos.z + selDepth/2;
+        const selBack   = selPos.z - selDepth/2;
+        const selTop    = selPos.y + selHeight/2;
+        const selBottom = selPos.y - selHeight/2;
+
         otherWalls.forEach(wall => {
             const wallPos = wall.position;
             const wallWidth = wall.userData.width || this.componentDefaults.wall.width;
             const wallDepth = wall.userData.depth || this.componentDefaults.wall.depth;
-            
-            // Pivot ist die vordere linke Ecke, daher müssen die Snap-Kanten auf die Außenkanten der Wand bezogen werden
-            const pivotOffsetX = (this.selectedObject ? this.selectedObject.userData.width : this.componentDefaults.wall.width) / 2;
-            const pivotOffsetZ = (this.selectedObject ? this.selectedObject.userData.depth : this.componentDefaults.wall.depth) / 2;
-            const edges = [
-                { point: { x: wallPos.x + wallWidth/2, z: wallPos.z }, fixedX: wallPos.x + wallWidth }, // rechte Außenkante
-                { point: { x: wallPos.x - wallWidth/2, z: wallPos.z }, fixedX: wallPos.x - wallWidth }, // linke Außenkante
-                { point: { x: wallPos.x, z: wallPos.z + wallDepth/2 }, fixedZ: wallPos.z + wallDepth }, // vordere Außenkante
-                { point: { x: wallPos.x, z: wallPos.z - wallDepth/2 }, fixedZ: wallPos.z - wallDepth }  // hintere Außenkante
-            ];
-            
-            edges.forEach(edge => {
-                const distance = Math.sqrt(
-                    Math.pow(position.x - edge.point.x, 2) + 
-                    Math.pow(position.z - edge.point.z, 2)
-                );
-                
-                if (distance < snapDistance && distance < minDistance) {
-                    minDistance = distance;
-                    let constrainedPos = { x: position.x, z: position.z };
-                    
-                    if (edge.fixedX !== undefined) {
-                        constrainedPos.x = edge.fixedX;
-                    } else {
-                        constrainedPos.z = edge.fixedZ;
-                    }
-                    
+            const wallHeight = wall.userData.height || this.componentDefaults.wall.height;
+
+            const wallLeft   = wallPos.x - wallWidth/2;
+            const wallRight  = wallPos.x + wallWidth/2;
+            const wallFront  = wallPos.z + wallDepth/2;
+            const wallBack   = wallPos.z - wallDepth/2;
+            const wallTop    = wallPos.y + wallHeight/2;
+            const wallBottom = wallPos.y - wallHeight/2;
+
+            // --- KANTEN: Nur exakt bündig, keine Verschiebung entlang der Kante ---
+            // Linke Kante an rechte Kante (Z-Überlappung muss exakt sein)
+            let dist = Math.abs(selLeft - wallRight);
+            const zOverlap = Math.abs(selFront - wallFront) < snapDistance && Math.abs(selBack - wallBack) < snapDistance;
+            if (dist < snapDistance && dist < minDistance && zOverlap) {
+                minDistance = dist;
+                bestConstraint = {
+                    x: wallRight + selWidth/2,
+                    y: wallPos.y,
+                    z: wallPos.z
+                };
+            }
+            // Rechte Kante an linke Kante
+            dist = Math.abs(selRight - wallLeft);
+            if (dist < snapDistance && dist < minDistance && zOverlap) {
+                minDistance = dist;
+                bestConstraint = {
+                    x: wallLeft - selWidth/2,
+                    y: wallPos.y,
+                    z: wallPos.z
+                };
+            }
+            // Vordere Kante an hintere Kante (X-Überlappung muss exakt sein)
+            dist = Math.abs(selFront - wallBack);
+            const xOverlap = Math.abs(selLeft - wallLeft) < snapDistance && Math.abs(selRight - wallRight) < snapDistance;
+            if (dist < snapDistance && dist < minDistance && xOverlap) {
+                minDistance = dist;
+                bestConstraint = {
+                    x: wallPos.x,
+                    y: wallPos.y,
+                    z: wallBack - selDepth/2
+                };
+            }
+            // Hintere Kante an vordere Kante
+            dist = Math.abs(selBack - wallFront);
+            if (dist < snapDistance && dist < minDistance && xOverlap) {
+                minDistance = dist;
+                bestConstraint = {
+                    x: wallPos.x,
+                    y: wallPos.y,
+                    z: wallFront + selDepth/2
+                };
+            }
+            // --- FLÄCHEN: wie gehabt, mit Überlappungsprüfung ---
+            dist = Math.abs(selPos.x - wallPos.x);
+            if (dist < snapDistance && dist < minDistance) {
+                // Prüfe, ob die Wände sich in Z überlappen (sonst kein Flächensnap)
+                const selZMin = selPos.z - selDepth/2;
+                const selZMax = selPos.z + selDepth/2;
+                const wallZMin = wallPos.z - wallDepth/2;
+                const wallZMax = wallPos.z + wallDepth/2;
+                const overlap = (selZMin < wallZMax) && (selZMax > wallZMin);
+                if (overlap) {
+                    minDistance = dist;
                     bestConstraint = {
-                        x: constrainedPos.x,
+                        x: wallPos.x,
                         y: wallPos.y,
-                        z: constrainedPos.z
+                        z: selPos.z
                     };
                 }
-            });
+            }
+            dist = Math.abs(selPos.z - wallPos.z);
+            if (dist < snapDistance && dist < minDistance) {
+                // Prüfe, ob die Wände sich in X überlappen (sonst kein Flächensnap)
+                const selXMin = selPos.x - selWidth/2;
+                const selXMax = selPos.x + selWidth/2;
+                const wallXMin = wallPos.x - wallWidth/2;
+                const wallXMax = wallPos.x + wallWidth/2;
+                const overlap = (selXMin < wallXMax) && (selXMax > wallXMin);
+                if (overlap) {
+                    minDistance = dist;
+                    bestConstraint = {
+                        x: selPos.x,
+                        y: wallPos.y,
+                        z: wallPos.z
+                    };
+                }
+            }
+            // --- OBEN/UNTEN Snap (Y-Achse) ---
+            // Oben auf Wand
+            dist = Math.abs(selBottom - wallTop);
+            if (dist < snapDistance && dist < minDistance) {
+                // X/Z Überlappung prüfen
+                const xzOverlap = (selLeft < wallRight && selRight > wallLeft && selBack < wallFront && selFront > wallBack);
+                if (xzOverlap) {
+                    minDistance = dist;
+                    bestConstraint = {
+                        x: selPos.x,
+                        y: wallTop + selHeight/2,
+                        z: selPos.z
+                    };
+                }
+            }
+            // Unter Wand
+            dist = Math.abs(selTop - wallBottom);
+            if (dist < snapDistance && dist < minDistance) {
+                const xzOverlap = (selLeft < wallRight && selRight > wallLeft && selBack < wallFront && selFront > wallBack);
+                if (xzOverlap) {
+                    minDistance = dist;
+                    bestConstraint = {
+                        x: selPos.x,
+                        y: wallBottom - selHeight/2,
+                        z: selPos.z
+                    };
+                }
+            }
         });
-        
         return bestConstraint;
     }
     
