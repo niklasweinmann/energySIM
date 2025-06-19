@@ -515,20 +515,13 @@ class Simple3DBuilder {
         if (!this.selectedObject) return;
         this.moveMode = !this.moveMode;
         debugLog(`Verschieben-Modus: ${this.moveMode ? 'AN' : 'AUS'}`, 'info');
-        // Panel bleibt immer offen und zeigt aktuelle Eigenschaften
         this.showPropertiesPanel();
-        // Button-Status wird nach dem Rendern gesetzt (siehe showPropertiesPanel)
-        // Objekt-Transparenz steuern
         if (this.selectedObject.material) {
             this.selectedObject.material.transparent = this.moveMode;
             this.selectedObject.material.opacity = this.moveMode ? 0.3 : 1.0;
         }
-        // Snap-Button aktivieren, wenn Move aktiv
-        const snapBtn = document.getElementById('snap-btn');
-        if (snapBtn && this.moveMode) {
-            snapBtn.classList.remove('inactive');
-            this.snapMode = true;
-        }
+        // Snap-Button NICHT mehr automatisch aktivieren!
+        // (snapMode bleibt wie er ist)
     }
     
     toggleSnapMode() {
@@ -673,10 +666,10 @@ class Simple3DBuilder {
                     <input type="number" class="property-input" id="prop-pos-z" value="${Math.round(props.position?.z || 0)}" placeholder="Z">
                 </div>
                 <div class="position-controls">
-                    <button class="move-btn" id="move-btn" onclick="toggleMoveMode()">
+                    <button class="move-btn${this.moveMode ? ' active' : ''}" id="move-btn" onclick="toggleMoveMode()">
                         📍 Verschieben
                     </button>
-                    <button class="snap-btn" id="snap-btn" onclick="toggleSnapMode()">
+                    <button class="snap-btn${this.snapMode ? '' : ' inactive'}" id="snap-btn" onclick="toggleSnapMode()">
                         🧲 Einrasten
                     </button>
                 </div>
@@ -697,17 +690,6 @@ class Simple3DBuilder {
         this.setupAutoUpdate();
         panel.classList.add('open');
         debugLog('Properties-Panel angezeigt', 'success');
-        // Nach dem Rendern: Move-Button-Status korrekt setzen
-        setTimeout(() => {
-            const moveBtn = document.getElementById('move-btn');
-            if (moveBtn) {
-                if (this.moveMode) {
-                    moveBtn.classList.add('active');
-                } else {
-                    moveBtn.classList.remove('active');
-                }
-            }
-        }, 0);
     }
     
     hidePropertiesPanel() {
