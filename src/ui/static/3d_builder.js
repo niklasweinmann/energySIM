@@ -78,6 +78,8 @@ class Simple3DBuilder {
             floor: { width: 400, height: 20, depth: 400, uValue: 0.25 }
         };
         
+        this.firstPlacementDone = false;
+
         this.init();
     }
     
@@ -247,9 +249,13 @@ class Simple3DBuilder {
         }
         this.currentTool = toolType;
         this.clearGhost();
-        // Vorschau (Ghost) wieder aktivieren, wenn nicht select
         if (this.editMode && toolType !== 'select') {
             this.createGhost(toolType);
+            this.showGhostPreviewPanel(toolType);
+        } else if (toolType === 'select' && this.selectedObject) {
+            this.showPropertiesPanel();
+        } else {
+            this.hidePropertiesPanel();
         }
         this.updateToolButtons();
         debugLog(`Tool gewechselt zu: ${toolType}`, 'info');
@@ -463,9 +469,18 @@ class Simple3DBuilder {
         };
         this.scene.add(component);
         this.selectObject(component);
-        // Nach Platzierung: Ghost entfernen und auf Auswahl-Tool zurückschalten
+        // Nach Platzierung: Ghost entfernen
         this.clearGhost();
-        this.setTool('select');
+        // Nur beim ersten Platzieren: auf select schalten und moveMode aus
+        if (!this.firstPlacementDone) {
+            this.setTool('select');
+            this.moveMode = false;
+            setTimeout(() => {
+                const moveBtn = document.getElementById('move-btn');
+                if (moveBtn) moveBtn.classList.remove('active');
+            }, 0);
+            this.firstPlacementDone = true;
+        }
         this.updateComponentOverview();
         this.needsRender = true;
         debugLog(`${type} bei (${Math.round(position.x)}, ${Math.round(position.y)}, ${Math.round(position.z)}) platziert`, 'success');
@@ -501,35 +516,23 @@ class Simple3DBuilder {
     }
     
     toggleMoveMode() {
-        // Wenn kein Objekt ausgewählt, nichts tun
         if (!this.selectedObject) return;
         this.moveMode = !this.moveMode;
         debugLog(`Verschieben-Modus: ${this.moveMode ? 'AN' : 'AUS'}`, 'info');
-        const btn = document.getElementById('move-btn');
-        if (btn) {
-            if (this.moveMode) {
-                btn.classList.add('active');
-                // Objekt in Ghost-Modus versetzen (halbtransparent)
-                if (this.selectedObject.material) {
-                    this.selectedObject.material.transparent = true;
-                    this.selectedObject.material.opacity = 0.3;
-                }
-                // Snap-Button aktivieren
-                const snapBtn = document.getElementById('snap-btn');
-                if (snapBtn) snapBtn.classList.remove('inactive');
-                this.snapMode = true;
-            } else {
-                btn.classList.remove('active');
-                // Objekt wieder normal anzeigen
-                if (this.selectedObject.material) {
-                    this.selectedObject.material.transparent = false;
-                    this.selectedObject.material.opacity = 1.0;
-                }
-            }
-            btn.innerHTML = '📍 Verschieben';
-        }
         // Panel bleibt immer offen und zeigt aktuelle Eigenschaften
         this.showPropertiesPanel();
+        // Button-Status wird nach dem Rendern gesetzt (siehe showPropertiesPanel)
+        // Objekt-Transparenz steuern
+        if (this.selectedObject.material) {
+            this.selectedObject.material.transparent = this.moveMode;
+            this.selectedObject.material.opacity = this.moveMode ? 0.3 : 1.0;
+        }
+        // Snap-Button aktivieren, wenn Move aktiv
+        const snapBtn = document.getElementById('snap-btn');
+        if (snapBtn && this.moveMode) {
+            snapBtn.classList.remove('inactive');
+            this.snapMode = true;
+        }
     }
     
     toggleSnapMode() {
@@ -632,10 +635,8 @@ class Simple3DBuilder {
     
     showPropertiesPanel() {
         if (!this.selectedObject) return;
-        
         const panel = document.getElementById('properties-panel');
         const content = document.getElementById('properties-content');
-        
         if (!panel || !content) return;
         
         const props = this.selectedObject.userData.properties;
@@ -707,6 +708,18 @@ class Simple3DBuilder {
         
         panel.classList.add('open');
         debugLog('Properties-Panel angezeigt', 'success');
+        
+        // Nach dem Rendern: Move-Button-Status korrekt setzen
+        setTimeout(() => {
+            const moveBtn = document.getElementById('move-btn');
+            if (moveBtn) {
+                if (this.moveMode) {
+                    moveBtn.classList.add('active');
+                } else {
+                    moveBtn.classList.remove('active');
+                }
+            }
+        }, 0);
     }
     
     hidePropertiesPanel() {
@@ -1370,6 +1383,76 @@ class Simple3DBuilder {
             }
         });
         debugLog('Live-Wand-Vorschau bereinigt', 'info');
+    }
+    
+    // Panel für Ghost-Vorschau anzeigen (mit Live-Werten)
+    showGhostPreviewPanel(toolType) {
+        const panel = document.getElementById('properties-panel');
+        const content = document.getElementById('properties-content');
+        if (!panel || !content) return;
+        const defaults = this.componentDefaults[toolType];
+        content.innerHTML = `
+            <div class="property-group">
+                <div class="property-label">Neues ${toolType.toUpperCase()}</div>
+                <div style="font-size: 11px; color: #666; margin-bottom: 12px;">
+                    Eigenschaften für neues Bauteil (Vorschau)
+                </div>
+            </div>
+            <div class="property-group">
+                <div class="property-label">Abmessungen (cm)</div>
+                <div class="property-row">
+                    <input type="number" class="property-input default" id="ghost-width" value="${defaults.width}" placeholder="Breite">
+                    <input type="number" class="property-input default" id="ghost-height" value="${defaults.height}" placeholder="Höhe">
+                    <input type="number" class="property-input default" id="ghost-depth" value="${defaults.depth}" placeholder="Tiefe">
+                </div>
+            </div>
+            <div class="property-group">
+                <div class="property-label">U-Wert (W/m²K)</div>
+                <input type="number" class="property-input default" id="ghost-uvalue" value="${defaults.uValue}" step="0.01" placeholder="U-Wert">
+            </div>
+            <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #eee; font-size: 11px; color: #666;">
+                💡 Klicken Sie in die 3D-Ansicht um das Bauteil zu platzieren
+            </div>
+        `;
+        panel.classList.add('open');
+        // Auto-Update für Ghost-Properties
+        this.setupGhostAutoUpdate(toolType);
+        debugLog(`Eigenschaften-Panel für ${toolType} (Vorschau) angezeigt`, 'info');
+    }
+    setupGhostAutoUpdate(toolType) {
+        const inputs = ['ghost-width', 'ghost-height', 'ghost-depth', 'ghost-uvalue'];
+        inputs.forEach(inputId => {
+            const input = document.getElementById(inputId);
+            if (input) {
+                input.addEventListener('input', () => {
+                    input.classList.remove('default');
+                    this.updateGhostFromInputs(toolType);
+                });
+                input.addEventListener('focus', () => {
+                    input.classList.remove('default');
+                });
+            }
+        });
+    }
+    updateGhostFromInputs(toolType) {
+        if (!this.ghostObject) return;
+        const width = parseFloat(document.getElementById('ghost-width').value) || this.componentDefaults[toolType].width;
+        const height = parseFloat(document.getElementById('ghost-height').value) || this.componentDefaults[toolType].height;
+        const depth = parseFloat(document.getElementById('ghost-depth').value) || this.componentDefaults[toolType].depth;
+        // Ghost-Geometrie aktualisieren
+        const newGeometry = new THREE.BoxGeometry(width, height, depth);
+        this.ghostObject.geometry.dispose();
+        this.ghostObject.geometry = newGeometry;
+        // Defaults für spätere Platzierung aktualisieren
+        this.componentDefaults[toolType].width = width;
+        this.componentDefaults[toolType].height = height;
+        this.componentDefaults[toolType].depth = depth;
+        const uValue = parseFloat(document.getElementById('ghost-uvalue').value);
+        if (uValue) {
+            this.componentDefaults[toolType].uValue = uValue;
+        }
+        this.needsRender = true;
+        debugLog(`Ghost ${toolType} Eigenschaften aktualisiert`, 'info');
     }
 }
 
