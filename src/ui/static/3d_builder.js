@@ -333,50 +333,58 @@ class Simple3DBuilder {
     }
     
     onMouseMove(event) {
+        // --- Anpassung: Platzierlogik unabhängig von snapMode ---
         this.updateMousePosition(event);
         if (this.editMode && this.ghostObject && this.currentTool !== 'select') {
-            // Ghost-Objekt an Mausposition bewegen
             this.raycaster.setFromCamera(this.mouse, this.camera);
-            // Schnitt mit Grundebene (y=0)
             const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
             const intersection = new THREE.Vector3();
             if (this.raycaster.ray.intersectPlane(plane, intersection)) {
                 let finalPosition = intersection;
-                // Live-Ghost-Vorschau für Fenster/Türen mit Wandprojektion
                 if (this.currentTool === 'window' || this.currentTool === 'door') {
                     const wallProjection = this.projectToNearestWallSurface(intersection);
                     if (wallProjection) {
                         finalPosition = wallProjection.position;
                         this.updateLiveWallHole(wallProjection.wall, finalPosition);
                     }
-                } else if (this.snapMode) {
+                } else if (this.currentTool === 'roof') {
+                    finalPosition = this.snapAndGlideToWallTops(intersection, this.getAllComponents(), 100, 150) || intersection;
+                } else if (this.currentTool === 'floor') {
+                    finalPosition = this.snapAndGlideToWallBottoms(intersection, this.getAllComponents(), 100, 150) || intersection;
+                } else if (this.currentTool === 'wall' && this.snapMode) {
                     finalPosition = this.snapToNearestWall(intersection, this.currentTool);
+                } else if (this.currentTool === 'wall') {
+                    // Wand folgt der Maus, wenn kein Snap aktiv
+                    finalPosition = intersection;
                 }
                 this.ghostObject.position.copy(finalPosition);
-                // Ghost-Objekt immer sichtbar im Platzierungsmodus
                 this.ghostObject.visible = true;
                 this.needsRender = true;
             } else {
-                // Ghost ausblenden, wenn keine gültige Position
                 this.ghostObject.visible = false;
             }
         }
-        
         if (this.isDragging && this.selectedObject) {
-            // Ausgewähltes Objekt bewegen
             this.raycaster.setFromCamera(this.mouse, this.camera);
             const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), this.selectedObject.position.y);
             const intersection = new THREE.Vector3();
-            
             if (this.raycaster.ray.intersectPlane(plane, intersection)) {
                 let finalPosition = intersection;
-                
-                // Nur bei aktiviertem Snap-Modus anwenden
-                if (this.snapMode) {
-                    const componentType = this.selectedObject.userData.type;
+                const componentType = this.selectedObject.userData.type;
+                if (componentType === 'window' || componentType === 'door') {
+                    if (this.selectedObject.userData.parentWall) {
+                        const result = this.constrainToParentWall(intersection, this.selectedObject);
+                        if (result) finalPosition = result;
+                    }
+                } else if (componentType === 'roof') {
+                    finalPosition = this.snapAndGlideToWallTops(intersection, this.getAllComponents(), 100, 150) || intersection;
+                } else if (componentType === 'floor') {
+                    finalPosition = this.snapAndGlideToWallBottoms(intersection, this.getAllComponents(), 100, 150) || intersection;
+                } else if (componentType === 'wall' && this.snapMode) {
                     finalPosition = this.snapToNearestWall(intersection, componentType);
+                } else if (componentType === 'wall') {
+                    finalPosition = intersection;
                 }
-                
                 this.selectedObject.position.x = finalPosition.x;
                 this.selectedObject.position.z = finalPosition.z;
                 this.updatePropertiesPanel();
@@ -1146,11 +1154,14 @@ class Simple3DBuilder {
             const wallWidth = wall.userData.width || this.componentDefaults.wall.width;
             const wallDepth = wall.userData.depth || this.componentDefaults.wall.depth;
             
+            // Pivot ist die vordere linke Ecke, daher müssen die Snap-Kanten auf die Außenkanten der Wand bezogen werden
+            const pivotOffsetX = (this.selectedObject ? this.selectedObject.userData.width : this.componentDefaults.wall.width) / 2;
+            const pivotOffsetZ = (this.selectedObject ? this.selectedObject.userData.depth : this.componentDefaults.wall.depth) / 2;
             const edges = [
-                { point: { x: wallPos.x + wallWidth/2, z: wallPos.z }, fixedX: wallPos.x + wallWidth/2 },
-                { point: { x: wallPos.x - wallWidth/2, z: wallPos.z }, fixedX: wallPos.x - wallWidth/2 },
-                { point: { x: wallPos.x, z: wallPos.z + wallDepth/2 }, fixedZ: wallPos.z + wallDepth/2 },
-                { point: { x: wallPos.x, z: wallPos.z - wallDepth/2 }, fixedZ: wallPos.z - wallDepth/2 }
+                { point: { x: wallPos.x + wallWidth/2, z: wallPos.z }, fixedX: wallPos.x + wallWidth }, // rechte Außenkante
+                { point: { x: wallPos.x - wallWidth/2, z: wallPos.z }, fixedX: wallPos.x - wallWidth }, // linke Außenkante
+                { point: { x: wallPos.x, z: wallPos.z + wallDepth/2 }, fixedZ: wallPos.z + wallDepth }, // vordere Außenkante
+                { point: { x: wallPos.x, z: wallPos.z - wallDepth/2 }, fixedZ: wallPos.z - wallDepth }  // hintere Außenkante
             ];
             
             edges.forEach(edge => {

@@ -1,3 +1,9 @@
+Ich denke du hast den Einrasten-Button nicht ganz richtig implementiert. Ich kann objekte nur verschieben wenn der Einrasten button deaktiviert ist, aber das EInrasten soll eigentlich die funktion haben dass objekte automatisch an ihre richtige position snappen (wand an andere wandkanten oben unten links und rechts, bzw wenn eine wand gedreht ist soll die pivotecke sich immer an existierenden wänden entlangschieben. fenster und türen sollen dann nur in wänden platzierbar sein, dächer auf wänden und böden an wänden auf y=0)
+
+bauteile werden derzeit an der hinteren linken ecke auf 0 0 0 gesetzt, es soll aber an der vorderen linken ecke auf 0 0 0 sein
+
+mache die kamerasteuerung etwas weniger sensibel. möglichst auf standardeinstellungen falls die anders sind als jetzt gerade.
+
 Das Dach soll auch dreidimensional entlang der Kante geschoben werden. 
 
 Das Dach soll auch schräg entlang von Wänden geschoben werden.
